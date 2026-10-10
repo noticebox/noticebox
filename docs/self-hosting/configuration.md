@@ -1,6 +1,6 @@
 # Configuration
 
-noticebox is configured by environment variables and one JSON file with the forms.
+noticebox is configured by environment variables and one JSON file with the forms. The file is edited in the inbox, on each form's *Settings* tab and the box pages, and can be edited by hand as well; noticebox reads it at start and writes it back after each change in the UI, keeping `${VAR}` references as they are. A missing file is created empty at start.
 
 ## Environment
 
@@ -14,6 +14,7 @@ noticebox is configured by environment variables and one JSON file with the form
 | `NOTICEBOX_RATE_LIMIT` | `10` | Posts per client address and form in ten minutes; `0` turns it off |
 | `NOTICEBOX_TRUST_PROXY` | on | `0` to ignore `X-Forwarded-For` and take the connecting address |
 | `NOTICEBOX_DEV_USER` | none | A fixed name standing in for the login, for development. Never in production. |
+| `NOTICEBOX_SIGN_OUT_URL` | `/outpost.goauthentik.io/sign_out` | Where *Sign out* in the user menu goes; the Authentik outpost's sign-out by default. Hidden with `NOTICEBOX_DEV_USER`. |
 | `PORT` | `3000` | Where it listens |
 
 `${VAR}` inside a string in the forms file is replaced by the variable's value when the file is read, so topics and other secrets stay out of the file. An unset variable is an error at start.
@@ -37,12 +38,16 @@ noticebox is configured by environment variables and one JSON file with the form
       "origins": ["https://notefeed.me"],
       "redirect": "https://notefeed.me/report?sent=1",
       "retentionDays": 1,
-      "notify": { "ntfy": "https://ntfy.sh/${NTFY_TOPIC}" },
+      "notify": [{ "type": "ntfy", "url": "https://ntfy.sh/${NTFY_TOPIC}" }],
       "link": { "url": "https://notefeed.me/r/{read_id}/{note_id}", "label": "Open the note" }
     }
   }
 }
 ```
+
+### Boxes
+
+`boxes` is an optional list of box names. A box named by a form exists without being listed; the list is for boxes that have no form yet, and the UI maintains it.
 
 ### A form
 
@@ -58,8 +63,7 @@ The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 cha
 | `origins` | none: posts from anywhere | Origins posts are accepted from, `https://example.org` each |
 | `redirect` | the thank-you page | Where the browser goes after a plain post |
 | `retentionDays` | `180` | Days after closing until the personal fields are removed |
-| `notify.ntfy` | none | A topic URL at an ntfy server, see [Notifications](notifications.md) |
-| `notify.webhook` | none | A URL that gets a JSON post |
+| `notify` | none | A list of targets, `{ "type": "ntfy", "url": … }` or `{ "type": "webhook", "url": … }`, see [Notifications](notifications.md). The older `{ "ntfy": …, "webhook": … }` object is read too. |
 | `link` | none | A URL template over the fields, or `{ "url": …, "label": … }`; see below |
 
 ### A field

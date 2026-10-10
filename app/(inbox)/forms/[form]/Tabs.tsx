@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// The tabs of a form: Overview is the form's own page, Submissions everything under /submissions.
+// The tabs of a form: Overview is the form's own page, Submissions everything under /submissions, Settings its file.
 export function Tabs({ base }: { base: string }) {
   const pathname = usePathname();
   const tabs = [
     { href: base, label: "Overview", active: pathname === base },
     { href: `${base}/submissions`, label: "Submissions", active: pathname.startsWith(`${base}/submissions`) },
+    { href: `${base}/settings`, label: "Settings", active: pathname === `${base}/settings` },
   ];
   return (
     <nav aria-label="Sections" className="-mb-px flex gap-7">

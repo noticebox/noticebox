@@ -132,6 +132,7 @@ function gate(req: Request, rt: Runtime): Response | Auth {
   const claims = verify(rt.secret, "access", token);
   if (!claims) return unauthorized("invalid token", 'error="invalid_token", ');
   if (claims.aud !== mcpResource(req.headers, rt)) return unauthorized("token for another resource", 'error="invalid_token", ');
+  if (!rt.store.grantOk(claims.gid, rt.now())) return unauthorized("this connection was revoked", 'error="invalid_token", ');
   return { token, clientId: claims.cn, scopes: [], extra: { actor: `${claims.sub} via ${claims.cn}`, base } };
 }
 

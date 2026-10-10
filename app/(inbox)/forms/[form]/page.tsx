@@ -73,7 +73,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
           <dt className="text-muted">Personal fields are removed</dt>
           <dd className="mb-2 sm:mb-0">{form.retentionDays} {form.retentionDays === 1 ? "day" : "days"} after a submission is closed</dd>
           <dt className="text-muted">New submissions are announced</dt>
-          <dd className="mb-2 sm:mb-0">{[form.notify.ntfy && "on ntfy", form.notify.webhook && "to a webhook"].filter(Boolean).join(" and ") || "nowhere"}</dd>
+          <dd className="mb-2 sm:mb-0">{form.notify.length ? form.notify.map((t) => (t.type === "ntfy" ? `on ntfy (${new URL(t.url).host})` : `to a webhook (${new URL(t.url).host})`)).join(" and ") : "nowhere"}</dd>
           {form.link && (
             <>
               <dt className="text-muted">Each submission links to</dt>

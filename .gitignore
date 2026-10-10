@@ -10,3 +10,4 @@ playwright-report/
 *.tsbuildinfo
 .venv-docs/
 site/
+.e2e/

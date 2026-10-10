@@ -139,3 +139,18 @@ test("a code is spent once, the verifier must match, and a refresh token rotates
   const wrong = await tokenRoute(formPost("/oauth/token", { grant_type: "password", client_id: clientId }), rt);
   expect(await wrong.json()).toEqual({ error: "unsupported_grant_type" });
 });
+
+test("a revoked connection stops working at once: the access token, the refresh token, and the list on the settings page", async () => {
+  const rt = testRuntime();
+  const { access, refresh, clientId } = await connect(rt);
+  const [g] = rt.store.grants("marcel");
+  expect(g).toMatchObject({ actor: "marcel", client_name: "Claude" });
+  expect(rt.store.grants("someone else")).toEqual([]);
+  expect(rt.store.revokeGrant(g!.id, "someone else")).toMatchObject({ ok: false });
+  expect(rt.store.revokeGrant(g!.id, "marcel")).toEqual({ ok: true });
+  expect(rt.store.grants("marcel")).toEqual([]);
+  const call = await rpc(rt, "tools/list", {}, { authorization: `Bearer ${access}` });
+  expect(call.status).toBe(401);
+  const again = await tokenRoute(formPost("/oauth/token", { grant_type: "refresh_token", refresh_token: refresh, client_id: clientId }), rt);
+  expect(again.status).toBe(400);
+});

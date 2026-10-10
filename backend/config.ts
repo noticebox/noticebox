@@ -2,6 +2,7 @@
 // topic stay out of the file.
 import { readFileSync } from "node:fs";
 import { isKind, type KindName } from "./kinds";
+export type { KindName };
 
 export type FieldType = "text" | "textarea" | "select" | "email" | "hidden";
 
@@ -26,11 +27,13 @@ export type Form = {
   origins: string[]; // where submissions may come from; empty means anywhere
   redirect: string | null; // where the browser goes after a submission; null means the hosted thanks page
   retentionDays: number;
-  notify: { ntfy: string | null; webhook: string | null };
+  notify: Target[]; // where a new submission is announced (title and link, never the content)
   link: { url: string; label: string } | null; // where the thing a submission is about can be looked at: a URL template with {field} placeholders
 };
 
-export type Config = { forms: Record<string, Form> };
+export type Target = { type: "ntfy" | "webhook"; url: string };
+
+export type Config = { boxes: string[]; forms: Record<string, Form> }; // `boxes` lists every box, also those without a form yet
 
 export const FORM_NAME = /^[a-z][a-z0-9_-]{0,39}$/;
 const BOX_NAME = /^[a-z0-9][a-z0-9 ._-]{0,39}$/i;
@@ -69,14 +72,16 @@ export function expand(text: string, env: Env): string {
 
 export function parseConfig(raw: unknown): Config {
   const root = record(raw, "config");
-  const formsRaw = record(root.forms, "forms");
+  const formsRaw = root.forms === undefined ? {} : record(root.forms, "forms");
   const forms: Record<string, Form> = {};
   for (const [name, f] of Object.entries(formsRaw)) {
     if (!FORM_NAME.test(name)) throw new Error(`form name "${name}": lowercase letters, digits, - and _ only`);
     forms[name] = parseForm(name, f);
   }
-  if (Object.keys(forms).length === 0) throw new Error("no forms configured");
-  return { forms };
+  const listed = stringList(root.boxes, "boxes");
+  for (const b of listed) if (!BOX_NAME.test(b)) throw new Error(`box "${b}": letters, digits, spaces, . _ and - only`);
+  const boxes = [...new Set([...listed, ...Object.values(forms).map((f) => f.box)])];
+  return { boxes, forms };
 }
 
 function parseForm(name: string, raw: unknown): Form {
@@ -103,7 +108,7 @@ function parseForm(name: string, raw: unknown): Form {
   const redirect = f.redirect === undefined || f.redirect === null ? null : absoluteUrl(f.redirect, `${at}.redirect`);
   const retentionDays = f.retentionDays === undefined ? 180 : f.retentionDays;
   if (typeof retentionDays !== "number" || !Number.isInteger(retentionDays) || retentionDays < 1) throw new Error(`${at}.retentionDays: a whole number of days, at least 1`);
-  const n = f.notify === undefined ? {} : record(f.notify, `${at}.notify`);
+  const notify = parseNotify(`${at}.notify`, f.notify);
   const box = str(f.box, `${at}.box`, "forms");
   const link = parseLink(`${at}.link`, f.link, fields);
   if (!BOX_NAME.test(box)) throw new Error(`${at}.box: letters, digits, spaces, . _ and - only`);
@@ -118,12 +123,26 @@ function parseForm(name: string, raw: unknown): Form {
     origins,
     redirect,
     retentionDays,
-    notify: {
-      ntfy: n.ntfy === undefined || n.ntfy === null ? null : absoluteUrl(n.ntfy, `${at}.notify.ntfy`),
-      webhook: n.webhook === undefined || n.webhook === null ? null : absoluteUrl(n.webhook, `${at}.notify.webhook`),
-    },
+    notify,
     link,
   };
+}
+
+/** `notify` is a list of `{ type, url }` targets; the older `{ ntfy, webhook }` object is read as such a list. */
+function parseNotify(at: string, raw: unknown): Target[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    const o = record(raw, at);
+    const out: Target[] = [];
+    if (o.ntfy !== undefined && o.ntfy !== null) out.push({ type: "ntfy", url: absoluteUrl(o.ntfy, `${at}.ntfy`) });
+    if (o.webhook !== undefined && o.webhook !== null) out.push({ type: "webhook", url: absoluteUrl(o.webhook, `${at}.webhook`) });
+    return out;
+  }
+  return raw.map((t, i) => {
+    const o = record(t, `${at}[${i}]`);
+    if (o.type !== "ntfy" && o.type !== "webhook") throw new Error(`${at}[${i}].type: "ntfy" or "webhook"`);
+    return { type: o.type, url: absoluteUrl(o.url, `${at}[${i}].url`) };
+  });
 }
 
 /** `link` is a URL template, or `{ url, label }`; each `{name}` must be a field of the form. */

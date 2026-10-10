@@ -13,7 +13,8 @@ test("defaults fill in what the file leaves out", () => {
   expect(f.retentionDays).toBe(180);
   expect(f.origins).toEqual([]);
   expect(f.redirect).toBeNull();
-  expect(f.notify).toEqual({ ntfy: null, webhook: null });
+  expect(f.notify).toEqual([]);
+  expect(c.boxes).toEqual(["forms"]);
   expect(f.fields.email).toEqual({ type: "email", label: "email", required: false, max: 254, options: [], personal: true, help: "" });
   expect(f.fields.message!.max).toBe(10000);
   expect(f.fields.topic!.personal).toBe(false);
@@ -21,8 +22,7 @@ test("defaults fill in what the file leaves out", () => {
 
 test("mistakes are named with their place", () => {
   const bad = (raw: unknown, re: RegExp) => expect(() => parseConfig(raw)).toThrow(re);
-  bad({}, /forms: must be an object/);
-  bad({ forms: {} }, /no forms/);
+  bad({ forms: [] }, /forms: must be an object/);
   bad({ forms: { "Bad Name": { kind: "report", fields: { a: {} } } } }, /form name "Bad Name"/);
   bad({ forms: { x: { kind: "poll", fields: { a: {} } } } }, /kind must be "report" or "message"/);
   bad({ forms: { x: { kind: "report", fields: {} } } }, /form x: no fields/);
@@ -44,7 +44,7 @@ test("origins lose a trailing slash and the file may take values from the enviro
   expect(() => expand("${MISSING}", {})).toThrow(/\$\{MISSING\} is not set/);
   const path = join(tmpdir(), `noticebox-${process.pid}.json`);
   writeFileSync(path, JSON.stringify({ forms: { x: { kind: "report", fields: { a: {} }, notify: { ntfy: "https://ntfy.sh/${TOPIC}" } } } }));
-  expect(loadConfig(path, { TOPIC: "t1" }).forms.x!.notify.ntfy).toBe("https://ntfy.sh/t1");
+  expect(loadConfig(path, { TOPIC: "t1" }).forms.x!.notify).toEqual([{ type: "ntfy", url: "https://ntfy.sh/t1" }]);
   expect(() => loadConfig("/nonexistent.json")).toThrow(/cannot read/);
 });
 

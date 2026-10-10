@@ -13,8 +13,8 @@ One container, no database server, no accounts of its own: the login is the reve
 - **Intake** is `POST /f/<form>`, as a plain form post (answered with a redirect) or as JSON (answered with the id, or the errors). A hidden field nobody sees catches bots, each client gets ten submissions per form in ten minutes, and a form with `origins` refuses posts from anywhere else. A refused plain post is sent back to the page it came from with `?error=…` and what was typed, so the page can show both; a page without JavaScript needs nothing more.
 - **Notifications** say that something arrived and where to look, never what it says: an ntfy topic gets a title and the link, a webhook gets `{form, kind, id, received_at, url}`.
 - **Retention**: a submission closed longer ago than the form's `retentionDays` loses its personal fields (free text, email; anything not marked `personal: false`). The ids, the category, the states and the audit trail stay.
-- **The inbox**: the sidebar lists the boxes and their forms with what is open; a form has an overview (what waits, received per day, the endpoint and the fields) and the table of its submissions, where the state of each row is a dropdown: choose the next state, write the reason in the dialog, confirm. `/forms/<form>/submissions/<id>` shows one submission with its fields and history; notifications link there. `/export.json` gives everything with its events.
-- **MCP** at `/mcp` has five tools: `list_forms`, `list_submissions`, `get_submission`, `add_note`, `decide`. An MCP client registers itself, the signed-in person allows it on `/oauth/authorize`, and everything the assistant does is recorded as `<person> via <client>`.
+- **The inbox**: the sidebar lists the boxes and their forms with what is open, and *Add new* makes a box or a form; each form has a *Settings* tab that edits the file (fields, origins, redirect, notification targets, retention, link), validated as a whole before it is written; a form has an overview (what waits, received per day, the endpoint and the fields) and the table of its submissions, where the state of each row is a dropdown: choose the next state, write the reason in the dialog, confirm. `/forms/<form>/submissions/<id>` shows one submission with its fields and history; notifications link there. `/export.json` gives everything with its events.
+- **MCP** at `/mcp` has five tools: `list_forms`, `list_submissions`, `get_submission`, `add_note`, `decide`. An MCP client registers itself, the signed-in person allows it on `/oauth/authorize`, and everything the assistant does is recorded as `<person> via <client>`. The connections are listed under *Your settings* and can be revoked.
 
 ## Deploying
 
@@ -39,6 +39,7 @@ services:
 | `NOTICEBOX_SECRET` | signs the OAuth tokens; without it there is no MCP |
 | `NOTICEBOX_RATE_LIMIT` | submissions per client and form in ten minutes (default 10, 0 for none) |
 | `NOTICEBOX_TRUST_PROXY` | `0` to ignore `X-Forwarded-For` |
+| `NOTICEBOX_SIGN_OUT_URL` | where *Sign out* goes (default the Authentik outpost's `/outpost.goauthentik.io/sign_out`) |
 | `NOTICEBOX_DEV_USER` | a fixed user for development without a proxy; never in production |
 
 The `${VAR}` references in `noticebox.json` are filled from the container's environment, so topics and other secrets stay out of the file.

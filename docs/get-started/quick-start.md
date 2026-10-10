@@ -23,7 +23,7 @@ noticebox reads its forms from one JSON file. Save this as `noticebox.json`:
 }
 ```
 
-A form has a name (`contact`), belongs to a box (the sidebar groups forms by it), has a kind (`message` or `report`) and fields. Everything else has a default; [Configuration](../self-hosting/configuration.md) lists all of it.
+A form has a name (`contact`), belongs to a box (the sidebar groups forms by it), has a kind (`message` or `report`) and fields. Everything else has a default; [Configuration](../self-hosting/configuration.md) lists all of it. You can also start without the file: noticebox creates an empty one, and *Add new* in the inbox makes boxes and forms.
 
 ## 2. Run it
 
@@ -31,7 +31,7 @@ A form has a name (`contact`), belongs to a box (the sidebar groups forms by it)
 # compose.yaml
 services:
   noticebox:
-    image: ghcr.io/noticebox/noticebox:0.2.0
+    image: ghcr.io/noticebox/noticebox:0.3.0
     environment:
       NOTICEBOX_BASE_URL: http://localhost:3000
       # Only for trying it out: in production the login proxy says who is signed in.

@@ -1,6 +1,7 @@
 // noticebox as the OAuth 2.1 authorization server for its own /mcp: metadata (RFC 9728, RFC 8414), dynamic client
 // registration (RFC 7591), the authorize step behind the login proxy, and the token endpoint (authorization code
-// with PKCE S256, rotating refresh tokens). Everything is a signed token (./tokens), so there is nothing to store.
+// with PKCE S256, rotating refresh tokens). Tokens are signed (./tokens); what is stored is the grant, the person's
+// "Allow" for one client, which every token names and which the person can revoke.
 // Without NOTICEBOX_SECRET there is nothing to sign with: 404.
 import { createHash } from "node:crypto";
 import { actorOf, mcpResource, publicUrl, sameSite } from "./auth";
@@ -121,14 +122,16 @@ export async function authorizeRoute(req: Request, rt: Runtime): Promise<Respons
   if (checked.kind === "redirect") return seeOther(checked.location);
   if (checked.kind === "error") return text(400, checked.message);
   const { fields, clientName } = checked;
+  const grant = rt.store.grant(actor, cid(fields.client_id as string), clientName, rt.now());
   const code = sign(rt.secret, "code", {
-    cid: cid(fields.client_id as string),
+    cid: grant.client_hash,
     cn: clientName,
     redirect_uri: fields.redirect_uri as string,
     code_challenge: fields.code_challenge as string,
     resource: fields.resource ?? mcpResource(h, rt),
     jti: newJti(),
     sub: actor,
+    gid: grant.id,
   });
   const to = new URL(fields.redirect_uri as string);
   to.searchParams.set("code", code);
@@ -138,9 +141,9 @@ export async function authorizeRoute(req: Request, rt: Runtime): Promise<Respons
   return seeOther(to.href);
 }
 
-function issue(secret: string, clientHash: string, cn: string, aud: string, sub: string): Response {
+function issue(secret: string, clientHash: string, cn: string, aud: string, sub: string, gid: string): Response {
   return Response.json(
-    { access_token: sign(secret, "access", { aud, sub, cn }), token_type: "Bearer", expires_in: TTL.access, refresh_token: sign(secret, "refresh", { cid: clientHash, cn, aud, jti: newJti(), sub }) },
+    { access_token: sign(secret, "access", { aud, sub, cn, gid }), token_type: "Bearer", expires_in: TTL.access, refresh_token: sign(secret, "refresh", { cid: clientHash, cn, aud, jti: newJti(), sub, gid }) },
     { headers: noStore },
   );
 }
@@ -165,8 +168,9 @@ export async function tokenRoute(req: Request, rt: Runtime): Promise<Response> {
     if (c.cid !== cid(clientId) || c.redirect_uri !== redirectUri) return oauthError("invalid_grant");
     if (createHash("sha256").update(verifier).digest("base64url") !== c.code_challenge) return oauthError("invalid_grant");
     if (resource !== undefined && resource !== c.resource) return oauthError("invalid_grant");
+    if (!rt.store.grantOk(c.gid, rt.now())) return oauthError("invalid_grant");
     if (!spendOnce(c.jti, c.exp!)) return oauthError("invalid_grant");
-    return issue(secret, c.cid, c.cn, c.resource, c.sub);
+    return issue(secret, c.cid, c.cn, c.resource, c.sub, c.gid);
   }
 
   if (grant === "refresh_token") {
@@ -177,8 +181,9 @@ export async function tokenRoute(req: Request, rt: Runtime): Promise<Response> {
     if (!verify(secret, "client", clientId)) return oauthError("invalid_client");
     if (r.cid !== cid(clientId)) return oauthError("invalid_grant");
     if (resource !== undefined && resource !== r.aud) return oauthError("invalid_grant");
+    if (!rt.store.grantOk(r.gid, rt.now())) return oauthError("invalid_grant");
     if (!spendOnce(r.jti, r.exp!)) return oauthError("invalid_grant");
-    return issue(secret, r.cid, r.cn, r.aud, r.sub);
+    return issue(secret, r.cid, r.cn, r.aud, r.sub, r.gid);
   }
 
   return oauthError(grant === undefined ? "invalid_request" : "unsupported_grant_type");

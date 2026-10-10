@@ -8,9 +8,11 @@
 //   NOTICEBOX_SECRET       signs the OAuth tokens for MCP (32+ characters); unset, there is no MCP
 //   NOTICEBOX_TRUST_PROXY  0 to take client addresses from the socket instead of X-Forwarded-For
 //   NOTICEBOX_RATE_LIMIT   submissions per client and form in ten minutes (default 10; 0 switches the limit off)
-import { mkdirSync } from "node:fs";
+//   NOTICEBOX_SIGN_OUT_URL where "Sign out" goes (default the Authentik outpost's /outpost.goauthentik.io/sign_out)
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { loadConfig, type Config } from "./config";
+import type { Config } from "./config";
+import { Forms } from "./forms";
 import { Store } from "./db";
 import type { Fetch } from "./notify";
 
@@ -34,8 +36,10 @@ export class Rate {
 }
 
 export type Runtime = {
-  config: Config;
+  forms: Forms; // the forms file, editable
+  readonly config: Config; // what it says now
   store: Store;
+  signOutUrl: string | null; // where "Sign out" goes (the login proxy's sign-out); null without a proxy
   rate: Rate;
   baseUrl: string | null;
   userHeader: string;
@@ -48,9 +52,13 @@ export type Runtime = {
   log: (line: string) => void;
 };
 
-export function makeRuntime(o: Partial<Runtime> & { config: Config; store: Store }): Runtime {
+export function makeRuntime(o: Partial<Omit<Runtime, "config">> & { forms?: Forms; config?: Config; store: Store }): Runtime {
+  const forms = o.forms ?? new Forms(null, {}, o.config ? toRaw(o.config) : { forms: {} });
+  const { config: _ignored, ...rest } = o;
+  void _ignored;
   return {
     rate: new Rate(10),
+    signOutUrl: null,
     baseUrl: null,
     devUser: null,
     trustProxy: true,
@@ -59,21 +67,42 @@ export function makeRuntime(o: Partial<Runtime> & { config: Config; store: Store
     now: () => new Date(),
     fetch,
     log: (line) => console.error(line),
-    ...o,
+    ...rest,
+    forms,
+    get config() {
+      return forms.config;
+    },
     userHeader: (o.userHeader ?? "x-authentik-username").toLowerCase(),
   };
 }
 
+/** A parsed configuration as a raw object (tests build runtimes from parsed configurations). */
+function toRaw(c: Config): { boxes: string[]; forms: Record<string, Record<string, unknown>> } {
+  const entries = Object.entries(c.forms).map(([n, f]) => {
+    const { name, ...rest } = f;
+    void name;
+    return [n, rest];
+  });
+  return { boxes: c.boxes, forms: Object.fromEntries(entries) };
+}
+
 function fromEnv(env: Record<string, string | undefined>): Runtime {
-  const config = loadConfig(env.NOTICEBOX_CONFIG ?? "noticebox.json", env);
+  const configPath = env.NOTICEBOX_CONFIG ?? "noticebox.json";
+  if (!existsSync(configPath)) {
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, '{\n  "forms": {}\n}\n');
+    console.error(`${configPath} did not exist: created it without forms; add them in the inbox`);
+  }
+  const forms = new Forms(configPath, env);
   const dbPath = env.NOTICEBOX_DB ?? "data/noticebox.sqlite";
   mkdirSync(dirname(dbPath), { recursive: true });
   const secret = env.NOTICEBOX_SECRET ?? null;
   if (secret !== null && secret.length < 32) throw new Error("NOTICEBOX_SECRET must have at least 32 characters");
   if (env.NOTICEBOX_DEV_USER) console.error(`warning: NOTICEBOX_DEV_USER is set, everyone reaching the inbox is "${env.NOTICEBOX_DEV_USER}"`);
   return makeRuntime({
-    config,
+    forms,
     store: new Store(dbPath),
+    signOutUrl: env.NOTICEBOX_DEV_USER ? null : (env.NOTICEBOX_SIGN_OUT_URL ?? "/outpost.goauthentik.io/sign_out"),
     rate: new Rate(env.NOTICEBOX_RATE_LIMIT === undefined ? 10 : Number(env.NOTICEBOX_RATE_LIMIT)),
     baseUrl: env.NOTICEBOX_BASE_URL?.replace(/\/$/, "") ?? null,
     userHeader: env.NOTICEBOX_USER_HEADER,

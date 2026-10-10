@@ -5,9 +5,9 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypt
 export type Kind = "client" | "code" | "access" | "refresh";
 export type Payloads = {
   client: { client_name?: string; redirect_uris: string[] };
-  code: { cid: string; cn: string; redirect_uri: string; code_challenge: string; resource: string; jti: string; sub: string };
-  access: { aud: string; sub: string; cn: string };
-  refresh: { cid: string; cn: string; aud: string; jti: string; sub: string };
+  code: { cid: string; cn: string; redirect_uri: string; code_challenge: string; resource: string; jti: string; sub: string; gid: string };
+  access: { aud: string; sub: string; cn: string; gid: string };
+  refresh: { cid: string; cn: string; aud: string; jti: string; sub: string; gid: string };
 };
 export const TTL = { code: 300, access: 3600, refresh: 2592000 } as const;
 

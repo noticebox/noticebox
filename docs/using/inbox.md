@@ -4,7 +4,13 @@ The inbox is where submissions are read and decided. It is behind the login the 
 
 ## Sidebar
 
-The boxes and their forms, each form with the number of submissions that wait for a decision. The front door opens the first form.
+The boxes and their forms, each form with the number of submissions that wait for a decision. The front door opens the first form. A box's name opens the box's page: its forms, a rename, and its removal once it is empty.
+
+**Add new** makes a form or a box. A new form needs a name (its endpoint, `/f/<name>`, which cannot change later), a box, a kind and a title; it starts with the fields its kind usually has, to be changed on its *Settings* tab. Every change made here is written to the forms file, validated as a whole first.
+
+## Settings
+
+A form's third tab: title and box, the fields (name, type, label, required, length, options of a select, whether personal, a help text; add, remove, reorder), where posts are accepted from and where the browser goes afterwards, the notification targets (any number of ntfy topics and webhooks), the retention and the link. *Save the settings* writes the file; a refused save says what is wrong and keeps what was typed. A form without submissions can be removed here.
 
 ## Overview
 
@@ -27,6 +33,10 @@ Its fields as the form labelled them, the state dropdown and *Add a note*, the l
 ![A submission: the fields, the state, the link to the note, and the history with the recorded reason](../assets/screenshot-detail.png)
 
 When the personal fields have been removed by retention, the page says so and shows what is left: the ids, the category, the states and the decisions.
+
+## You
+
+The name in the top right is who the login in front says you are. Its menu opens *Your settings*, with the assistants you allowed through MCP and a *Revoke* for each, and *Sign out*, which goes through the login.
 
 ## Download
 

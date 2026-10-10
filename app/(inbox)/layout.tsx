@@ -10,14 +10,10 @@ export default async function InboxLayout({ children }: { children: React.ReactN
   const actor = (await headers()).get(rt.userHeader) ?? rt.devUser ?? "";
   const counts = rt.store.counts();
   const open = (f: Form) => counts.filter((c) => c.form === f.name && !KINDS[f.kind].closed.includes(c.state)).reduce((a, c) => a + c.n, 0);
-  const boxes = new Map<string, Box>();
-  for (const f of Object.values(rt.config.forms)) {
-    const box = boxes.get(f.box) ?? { name: f.box, forms: [] };
-    box.forms.push({ name: f.name, title: f.title, path: formPath(f.name), open: open(f) });
-    boxes.set(f.box, box);
-  }
+  const boxes = new Map<string, Box>(rt.config.boxes.map((name) => [name, { name, forms: [] }]));
+  for (const f of Object.values(rt.config.forms)) boxes.get(f.box)!.forms.push({ name: f.name, title: f.title, path: formPath(f.name), open: open(f) });
   return (
-    <Shell boxes={[...boxes.values()]} actor={actor}>
+    <Shell boxes={[...boxes.values()]} actor={actor} signOutUrl={rt.signOutUrl}>
       {children}
     </Shell>
   );

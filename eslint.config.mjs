@@ -21,5 +21,5 @@ export default defineConfig([
   ...nextTs,
   { files: ["app/**", "proxy.ts"], ignores: ["**/*.test.ts"], rules: { "no-restricted-imports": ["error", FRONTEND_IMPORTS] } },
   { files: ["backend/**"], rules: { "no-restricted-imports": ["error", BACKEND_IMPORTS] } },
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "playwright-report/**", "test-results/**"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "playwright-report/**", "test-results/**", ".venv-docs/**", "site/**", ".e2e/**"]),
 ]);

@@ -1,7 +1,9 @@
 // The one door from the frontend into the backend.
 export { actorOf, publicUrl } from "./auth";
-export type { Config, Field, Form } from "./config";
-export type { Event, ListFilter, Outcome, Submission } from "./db";
+export type { Config, Field, Form, Target } from "./config";
+export type { Event, Grant } from "./db";
+export { DEFAULT_FIELDS, type RawForm } from "./forms";
+export type { ListFilter, Outcome, Submission } from "./db";
 export { intakePreflight, intakeRoute } from "./intake";
 export { KINDS, type KindName } from "./kinds";
 export { linkFor } from "./links";

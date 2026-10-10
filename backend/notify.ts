@@ -9,29 +9,23 @@ export type Fetch = typeof fetch;
 
 export async function notify(form: Form, s: Submission, baseUrl: string, fetchFn: Fetch = fetch, log: (line: string) => void = console.error): Promise<void> {
   const link = baseUrl + submissionPath(form.name, s.id);
-  const jobs: { target: string; p: Promise<Response> }[] = [];
-  if (form.notify.ntfy) {
-    jobs.push({
-      target: "ntfy",
-      p: fetchFn(form.notify.ntfy, {
-        method: "POST",
-        headers: { Title: `New ${KINDS[form.kind].label}: ${form.title}`, Priority: "4", Tags: "mailbox", Click: link },
-        body: link,
-        signal: AbortSignal.timeout(5000),
-      }),
-    });
-  }
-  if (form.notify.webhook) {
-    jobs.push({
-      target: "webhook",
-      p: fetchFn(form.notify.webhook, {
-        method: "POST",
-        headers: { "content-type": "application/json", "user-agent": "noticebox" },
-        body: JSON.stringify({ form: form.name, kind: form.kind, id: s.id, received_at: s.received_at, url: link }),
-        signal: AbortSignal.timeout(5000),
-      }),
-    });
-  }
+  const jobs = form.notify.map((t) => ({
+    target: `${t.type} ${new URL(t.url).host}`,
+    p:
+      t.type === "ntfy"
+        ? fetchFn(t.url, {
+            method: "POST",
+            headers: { Title: `New ${KINDS[form.kind].label}: ${form.title}`, Priority: "4", Tags: "mailbox", Click: link },
+            body: link,
+            signal: AbortSignal.timeout(5000),
+          })
+        : fetchFn(t.url, {
+            method: "POST",
+            headers: { "content-type": "application/json", "user-agent": "noticebox" },
+            body: JSON.stringify({ form: form.name, kind: form.kind, id: s.id, received_at: s.received_at, url: link }),
+            signal: AbortSignal.timeout(5000),
+          }),
+  }));
   const results = await Promise.allSettled(jobs.map((j) => j.p));
   results.forEach((r, i) => {
     const target = jobs[i]?.target;

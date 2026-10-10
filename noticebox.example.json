@@ -16,7 +16,7 @@
       "origins": ["https://notefeed.me"],
       "redirect": "https://notefeed.me/report/thanks",
       "retentionDays": 180,
-      "notify": { "ntfy": "https://ntfy.sh/${NTFY_REPORTS_TOPIC}" }
+      "notify": [{ "type": "ntfy", "url": "https://ntfy.sh/${NTFY_REPORTS_TOPIC}" }]
     },
     "contact": {
       "box": "example.org",
@@ -30,7 +30,7 @@
       "origins": ["https://example.org"],
       "redirect": "https://example.org/thanks",
       "retentionDays": 365,
-      "notify": { "ntfy": "https://ntfy.sh/${NTFY_CONTACT_TOPIC}" }
+      "notify": [{ "type": "ntfy", "url": "https://ntfy.sh/${NTFY_CONTACT_TOPIC}" }]
     }
   }
 }

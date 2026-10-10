@@ -57,7 +57,19 @@ create table if not exists events (
   reason text not null default ''
 );
 create index if not exists events_by_submission on events (submission_id, id);
+create table if not exists grants (
+  id text primary key,
+  actor text not null,
+  client_hash text not null,
+  client_name text not null,
+  created_at text not null,
+  last_used_at text not null,
+  revoked_at text
+);
+create index if not exists grants_by_actor on grants (actor, created_at);
 `;
+
+export type Grant = { id: string; actor: string; client_hash: string; client_name: string; created_at: string; last_used_at: string; revoked_at: string | null };
 
 type Row = Record<string, string | number | null>;
 
@@ -177,6 +189,31 @@ export class Store {
       }
     }
     return purged;
+  }
+
+  /** An MCP client the person allowed: the grant every token of that connection names. */
+  grant(actor: string, clientHash: string, clientName: string, now: Date): Grant {
+    const g: Grant = { id: newId(), actor, client_hash: clientHash, client_name: clientName, created_at: now.toISOString(), last_used_at: now.toISOString(), revoked_at: null };
+    this.db.prepare("insert into grants (id, actor, client_hash, client_name, created_at, last_used_at) values (?, ?, ?, ?, ?, ?)").run(g.id, actor, clientHash, clientName, g.created_at, g.last_used_at);
+    return g;
+  }
+
+  /** The grant behind a token, if it still stands; `touch` records the use. */
+  grantOk(id: string, touch: Date | null = null): boolean {
+    const g = this.db.prepare("select revoked_at from grants where id = ?").get(id) as { revoked_at: string | null } | undefined;
+    if (!g || g.revoked_at !== null) return false;
+    if (touch) this.db.prepare("update grants set last_used_at = ? where id = ?").run(touch.toISOString(), id);
+    return true;
+  }
+
+  grants(actor: string): Grant[] {
+    return this.db.prepare("select * from grants where actor = ? and revoked_at is null order by created_at desc").all(actor) as Grant[];
+  }
+
+  /** Revokes one of the person's own grants: every token of that connection stops working at once. */
+  revokeGrant(id: string, actor: string, now: Date = new Date()): Outcome {
+    const r = this.db.prepare("update grants set revoked_at = ? where id = ? and actor = ? and revoked_at is null").run(now.toISOString(), id, actor);
+    return r.changes ? { ok: true } : { ok: false, error: "no such connection" };
   }
 
   close(): void {

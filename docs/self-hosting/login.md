@@ -44,6 +44,10 @@ inbox.example.org {
 
 Any other forward-auth setup works the same way: one public set of paths, the rest behind the login, a header with the name.
 
+## Signing out
+
+*Sign out* in the user menu goes to `NOTICEBOX_SIGN_OUT_URL`, the Authentik outpost's `/outpost.goauthentik.io/sign_out` by default, which the proxy serves on the inbox's host. Another forward-auth setup names its own sign-out there.
+
 ## Development
 
 `NOTICEBOX_DEV_USER=you` stands in for the proxy and makes every request that person. It is for a machine of your own and must never be set in production.
