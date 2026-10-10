@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { KINDS, linkFor, runtime, submissionsPath } from "@/backend";
+import { KINDS, linkFor, runtime, stateOf, submissionsPath } from "@/backend";
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../../StateMenu";
 
@@ -15,11 +15,12 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
   const s = rt.store.get(id);
   if (!form || !s || s.form !== form.name) notFound();
   const kind = KINDS[s.kind];
+  const states = form.states;
   const names = [...Object.keys(form.fields), ...Object.keys(s.fields).filter((n) => !form.fields[n])];
   const shown = names.filter((n) => s.fields[n]);
   const events = rt.store.events(s.id);
   const link = linkFor(form, s);
-  const badge = (state: string) => <span className={`badge ${stateTone(state, kind.closed)}`}>{stateLabel(state)}</span>;
+  const badge = (state: string) => <span className={`badge ${stateTone(state, states)}`}>{stateLabel(state)}</span>;
 
   return (
     <div>
@@ -29,7 +30,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
         </Link>
       </p>
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, kind.closed)} next={[...(kind.next[s.state] ?? [])]} reasonRequired={[...kind.reasonRequired]} size="lg" withNote />
+        <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, states)} states={states} size="lg" withNote />
         {link && (
           <a href={link.url} target="_blank" rel="noopener noreferrer" className="btn">
             {link.label}
@@ -70,7 +71,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
                   <span className="font-bold">{e.actor}</span>{" "}
                   {e.to_state === null ? "noted" : e.from_state === null ? <>received it as {badge(e.to_state)}</> : <>moved it from {badge(e.from_state)} to {badge(e.to_state)}</>}
                 </div>
-                {e.reason && <blockquote className={`mt-1.5 border-l-2 pl-3 whitespace-pre-wrap [overflow-wrap:anywhere] ${e.to_state && kind.reasonRequired.includes(e.to_state) ? "border-accent text-[17px] leading-snug" : "border-rule text-muted"}`}>{e.reason}</blockquote>}
+                {e.reason && <blockquote className={`mt-1.5 border-l-2 pl-3 whitespace-pre-wrap [overflow-wrap:anywhere] ${e.to_state && stateOf(states, e.to_state)?.reason ? "border-accent text-[17px] leading-snug" : "border-rule text-muted"}`}>{e.reason}</blockquote>}
               </li>
             ))}
           </ol>

@@ -79,7 +79,7 @@ export class Forms {
     return this.edit((raw) => {
       if (!FORM_NAME.test(name)) return "a form name is lowercase letters, digits, - and _, up to 40 characters";
       if (raw.forms![name]) return `there is already a form called "${name}"`;
-      raw.forms![name] = { box, kind, title: title || name, fields: DEFAULT_FIELDS[kind] };
+      raw.forms![name] = { box, kind, title: title || name, fields: {} };
       raw.boxes = (raw.boxes ?? []).filter((b) => b !== box);
     });
   }
@@ -89,6 +89,17 @@ export class Forms {
       if (!raw.forms![name]) return `no form called "${name}"`;
       raw.forms![name] = form;
       raw.boxes = (raw.boxes ?? []).filter((b) => b !== form.box);
+    });
+  }
+
+  /** Adds descriptions for fields the file does not describe yet (what a page said about them); existing ones stay. */
+  describe(name: string, fields: Record<string, RawForm>): Outcome {
+    return this.edit((raw) => {
+      const f = raw.forms![name];
+      if (!f) return `no form called "${name}"`;
+      const have = (f.fields ?? {}) as Record<string, RawForm>;
+      for (const [fname, d] of Object.entries(fields)) if (!have[fname]) have[fname] = d;
+      f.fields = have;
     });
   }
 
@@ -102,20 +113,6 @@ export class Forms {
     });
   }
 }
-
-/** What a new form starts with: the fields its kind usually has, to be changed on the settings page. */
-export const DEFAULT_FIELDS: Record<KindName, Record<string, RawForm>> = {
-  report: {
-    reason: { type: "select", label: "Reason", required: true, options: ["Illegal content", "Personal data", "Copyright", "Spam", "Other"] },
-    text: { type: "textarea", label: "What is wrong", required: true, max: 4000 },
-    email: { type: "email", label: "Your email" },
-  },
-  message: {
-    name: { label: "Name", required: true },
-    email: { type: "email", label: "Email", required: true },
-    message: { type: "textarea", label: "Message", required: true },
-  },
-};
 
 function parseRaw(text: string, path: string): RawConfig {
   let raw: unknown;

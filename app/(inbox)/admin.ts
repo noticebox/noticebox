@@ -71,7 +71,11 @@ export async function updateForm(prev: AdminState, data: FormData): Promise<Admi
     return { error: "The settings could not be read.", n };
   }
   if (typeof form !== "object" || form === null || Array.isArray(form)) return { error: "The settings could not be read.", n };
-  const r = runtime().forms.updateForm(name, form);
+  const rt = runtime();
+  const kept = new Set((Array.isArray(form.states) ? form.states : []).map((st) => (typeof st === "string" ? st : (st as { name?: string }).name)));
+  const inUse = rt.store.counts().filter((c) => c.form === name && c.n > 0 && !kept.has(c.state));
+  if (inUse.length) return { error: `Submissions are in the state "${inUse[0]!.state}"; it cannot be removed.`, n };
+  const r = rt.forms.updateForm(name, form);
   if (!r.ok) return { error: r.error, n };
   revalidatePath("/", "layout");
   return { n };

@@ -6,11 +6,11 @@ The inbox is where submissions are read and decided. It is behind the login the 
 
 The boxes and their forms, each form with the number of submissions that wait for a decision. The front door opens the first form. A box's name opens the box's page: its forms, a rename, and its removal once it is empty.
 
-**Add new** makes a form or a box. A new form needs a name (its endpoint, `/f/<name>`, which cannot change later), a box, a kind and a title; it starts with the fields its kind usually has, to be changed on its *Settings* tab. Every change made here is written to the forms file, validated as a whole first.
+**Add new** makes a form or a box. A new form needs a name (its endpoint, `/f/<name>`, which cannot change later), a box, a kind and a title. It starts without fields: the first submission brings them, or the page [describes them itself](../integrations/forms.md#describing-fields-from-the-page). Every change made here is written to the forms file, validated as a whole first.
 
 ## Settings
 
-A form's third tab: title and box, the fields (name, type, label, required, length, options of a select, whether personal, a help text; add, remove, reorder), where posts are accepted from and where the browser goes afterwards, the notification targets (any number of ntfy topics and webhooks), the retention and the link. *Save the settings* writes the file; a refused save says what is wrong and keeps what was typed. A form without submissions can be removed here.
+A form's third tab: title and box; the described fields (name, type, label, required, length, options of a select, whether personal, a help text) and, beside them, the fields seen in submissions that nobody described yet, one click away from being described; the *Strict* switch; the states with their two flags; where posts are accepted from and where the browser goes afterwards; the notification targets (any number of ntfy topics and webhooks); the retention and the link. *Save the settings* writes the file; a refused save says what is wrong and keeps what was typed. A form without submissions can be removed here.
 
 ## Overview
 
@@ -20,7 +20,7 @@ A form's first tab: how many submissions wait, how many arrived in the last 30 d
 
 The table of a form. *Open* is the default; *Closed*, *All* and each state are a click away. A row shows when a submission arrived, its state and the first text it contains. The date and the text open the submission; the arrow at the end opens what it is about, when the form has a [link](../get-started/concepts.md).
 
-**The state is a dropdown.** Click the badge: it lists what can be done with the submission, named by what it does: *Start review*, *Mark as acted on*, *Mark as rejected*, *Reopen*, *Mark as answered*. Choosing one opens the dialog.
+**The state is a dropdown.** Click the badge: it lists the form's other states, named by what moving there does: *Start review*, *Mark as acted on*, *Mark as rejected*, *Reopen*. Choosing one opens the dialog.
 
 ![The dialog: a reason, then the action confirmed under the same name](../assets/screenshot-dialog.png)
 

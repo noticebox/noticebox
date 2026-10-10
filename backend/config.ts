@@ -1,8 +1,8 @@
 // The forms: one JSON file. Strings may contain `${VAR}`, filled from the environment, so secrets such as an ntfy
 // topic stay out of the file.
 import { readFileSync } from "node:fs";
-import { isKind, type KindName } from "./kinds";
-export type { KindName };
+import { isKind, parseStates, type KindName, type State } from "./kinds";
+export type { KindName, State };
 
 export type FieldType = "text" | "textarea" | "select" | "email" | "hidden";
 
@@ -23,7 +23,9 @@ export type Form = {
   title: string;
   intro: string;
   thanks: string;
-  fields: Record<string, Field>;
+  fields: Record<string, Field>; // the described fields; a form that is not `strict` takes any other field too
+  strict: boolean;
+  states: State[]; // the first is where a submission starts
   origins: string[]; // where submissions may come from; empty means anywhere
   redirect: string | null; // where the browser goes after a submission; null means the hosted thanks page
   retentionDays: number;
@@ -37,9 +39,9 @@ export type Config = { boxes: string[]; forms: Record<string, Form> }; // `boxes
 
 export const FORM_NAME = /^[a-z][a-z0-9_-]{0,39}$/;
 const BOX_NAME = /^[a-z0-9][a-z0-9 ._-]{0,39}$/i;
-const FIELD_NAME = /^[a-z][a-z0-9_]{0,31}$/;
+export const FIELD_NAME = /^[a-z][a-z0-9_]{0,31}$/;
+export const RESERVED_FIELDS = new Set(["_gotcha"]);
 export const PLACEHOLDER = /\{([a-z][a-z0-9_]{0,31})\}/g;
-const RESERVED = new Set(["_gotcha"]);
 const TYPES: FieldType[] = ["text", "textarea", "select", "email", "hidden"];
 const DEFAULT_MAX: Record<FieldType, number> = { text: 500, textarea: 10000, select: 200, email: 254, hidden: 200 };
 
@@ -88,13 +90,12 @@ function parseForm(name: string, raw: unknown): Form {
   const at = `form ${name}`;
   const f = record(raw, at);
   if (!isKind(f.kind)) throw new Error(`${at}: kind must be "report" or "message"`);
-  const fieldsRaw = record(f.fields, `${at}.fields`);
+  const fieldsRaw = f.fields === undefined ? {} : record(f.fields, `${at}.fields`);
   const fields: Record<string, Field> = {};
   for (const [fname, fraw] of Object.entries(fieldsRaw)) {
-    if (!FIELD_NAME.test(fname) || RESERVED.has(fname)) throw new Error(`${at}: field name "${fname}" is not allowed`);
+    if (!FIELD_NAME.test(fname) || RESERVED_FIELDS.has(fname)) throw new Error(`${at}: field name "${fname}" is not allowed`);
     fields[fname] = parseField(`${at}.fields.${fname}`, fraw);
   }
-  if (Object.keys(fields).length === 0) throw new Error(`${at}: no fields`);
   const origins = stringList(f.origins, `${at}.origins`).map((o) => {
     let u: URL;
     try {
@@ -110,6 +111,8 @@ function parseForm(name: string, raw: unknown): Form {
   if (typeof retentionDays !== "number" || !Number.isInteger(retentionDays) || retentionDays < 1) throw new Error(`${at}.retentionDays: a whole number of days, at least 1`);
   const notify = parseNotify(`${at}.notify`, f.notify);
   const box = str(f.box, `${at}.box`, "forms");
+  const states = parseStates(`${at}.states`, f.states, f.kind);
+  const strict = bool(f.strict, `${at}.strict`, false);
   const link = parseLink(`${at}.link`, f.link, fields);
   if (!BOX_NAME.test(box)) throw new Error(`${at}.box: letters, digits, spaces, . _ and - only`);
   return {
@@ -120,6 +123,8 @@ function parseForm(name: string, raw: unknown): Form {
     intro: str(f.intro, `${at}.intro`, ""),
     thanks: str(f.thanks, `${at}.thanks`, "Thank you. Your message has been received."),
     fields,
+    strict,
+    states,
     origins,
     redirect,
     retentionDays,

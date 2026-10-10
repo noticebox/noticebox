@@ -26,10 +26,16 @@ test("a browser submission is stored, answered with a redirect, and announced wi
 
 test("a JSON submission gets its id back; what is missing or wrong is named", async () => {
   const rt = testRuntime();
-  const ok = await intakeRoute(jsonPost("/f/report", { ...REPORT, extra: "dropped", n: 5 }), "report", rt);
+  const ok = await intakeRoute(jsonPost("/f/report", { ...REPORT, extra: "kept", n: 5, "Bad Name": "dropped", _hint: "dropped" }), "report", rt);
   expect(ok.status).toBe(201);
   const { id } = (await ok.json()) as { id: string };
-  expect(rt.store.get(id)?.fields).toEqual({ ...REPORT, text: "This is spam.\nSecond line." });
+  // The form is not strict: fields it does not describe are kept as they come, under names a field can have.
+  expect(rt.store.get(id)?.fields).toEqual({ ...REPORT, text: "This is spam.\nSecond line.", extra: "kept", n: "5" });
+  expect(rt.store.fieldsSeen("report")).toEqual(["email", "extra", "file", "n", "note_id", "read_id", "reason", "text"]);
+  // A strict form refuses them by name.
+  const strict = await intakeRoute(jsonPost("/f/contact", { name: "Ann", email: "ann@example.org", message: "Hi", phone: "1" }, { origin: "https://example.org" }), "contact", rt);
+  expect(strict.status).toBe(400);
+  expect(await strict.json()).toEqual({ errors: ["phone is not a field of this form"] });
 
   const bad = await intakeRoute(jsonPost("/f/report", { reason: "Nope", email: "not-an-email", text: "x".repeat(2001) }), "report", rt);
   expect(bad.status).toBe(400);
@@ -107,4 +113,27 @@ test("too many submissions from one address are refused for a while; a body over
   expect((await post("2.2.2.2")).status).toBe(303);
   expect(rt.store.list()).toHaveLength(3);
   expect((await intakeRoute(formPost("/f/report", { ...REPORT, text: "y".repeat(1500) }, { "x-forwarded-for": "3.3.3.3" }), "report", rt)).status).toBe(413);
+});
+
+test("a page describes its own fields with hidden _ fields, learned once, and may say where to go next", async () => {
+  const rt = testRuntime();
+  const page = { origin: "https://example.org", referer: "https://example.org/order" };
+  const hints = { _required: "item, qty", _public: "item", _label_qty: "How many", _next: "https://example.org/thanks" };
+  const missing = await intakeRoute(formPost("/f/contact-open", { item: "lamp", ...hints }, page), "contact-open", rt);
+  expect(missing.status).toBe(303);
+  expect(new URL(missing.headers.get("location")!).searchParams.getAll("error")).toEqual(["How many is required"]);
+  expect(rt.forms.config.forms["contact-open"]!.fields).toEqual({});
+  const ok = await intakeRoute(formPost("/f/contact-open", { item: "lamp", qty: "2", note: "red one", ...hints }, page), "contact-open", rt);
+  expect(ok.status).toBe(303);
+  expect(ok.headers.get("location")).toBe("https://example.org/thanks");
+  const learned = rt.forms.config.forms["contact-open"]!.fields;
+  expect(learned.item).toMatchObject({ personal: false, required: true });
+  expect(learned.qty).toMatchObject({ label: "How many", required: true, personal: true });
+  expect(learned.note).toBeUndefined(); // nothing was said about it
+  // A later post cannot change what is described, and _next elsewhere is ignored.
+  const later = await intakeRoute(formPost("/f/contact-open", { item: "x", qty: "1", _public: "qty", _label_item: "Thing", _next: "https://evil.example/" }, page), "contact-open", rt);
+  expect(later.status).toBe(303);
+  expect(later.headers.get("location")).toBe("/f/contact-open/thanks");
+  expect(rt.forms.config.forms["contact-open"]!.fields.qty).toMatchObject({ personal: true });
+  expect(rt.forms.config.forms["contact-open"]!.fields.item!.label).toBe("item");
 });

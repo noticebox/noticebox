@@ -9,6 +9,12 @@ test("defaults fill in what the file leaves out", () => {
   const f = c.forms.contact!;
   expect(f.title).toBe("contact");
   expect(f.box).toBe("forms");
+  expect(f.strict).toBe(false);
+  expect(f.states).toEqual([{ name: "new", closed: false, reason: false }, { name: "answered", closed: true, reason: false }]);
+  const own = parseConfig({ forms: { x: { kind: "report", strict: true, states: ["open", { name: "lawyer" }, { name: "done", closed: true, reason: true }] } } }).forms.x!;
+  expect(own.strict).toBe(true);
+  expect(own.states.map((s) => [s.name, s.closed, s.reason])).toEqual([["open", false, false], ["lawyer", false, false], ["done", true, true]]);
+  expect(own.fields).toEqual({});
   expect(f.link).toBeNull();
   expect(f.retentionDays).toBe(180);
   expect(f.origins).toEqual([]);
@@ -25,7 +31,9 @@ test("mistakes are named with their place", () => {
   bad({ forms: [] }, /forms: must be an object/);
   bad({ forms: { "Bad Name": { kind: "report", fields: { a: {} } } } }, /form name "Bad Name"/);
   bad({ forms: { x: { kind: "poll", fields: { a: {} } } } }, /kind must be "report" or "message"/);
-  bad({ forms: { x: { kind: "report", fields: {} } } }, /form x: no fields/);
+  bad({ forms: { x: { kind: "report", states: [] } } }, /states: a list of at least one state/);
+  bad({ forms: { x: { kind: "report", states: ["open", "open"] } } }, /listed twice/);
+  bad({ forms: { x: { kind: "report", states: [{ name: "Open" }] } } }, /states\[0\].name/);
   bad({ forms: { x: { kind: "report", fields: { _gotcha: {} } } } }, /field name "_gotcha"/);
   bad({ forms: { x: { kind: "report", fields: { a: { type: "select" } } } } }, /a select needs options/);
   bad({ forms: { x: { kind: "report", fields: { a: { type: "text", options: ["x"] } } } } }, /only a select has options/);

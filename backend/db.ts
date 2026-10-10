@@ -4,7 +4,7 @@
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync as Database } from "node:sqlite";
 import type { Config, Form } from "./config";
-import { KINDS, type KindName } from "./kinds";
+import { stateOf, type KindName } from "./kinds";
 
 const { DatabaseSync } = process.getBuiltinModule("node:sqlite") as typeof import("node:sqlite");
 
@@ -86,7 +86,7 @@ export class Store {
   receive(form: Form, fields: Record<string, string>, origin: string | null, now: Date): Submission {
     const id = newId();
     const at = now.toISOString();
-    const state = KINDS[form.kind].initial;
+    const state = form.states[0]!.name;
     this.db.exec("begin");
     try {
       this.db
@@ -128,6 +128,11 @@ export class Store {
     return this.db.prepare("select * from events where submission_id = ? order by id").all(id) as Event[];
   }
 
+  /** The names of every field that ever arrived for a form, described or not, for the settings page. */
+  fieldsSeen(form: string): string[] {
+    return (this.db.prepare("select distinct j.key as name from submissions, json_each(submissions.fields) as j where form = ? order by name").all(form) as { name: string }[]).map((r) => r.name);
+  }
+
   /** Counts per form and state, for the overview. */
   counts(): { form: string; state: string; n: number }[] {
     return this.db.prepare("select form, state, count(*) as n from submissions group by form, state").all() as { form: string; state: string; n: number }[];
@@ -149,17 +154,17 @@ export class Store {
     return { ok: true };
   }
 
-  /** Moves a submission to a state its kind allows from the current one, recording who, when and why. */
-  transition(id: string, actor: string, to: string, reason: string, now: Date): Outcome {
+  /** Moves a submission to another of its form's states, recording who, when and why. */
+  transition(form: Form, id: string, actor: string, to: string, reason: string, now: Date): Outcome {
     const s = this.get(id);
-    if (!s) return { ok: false, error: "no such submission" };
-    const kind = KINDS[s.kind];
-    const allowed = kind.next[s.state] ?? [];
-    if (!allowed.includes(to)) return { ok: false, error: `a ${kind.label} cannot go from ${s.state} to ${to}` };
+    if (!s || s.form !== form.name) return { ok: false, error: "no such submission" };
+    const target = stateOf(form.states, to);
+    if (!target) return { ok: false, error: `this form has no state "${to}"` };
+    if (to === s.state) return { ok: false, error: `already ${to}` };
     const text = reason.trim();
-    if (kind.reasonRequired.includes(to) && !text) return { ok: false, error: `${to} needs a reason` };
+    if (target.reason && !text) return { ok: false, error: `${to} needs a reason` };
     const at = now.toISOString();
-    const closed = kind.closed.includes(to) ? at : null;
+    const closed = target.closed ? at : null;
     this.db.exec("begin");
     try {
       this.db.prepare("update submissions set state = ?, closed_at = ? where id = ?").run(to, closed, id);

@@ -10,8 +10,7 @@ export type StateMenuProps = {
   id: string;
   state: string;
   tone: string; // the badge class for the current state
-  next: string[];
-  reasonRequired: string[];
+  states: { name: string; closed: boolean; reason: boolean }[]; // the form's states, the first being where submissions start
   size?: "sm" | "lg";
   withNote?: boolean; // also a plain "Add a note" button beside the badge
 };
@@ -19,7 +18,10 @@ export type StateMenuProps = {
 // The state of a submission as a dropdown: the badge opens the list of what can be done with it, and choosing an
 // action opens the dialog where the reason is written and the action confirmed under the same name. A note is the
 // same dialog with the state kept. Plain until hydrated (`data-hydrated` says when React has taken over).
-export function StateMenu({ id, state, tone, next, reasonRequired, size = "sm", withNote = false }: StateMenuProps) {
+export function StateMenu({ id, state, tone, states, size = "sm", withNote = false }: StateMenuProps) {
+  const initial = states[0]?.name ?? state;
+  const next = states.map((s) => s.name).filter((n) => n !== state);
+  const reasonRequired = states.filter((s) => s.reason).map((s) => s.name);
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<string | null>(null); // the dialog is open while this is a string
   const dialog = useRef<HTMLDialogElement>(null);
@@ -51,7 +53,7 @@ export function StateMenu({ id, state, tone, next, reasonRequired, size = "sm", 
     setTarget(to);
   };
   const chosen = result.ok ? (target ?? "") : (result.to ?? target ?? "");
-  const title = chosen ? verbFor(chosen) : "Add a note";
+  const title = chosen ? verbFor(chosen, initial) : "Add a note";
   const needs = reasonRequired.includes(chosen);
   const big = size === "lg";
 
@@ -73,7 +75,7 @@ export function StateMenu({ id, state, tone, next, reasonRequired, size = "sm", 
           {next.map((t) => (
             <li key={t} role="none">
               <button type="button" role="menuitem" onClick={() => choose(t)} className="block w-full px-3 py-1.5 text-left hover:bg-soft">
-                {verbFor(t)}
+                {verbFor(t, initial)}
               </button>
             </li>
           ))}
@@ -104,7 +106,7 @@ export function StateMenu({ id, state, tone, next, reasonRequired, size = "sm", 
               <option value="">keep it {stateLabel(state)}</option>
               {next.map((t) => (
                 <option key={t} value={t}>
-                  {verbFor(t).toLowerCase()}
+                  {verbFor(t, initial).toLowerCase()}
                 </option>
               ))}
             </select>

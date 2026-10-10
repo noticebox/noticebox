@@ -20,7 +20,7 @@ test("boxes and forms are created, changed and removed through the file, which k
   expect(forms.createBox("site")).toEqual({ ok: true });
   expect(forms.createBox("notes")).toEqual({ ok: false, error: 'there is already a box called "notes"' });
   expect(forms.createForm("contact", "site", "message", "Contact")).toEqual({ ok: true });
-  expect(forms.config.forms.contact!.fields.message!.type).toBe("textarea");
+  expect(forms.config.forms.contact!.fields).toEqual({}); // the fields come with the first submission
   expect(forms.config.boxes).toEqual(["empty", "notes", "site"]);
   expect(forms.createForm("Bad Name", "site", "message", "")).toMatchObject({ ok: false });
 

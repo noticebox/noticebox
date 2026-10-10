@@ -15,7 +15,7 @@ export default async function NewFormPage({ searchParams }: { searchParams: Prom
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="mb-1 text-[28px] leading-tight font-bold tracking-tight">New form</h1>
-      <p className="mb-6 text-muted">A form is what a page posts to. Its name is the endpoint, /f/&lt;name&gt;; the fields come next, on the settings page.</p>
+      <p className="mb-6 text-muted">A form is what a page posts to. Its name is the endpoint, /f/&lt;name&gt;. The fields come with the first submission, or a page describes them itself; the kind chooses the first states, which the settings page can change.</p>
       <ActionForm action={createForm} button="Create the form" className="grid gap-5">
         <div>
           <label htmlFor="form-name" className="mb-1 block font-bold">

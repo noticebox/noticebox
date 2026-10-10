@@ -31,7 +31,7 @@ A form has a name (`contact`), belongs to a box (the sidebar groups forms by it)
 # compose.yaml
 services:
   noticebox:
-    image: ghcr.io/noticebox/noticebox:0.3.0
+    image: ghcr.io/noticebox/noticebox:0.4.0
     environment:
       NOTICEBOX_BASE_URL: http://localhost:3000
       # Only for trying it out: in production the login proxy says who is signed in.

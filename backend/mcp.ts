@@ -5,7 +5,6 @@ import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotoco
 import * as z from "zod";
 import { bearerOf, mcpResource, publicUrl } from "./auth";
 import type { Submission } from "./db";
-import { KINDS } from "./kinds";
 import { linkFor } from "./links";
 import { submissionPath } from "./paths";
 import type { Runtime } from "./runtime";
@@ -29,14 +28,14 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
   s.registerTool(
     "list_forms",
     {
-      description: "The forms this inbox takes, each with its kind and the states of that kind, so you know what a submission can be moved to.",
+      description: "The forms this inbox takes, each with its states: a submission starts in the first; a state flagged closed counts as done; one flagged reason needs a written reason to enter.",
       inputSchema: z.object({}),
-      outputSchema: z.object({ forms: z.array(z.object({ name: z.string(), title: z.string(), kind: z.string(), states: z.array(z.string()), closed: z.array(z.string()), reason_required: z.array(z.string()), retention_days: z.number() })) }),
+      outputSchema: z.object({ forms: z.array(z.object({ name: z.string(), title: z.string(), kind: z.string(), states: z.array(z.object({ name: z.string(), closed: z.boolean(), reason: z.boolean() })), retention_days: z.number() })) }),
       annotations: { readOnlyHint: true },
     },
     async () =>
       ok({
-        forms: Object.values(rt.config.forms).map((f) => ({ name: f.name, title: f.title, kind: f.kind, states: Object.keys(KINDS[f.kind].next), closed: [...KINDS[f.kind].closed], reason_required: [...KINDS[f.kind].reasonRequired], retention_days: f.retentionDays })),
+        forms: Object.values(rt.config.forms).map((f) => ({ name: f.name, title: f.title, kind: f.kind, states: f.states, retention_days: f.retentionDays })),
       }),
   );
 
@@ -81,13 +80,16 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
   s.registerTool(
     "decide",
     {
-      description: "Move a submission to another state its kind allows (see list_forms), with the reason, which is required for a closing state and becomes the record of the decision. Recorded in your name.",
+      description: "Move a submission to another of its form's states (see list_forms), with the reason, which is required where the state says so and becomes the record of the decision. Recorded in your name.",
       inputSchema: z.object({ id: z.string(), to: z.string(), reason: z.string().max(10000).default("") }),
       outputSchema: Full,
       annotations: { destructiveHint: true },
     },
     async ({ id, to, reason }) => {
-      const r = rt.store.transition(id, actor, to, reason, rt.now());
+      const x = rt.store.get(id);
+      const form = x && rt.config.forms[x.form];
+      if (!x || !form) return refuse("no such submission");
+      const r = rt.store.transition(form, id, actor, to, reason, rt.now());
       return r.ok ? ok(full(rt.store.get(id)!)) : refuse(r.error);
     },
   );

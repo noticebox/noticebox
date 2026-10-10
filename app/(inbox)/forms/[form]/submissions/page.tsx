@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { KINDS, linkFor, runtime, submissionPath, submissionsPath, summaryOf } from "@/backend";
+import { linkFor, runtime, submissionPath, submissionsPath, summaryOf } from "@/backend";
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../StateMenu";
 
@@ -15,7 +15,6 @@ export default async function SubmissionsPage({ params, searchParams }: { params
   const rt = runtime();
   const form = rt.config.forms[name];
   if (!form) notFound();
-  const kind = KINDS[form.kind];
   const q = await searchParams;
   const state = one(q.state);
   const show = state ? "state" : one(q.show) === "all" ? "all" : one(q.show) === "closed" ? "closed" : "open";
@@ -25,9 +24,9 @@ export default async function SubmissionsPage({ params, searchParams }: { params
     { href: base, label: "Open", active: show === "open" },
     { href: `${base}?show=closed`, label: "Closed", active: show === "closed" },
     { href: `${base}?show=all`, label: "All", active: show === "all" },
-    ...Object.keys(kind.next).map((s) => ({ href: `${base}?state=${s}`, label: stateLabel(s), active: state === s })),
+    ...form.states.map((st) => ({ href: `${base}?state=${st.name}`, label: stateLabel(st.name), active: state === st.name })),
   ];
-  const empty = show === "open" ? `Nothing open. New ${kind.label}s appear here as they arrive.` : "Nothing here.";
+  const empty = show === "open" ? "Nothing open. New submissions appear here as they arrive." : "Nothing here.";
 
   return (
     <div>
@@ -63,7 +62,7 @@ export default async function SubmissionsPage({ params, searchParams }: { params
                       </Link>
                     </td>
                     <td className="py-2.5 pr-3 pl-4 sm:pl-0">
-                      <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, kind.closed)} next={[...(kind.next[s.state] ?? [])]} reasonRequired={[...kind.reasonRequired]} />
+                      <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, form.states)} states={form.states} />
                     </td>
                     <td className="py-3 pr-5">
                       <Link href={href} className="block [overflow-wrap:anywhere] hover:underline">

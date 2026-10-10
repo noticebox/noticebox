@@ -5,9 +5,12 @@ import { type AdminState, deleteForm, updateForm } from "../../../admin";
 
 export type RawFieldRow = { name: string; type: string; label: string; required: boolean; max: string; options: string; personal: "default" | "yes" | "no"; help: string };
 export type RawTarget = { type: "ntfy" | "webhook"; url: string };
+export type StateRow = { name: string; closed: boolean; reason: boolean };
 export type Settings = {
   box: string;
   kind: string;
+  strict: boolean;
+  states: StateRow[];
   title: string;
   thanks: string;
   origins: string; // one per line
@@ -36,6 +39,13 @@ function toRaw(s: Settings): Record<string, unknown> {
     fields[f.name.trim()] = o;
   }
   const raw: Record<string, unknown> = { box: s.box.trim(), kind: s.kind, title: s.title.trim(), fields };
+  if (s.strict) raw.strict = true;
+  raw.states = s.states.map((st) => {
+    const o: Record<string, unknown> = { name: st.name.trim() };
+    if (st.closed) o.closed = true;
+    if (st.reason) o.reason = true;
+    return o;
+  });
   if (s.thanks.trim()) raw.thanks = s.thanks.trim();
   const origins = s.origins.split("\n").map((x) => x.trim()).filter(Boolean);
   if (origins.length) raw.origins = origins;
@@ -52,7 +62,9 @@ const small = "field py-1 text-sm";
 
 // The settings of a form: everything the file says about it, edited as a whole and saved as a whole. The state is
 // React's, so a refused save keeps what was typed and shows why it was refused.
-export function FormSettings({ name, boxes, initial, hasSubmissions }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean }) {
+const EMPTY_FIELD = (name = ""): RawFieldRow => ({ name, type: "text", label: "", required: false, max: "", options: "", personal: "default", help: "" });
+
+export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[] }) {
   const [s, set] = useState<Settings>(initial);
   const [saved, save, saving] = useActionState<AdminState, FormData>(async (prev, data) => {
     const r = await updateForm(prev, data);
@@ -62,6 +74,17 @@ export function FormSettings({ name, boxes, initial, hasSubmissions }: { name: s
   const patch = (p: Partial<Settings>) => set((x) => ({ ...x, ...p }));
   const field = (i: number, p: Partial<RawFieldRow>) => set((x) => ({ ...x, fields: x.fields.map((f, j) => (j === i ? { ...f, ...p } : f)) }));
   const target = (i: number, p: Partial<RawTarget>) => set((x) => ({ ...x, notify: x.notify.map((t, j) => (j === i ? { ...t, ...p } : t)) }));
+  const state = (i: number, p: Partial<StateRow>) => set((x) => ({ ...x, states: x.states.map((st, j) => (j === i ? { ...st, ...p } : st)) }));
+  const moveState = (i: number, d: -1 | 1) =>
+    set((x) => {
+      const states = [...x.states];
+      const j = i + d;
+      if (j < 0 || j >= states.length) return x;
+      [states[i], states[j]] = [states[j]!, states[i]!];
+      return { ...x, states };
+    });
+  const described = new Set(s.fields.map((f) => f.name));
+  const undescribed = seen.filter((n) => !described.has(n));
   const move = (i: number, d: -1 | 1) =>
     set((x) => {
       const fields = [...x.fields];
@@ -102,7 +125,7 @@ export function FormSettings({ name, boxes, initial, hasSubmissions }: { name: s
             <div>
               <span className={label}>Kind</span>
               <p className="py-2">{s.kind}</p>
-              <p className={hint}>Set when the form was made; the states depend on it.</p>
+              <p className={hint}>Set when the form was made; it chose the first states.</p>
             </div>
             <div>
               <span className={label}>Endpoint</span>
@@ -113,7 +136,24 @@ export function FormSettings({ name, boxes, initial, hasSubmissions }: { name: s
 
         <section>
           <h2 className="section-title">Fields</h2>
-          <p className="mb-3 text-muted">The names a page posts; the labels the inbox shows. Personal fields are removed by retention once the submission is closed.</p>
+          <p className="mb-3 text-muted">What the form knows about its fields: a label for the inbox, whether a field is personal (removed by retention once the submission is closed; yes unless said otherwise), whether it is required. A page may say this itself with hidden fields. Fields that arrive undescribed are taken as they come.</p>
+          <label className="mb-4 flex items-start gap-2">
+            <input type="checkbox" checked={s.strict} onChange={(e) => patch({ strict: e.target.checked })} className="mt-1" />
+            <span>
+              <span className="font-bold">Strict</span> <span className="text-muted">: take only the fields described below and refuse any other.</span>
+            </span>
+          </label>
+          {undescribed.length > 0 && (
+            <div className="mb-4 rounded-md bg-soft px-3 py-2 text-sm">
+              Seen in submissions, not described:{" "}
+              {undescribed.map((n) => (
+                <button key={n} type="button" onClick={() => set((x) => ({ ...x, fields: [...x.fields, EMPTY_FIELD(n)] }))} className="mr-1 underline decoration-dotted hover:text-accent">
+                  {n}
+                </button>
+              ))}
+              <span className="text-muted">. Click one to describe it.</span>
+            </div>
+          )}
           <div className="grid gap-3">
             {s.fields.map((f, i) => (
               <div key={i} className="sheet grid gap-2 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
@@ -175,8 +215,40 @@ export function FormSettings({ name, boxes, initial, hasSubmissions }: { name: s
               </div>
             ))}
           </div>
-          <button type="button" onClick={() => set((x) => ({ ...x, fields: [...x.fields, { name: "", type: "text", label: "", required: false, max: "", options: "", personal: "default", help: "" }] }))} className="btn mt-3">
-            Add a field
+          <button type="button" onClick={() => set((x) => ({ ...x, fields: [...x.fields, EMPTY_FIELD()] }))} className="btn mt-3">
+            Describe a field
+          </button>
+        </section>
+
+        <section>
+          <h2 className="section-title">States</h2>
+          <p className="mb-3 text-muted">A submission starts in the first state and can be moved to any other. A closed state counts as done and starts the retention clock; a state that needs a reason refuses to be entered without one. A state with submissions in it cannot be removed.</p>
+          <div className="grid gap-2">
+            {s.states.map((st, i) => (
+              <div key={i} className="sheet flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
+                <input value={st.name} onChange={(e) => state(i, { name: e.target.value })} className={`${small} w-40`} aria-label={`State ${i + 1} name`} placeholder="in_review" />
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={st.closed} onChange={(e) => state(i, { closed: e.target.checked })} /> closed
+                </label>
+                <label className="flex items-center gap-1.5 text-sm">
+                  <input type="checkbox" checked={st.reason} onChange={(e) => state(i, { reason: e.target.checked })} /> needs a reason
+                </label>
+                <div className="ml-auto flex gap-1">
+                  <button type="button" onClick={() => moveState(i, -1)} aria-label="Move state up" className="btn px-2" disabled={i === 0}>
+                    ↑
+                  </button>
+                  <button type="button" onClick={() => moveState(i, 1)} aria-label="Move state down" className="btn px-2" disabled={i === s.states.length - 1}>
+                    ↓
+                  </button>
+                  <button type="button" onClick={() => set((x) => ({ ...x, states: x.states.filter((_, j) => j !== i) }))} aria-label={`Remove state ${st.name || i + 1}`} className="btn px-2 text-error" disabled={statesInUse.includes(st.name) || s.states.length === 1} title={statesInUse.includes(st.name) ? "Submissions are in this state" : undefined}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={() => set((x) => ({ ...x, states: [...x.states, { name: "", closed: false, reason: false }] }))} className="btn mt-3">
+            Add a state
           </button>
         </section>
 

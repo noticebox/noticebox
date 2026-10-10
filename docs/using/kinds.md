@@ -1,37 +1,37 @@
-# Reports and messages
+# States, reasons and kinds
 
-A form's kind says what it collects and which states a submission can be in. There are two.
+A form's submissions move through its states. A state is a name and two flags: whether it counts as **closed**, and whether entering it **needs a reason**. Any state can be moved to any other; what noticebox enforces is not the path but the record: every move is an event with who, when and why, and a state that needs a reason cannot be entered without one.
 
-## Report
+## The presets
 
-A notice about content: something that should not be there, with a reason and a description, from someone who may want an answer.
+A form's kind chooses its first states. They can be renamed, reordered, added to or removed on the form's *Settings* tab, as long as a state with submissions in it stays.
 
-| State | Meaning | Reached by |
-|---|---|---|
-| `open` | Arrived, nobody has looked yet | arrival; *Reopen* from any other state |
-| `in_review` | Someone is looking at it | *Start review* |
-| `acted_on` | Something was done about the content | *Mark as acted on*, with a reason |
-| `rejected` | Nothing was done, on purpose | *Mark as rejected*, with a reason |
+**Report**, a notice about content:
 
-`acted_on` and `rejected` are the closed states: a closed report counts as done and falls under the form's [retention](../self-hosting/retention.md). Both need a written reason, because the reason is the record of the decision: what was done, or why nothing was. A closed report can be reopened, which starts a new round with the old history kept.
+| State | Closed | Needs a reason | Meaning |
+|---|---|---|---|
+| `open` | | | Arrived, nobody has looked yet |
+| `in_review` | | | Someone is looking at it |
+| `acted_on` | yes | yes | Something was done about the content |
+| `rejected` | yes | yes | Nothing was done, on purpose |
 
-A report form usually carries hidden fields that say what the report is about (`read_id`, `note_id`, `file` in notefeed's case), a `reason` from a fixed list, a `text`, and an optional `email`. The form's `link` turns the ids into a URL, so the reported thing is one click from the report.
+**Message**, a contact message:
 
-## Message
+| State | Closed | Needs a reason | Meaning |
+|---|---|---|---|
+| `new` | | | Arrived, not answered |
+| `answered` | yes | | Answered, by whatever means |
 
-A contact message: new until answered.
+## What the flags do
 
-| State | Meaning | Reached by |
-|---|---|---|
-| `new` | Arrived, not answered | arrival; *Reopen* |
-| `answered` | Answered, by whatever means | *Mark as answered* |
+**Closed** means done: the submission leaves the *Open* list and the form's [retention](../self-hosting/retention.md) starts counting. Moving it to a state that is not closed reopens it, with the old history kept.
 
-`answered` is the closed state. No reason is required, but a note of how it was answered is kept in the history like any other.
+**Needs a reason** makes the reason the record of the decision: what was done, or why nothing was. The dialog refuses the move without one; the reason is shown large in the history.
 
 ## Notes
 
-In either kind, *Add a note* records text without changing the state: what was found, who was asked, what the reporter said. Notes are part of the history and stay with the submission.
+*Add a note* records text without changing the state: what was found, who was asked, what the reporter said. Notes are part of the history and stay with the submission.
 
 ## What cannot be changed
 
-A state can only move along the paths above; the dialog offers nothing else. The history is append-only: a step, once recorded, is never edited or removed. The fields of a submission are never edited either; retention removes the personal ones, and that removal is recorded with its time.
+The history is append-only: a step, once recorded, is never edited or removed. The fields of a submission are never edited either; retention removes the personal ones, and that removal is recorded with its time.

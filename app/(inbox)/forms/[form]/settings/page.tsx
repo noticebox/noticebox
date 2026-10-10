@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { runtime } from "@/backend";
-import { FormSettings, type RawFieldRow, type RawTarget, type Settings } from "./FormSettings";
+import { FormSettings, type RawFieldRow, type RawTarget, type Settings, type StateRow } from "./FormSettings";
 
 export const dynamic = "force-dynamic";
 
@@ -34,9 +34,15 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
         ] as RawTarget[])
       : [];
   const link = raw.link;
+  const states: StateRow[] = form.states.map((st) => ({ name: st.name, closed: st.closed, reason: st.reason }));
+  const seen = rt.store.fieldsSeen(name).filter((n) => !fieldsRaw[n]);
+  const counts = rt.store.counts().filter((c) => c.form === name);
+  const inUse = states.map((st) => st.name).filter((n) => counts.some((c) => c.state === n && c.n > 0));
   const initial: Settings = {
     box: form.box,
     kind: form.kind,
+    strict: form.strict,
+    states,
     title: str(raw.title) || name,
     thanks: str(raw.thanks),
     origins: Array.isArray(raw.origins) ? raw.origins.join("\n") : "",
@@ -48,5 +54,5 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
     fields,
   };
   const hasSubmissions = rt.store.counts().some((c) => c.form === name && c.n > 0);
-  return <FormSettings name={name} boxes={rt.config.boxes} initial={initial} hasSubmissions={hasSubmissions} />;
+  return <FormSettings name={name} boxes={rt.config.boxes} initial={initial} hasSubmissions={hasSubmissions} seen={seen} statesInUse={inUse} />;
 }

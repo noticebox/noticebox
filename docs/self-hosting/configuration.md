@@ -28,6 +28,7 @@ noticebox is configured by environment variables and one JSON file with the form
       "box": "notefeed.me",
       "kind": "report",
       "title": "Reports about content on notefeed.me",
+      "strict": true,
       "fields": {
         "read_id": { "type": "hidden" },
         "note_id": { "type": "hidden" },
@@ -35,6 +36,7 @@ noticebox is configured by environment variables and one JSON file with the form
         "text": { "type": "textarea", "label": "What is wrong", "required": true, "max": 4000 },
         "email": { "type": "email", "label": "Reporter's email" }
       },
+      "states": ["open", "in_review", { "name": "acted_on", "closed": true, "reason": true }, { "name": "rejected", "closed": true, "reason": true }],
       "origins": ["https://notefeed.me"],
       "redirect": "https://notefeed.me/report?sent=1",
       "retentionDays": 1,
@@ -55,11 +57,13 @@ The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 cha
 
 | Key | Default | Meaning |
 |---|---|---|
-| `kind` | required | `report` or `message`, see [Reports and messages](../using/kinds.md) |
+| `kind` | required | `report` or `message`: the preset of states a form starts with, see [States, reasons and kinds](../using/kinds.md) |
 | `box` | `forms` | The group the form is listed under in the sidebar |
 | `title` | the name | Shown in the inbox and in notifications |
 | `thanks` | a generic sentence | The text of the thank-you page at `/f/<name>/thanks` |
-| `fields` | required, at least one | See below |
+| `fields` | none | The described fields, see below. A form takes undescribed fields too unless it is strict; a page can describe its own, see [Posting from a page](../integrations/forms.md#describing-fields-from-the-page) |
+| `strict` | `false` | Take only the described fields and refuse any other |
+| `states` | the kind's preset | The states, in order, the first being where a submission starts: names, or `{ "name": …, "closed": true, "reason": true }`; see [States, reasons and kinds](../using/kinds.md) |
 | `origins` | none: posts from anywhere | Origins posts are accepted from, `https://example.org` each |
 | `redirect` | the thank-you page | Where the browser goes after a plain post |
 | `retentionDays` | `180` | Days after closing until the personal fields are removed |
@@ -77,7 +81,7 @@ The key is the field's name as the page posts it: lowercase letters, digits and 
 | `required` | `false` | A post without it is refused |
 | `max` | 500 text, 10 000 textarea, 254 email, 200 select and hidden | Longest accepted value, in characters |
 | `options` | required for `select` | The allowed values |
-| `personal` | `true` for text, textarea and email; `false` otherwise | Removed by retention once the submission is closed and past `retentionDays` |
+| `personal` | `true` for text, textarea and email; `false` otherwise. An undescribed field is always personal | Removed by retention once the submission is closed and past `retentionDays` |
 | `help` | none | A sentence for the person filling the form |
 
 Values are trimmed, line ends normalised, control characters dropped; a value of any type but `textarea` is folded onto one line.

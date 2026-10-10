@@ -27,10 +27,12 @@ export function testConfig(ntfy: string | null = "https://ntfy.test/topic", webh
         notify: { ntfy, webhook },
         link: { url: "https://notes.test/r/{read_id}/{note_id}", label: "Open the note" },
       },
+      "contact-open": { kind: "message", origins: ["https://example.org"] },
       contact: {
         kind: "message",
         title: "Contact",
         fields: { name: { required: true }, email: { type: "email", required: true }, message: { type: "textarea", required: true } },
+        strict: true,
         origins: ["https://example.org"],
         redirect: "https://example.org/thanks",
         retentionDays: 30,

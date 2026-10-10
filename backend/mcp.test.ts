@@ -84,9 +84,10 @@ test("tools act in the name of the person who allowed the client, and the trail 
   expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "decide", "get_submission", "list_forms", "list_submissions"]);
 
   const forms = (await (await rpc(rt, "tools/call", { name: "list_forms", arguments: {} }, auth)).json()).result.structuredContent;
-  expect(forms.forms.map((f: { name: string; states: string[] }) => [f.name, f.states])).toEqual([
-    ["report", ["open", "in_review", "acted_on", "rejected"]],
-    ["contact", ["new", "answered"]],
+  expect(forms.forms.map((f: { name: string; states: { name: string; closed: boolean; reason: boolean }[] }) => [f.name, f.states.map((s) => s.name), f.states.filter((s) => s.reason).map((s) => s.name)])).toEqual([
+    ["report", ["open", "in_review", "acted_on", "rejected"], ["acted_on", "rejected"]],
+    ["contact-open", ["new", "answered"], []],
+    ["contact", ["new", "answered"], []],
   ]);
 
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date("2026-01-01T00:00:00Z")).id;

@@ -18,7 +18,10 @@ export async function decide(prev: DecideState, data: FormData): Promise<DecideS
   const reason = String(data.get("reason") ?? "");
   const n = (prev.n ?? 0) + 1;
   if (!actor) return { error: "Sign in first.", to, reason, n };
-  const r = to ? rt.store.transition(id, actor, to, reason, rt.now()) : rt.store.note(id, actor, reason, rt.now());
+  const s = rt.store.get(id);
+  const form = s && rt.config.forms[s.form];
+  if (!s || !form) return { error: "No such submission.", to, reason, n };
+  const r = to ? rt.store.transition(form, id, actor, to, reason, rt.now()) : rt.store.note(id, actor, reason, rt.now());
   if (!r.ok) return { error: r.error, to, reason, n };
   revalidatePath("/", "layout");
   return { ok: true, n };

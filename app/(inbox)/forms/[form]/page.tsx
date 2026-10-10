@@ -25,7 +25,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
   const recent = [...daily.values()].reduce((a, n) => a + n, 0);
   const counts = rt.store.counts().filter((c) => c.form === form.name);
   const byState = (s: string) => counts.find((c) => c.state === s)?.n ?? 0;
-  const open = counts.filter((c) => !kind.closed.includes(c.state)).reduce((a, c) => a + c.n, 0);
+  const open = counts.filter((c) => !form.states.find((s) => s.name === c.state)?.closed).reduce((a, c) => a + c.n, 0);
   const endpoint = `${publicUrl(await headers(), rt)}/f/${form.name}`;
   const list = submissionsPath(form.name);
   const plural = (n: number) => (n === 1 ? kind.label : `${kind.label}s`);
@@ -49,10 +49,10 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
       <section>
         <h2 className="section-title">By state</h2>
         <ul className="flex flex-wrap gap-2">
-          {Object.keys(kind.next).map((s) => (
-            <li key={s}>
-              <Link href={`${list}?state=${s}`} className={`badge ${stateTone(s, kind.closed)} hover:opacity-80`}>
-                {stateLabel(s)} <span className="font-normal opacity-80">{byState(s)}</span>
+          {form.states.map((st) => (
+            <li key={st.name}>
+              <Link href={`${list}?state=${st.name}`} className={`badge ${stateTone(st.name, form.states)} hover:opacity-80`}>
+                {stateLabel(st.name)} <span className="font-normal opacity-80">{byState(st.name)}</span>
               </Link>
             </li>
           ))}
@@ -81,7 +81,8 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
             </>
           )}
         </dl>
-        <table className="mt-5 w-full text-sm">
+        <p className="mt-5 text-muted">{form.strict ? "Strict: only the fields below are taken." : "Open: any field a page posts is taken; the ones below are described."}</p>
+        <table className="mt-2 w-full text-sm">
           <thead>
             <tr className="border-b border-rule text-left text-muted">
               <th className="py-1.5 pr-3 font-bold">Field</th>
