@@ -47,6 +47,20 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=sha
+      # The image is started once before it is pushed: an image that builds but cannot start must never reach a server.
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: noticebox:smoke
+      - name: The image starts and answers
+        run: |
+          docker run -d --name smoke -p 127.0.0.1:3000:3000 -v "$PWD/noticebox.example.json:/app/noticebox.json:ro" \
+            -e NTFY_REPORTS_TOPIC=x -e NTFY_CONTACT_TOPIC=y noticebox:smoke
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000/healthz && break; sleep 1; done
+          curl -sf http://127.0.0.1:3000/healthz
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)" = 401
+          docker logs smoke
       - uses: docker/build-push-action@v6
         with:
           context: .
