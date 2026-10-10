@@ -4,6 +4,7 @@ export type { Config, Field, Form } from "./config";
 export type { Event, ListFilter, Outcome, Submission } from "./db";
 export { intakePreflight, intakeRoute } from "./intake";
 export { KINDS, type KindName } from "./kinds";
+export { linkFor } from "./links";
 export { mcpRoute } from "./mcp";
 export { formPath, submissionPath, submissionsPath } from "./paths";
 export { authServerRoute, authorizeRoute, checkAuthorize, metadataPreflight, protectedResourceRoute, registerPreflight, registerRoute, tokenRoute, type Checked } from "./oauth";

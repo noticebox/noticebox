@@ -6,6 +6,7 @@ import * as z from "zod";
 import { bearerOf, mcpResource, publicUrl } from "./auth";
 import type { Submission } from "./db";
 import { KINDS } from "./kinds";
+import { linkFor } from "./links";
 import { submissionPath } from "./paths";
 import type { Runtime } from "./runtime";
 import { summaryOf } from "./summary";
@@ -14,7 +15,7 @@ import { verify } from "./tokens";
 const ok = <T extends object>(body: T) => ({ structuredContent: body, content: [{ type: "text" as const, text: JSON.stringify(body) }] });
 const refuse = (message: string) => ({ isError: true as const, content: [{ type: "text" as const, text: message }] });
 
-const Summary = z.object({ id: z.string(), form: z.string(), kind: z.string(), state: z.string(), received_at: z.string(), closed_at: z.string().nullable(), url: z.string(), summary: z.string() });
+const Summary = z.object({ id: z.string(), form: z.string(), kind: z.string(), state: z.string(), received_at: z.string(), closed_at: z.string().nullable(), url: z.string(), link: z.string().nullable(), summary: z.string() });
 const Full = Summary.extend({
   fields: z.record(z.string(), z.string()),
   events: z.array(z.object({ at: z.string(), actor: z.string(), from_state: z.string().nullable(), to_state: z.string().nullable(), reason: z.string() })),
@@ -22,7 +23,7 @@ const Full = Summary.extend({
 
 function server(rt: Runtime, actor: string, base: string): McpServer {
   const s = new McpServer({ name: "noticebox", version: "0.1.0" });
-  const summary = (x: Submission) => ({ id: x.id, form: x.form, kind: x.kind, state: x.state, received_at: x.received_at, closed_at: x.closed_at, url: base + submissionPath(x.form, x.id), summary: summaryOf(rt.config.forms[x.form], x, 120) });
+  const summary = (x: Submission) => ({ id: x.id, form: x.form, kind: x.kind, state: x.state, received_at: x.received_at, closed_at: x.closed_at, url: base + submissionPath(x.form, x.id), link: linkFor(rt.config.forms[x.form], x)?.url ?? null, summary: summaryOf(rt.config.forms[x.form], x, 120) });
   const full = (x: Submission) => ({ ...summary(x), fields: x.fields, events: rt.store.events(x.id).map(({ at, actor, from_state, to_state, reason }) => ({ at, actor, from_state, to_state, reason })) });
 
   s.registerTool(

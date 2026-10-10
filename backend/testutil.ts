@@ -25,6 +25,7 @@ export function testConfig(ntfy: string | null = "https://ntfy.test/topic", webh
         },
         retentionDays: 90,
         notify: { ntfy, webhook },
+        link: { url: "https://notes.test/r/{read_id}/{note_id}", label: "Open the note" },
       },
       contact: {
         kind: "message",

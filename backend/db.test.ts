@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { Store } from "./db";
+import { linkFor } from "./links";
 import { REPORT, testConfig } from "./testutil";
 
 const DAY = 86400000;
@@ -18,6 +19,9 @@ test("retention removes the personal fields of closed submissions and keeps the 
   expect(store.sweep(config, new Date(t0.getTime() + 89 * DAY))).toBe(0);
   expect(store.sweep(config, new Date(t0.getTime() + 91 * DAY))).toBe(1);
   const after = store.get(closed.id)!;
+  expect(linkFor(report, store.get(open.id)!)).toEqual({ url: "https://notes.test/r/r1/n1", label: "Open the note" });
+  expect(linkFor(report, after)).toEqual({ url: "https://notes.test/r/r1/n1", label: "Open the note" }); // the ids are not personal and stay
+  expect(linkFor(report, { ...after, fields: {} })).toBeNull();
   expect(after.fields).toEqual({ read_id: "r1", note_id: "n1", file: "a.png", reason: "Spam" });
   expect(after.purged_at).toBeTruthy();
   expect(after.state).toBe("acted_on");

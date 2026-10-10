@@ -95,6 +95,7 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   await expect(page).toHaveURL(/\/forms\/report\/submissions\/[A-Za-z0-9_-]+$/);
   await expect(page.getByText("who@example.org")).toBeVisible();
   await expect(page.getByText("r1", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open the note" })).toHaveAttribute("href", "https://notes.test/r/r1/n1");
   const history = page.getByRole("list").filter({ hasText: "received it as" });
   await expect(history.getByRole("listitem").filter({ hasText: "Address blurred" })).toContainText("marcel moved it from open to acted on");
   await page.locator("[data-hydrated]").waitFor();

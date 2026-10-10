@@ -14,7 +14,8 @@
         "email": { "type": "email", "label": "Your email", "help": "Only to answer you." }
       },
       "retentionDays": 90,
-      "notify": { "ntfy": "${NTFY_URL}" }
+      "notify": { "ntfy": "${NTFY_URL}" },
+      "link": { "url": "https://notes.test/r/{read_id}/{note_id}", "label": "Open the note" }
     },
     "contact": {
       "kind": "message",

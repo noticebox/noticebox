@@ -27,6 +27,7 @@ export type Form = {
   redirect: string | null; // where the browser goes after a submission; null means the hosted thanks page
   retentionDays: number;
   notify: { ntfy: string | null; webhook: string | null };
+  link: { url: string; label: string } | null; // where the thing a submission is about can be looked at: a URL template with {field} placeholders
 };
 
 export type Config = { forms: Record<string, Form> };
@@ -34,6 +35,7 @@ export type Config = { forms: Record<string, Form> };
 export const FORM_NAME = /^[a-z][a-z0-9_-]{0,39}$/;
 const BOX_NAME = /^[a-z0-9][a-z0-9 ._-]{0,39}$/i;
 const FIELD_NAME = /^[a-z][a-z0-9_]{0,31}$/;
+export const PLACEHOLDER = /\{([a-z][a-z0-9_]{0,31})\}/g;
 const RESERVED = new Set(["_gotcha"]);
 const TYPES: FieldType[] = ["text", "textarea", "select", "email", "hidden"];
 const DEFAULT_MAX: Record<FieldType, number> = { text: 500, textarea: 10000, select: 200, email: 254, hidden: 200 };
@@ -103,6 +105,7 @@ function parseForm(name: string, raw: unknown): Form {
   if (typeof retentionDays !== "number" || !Number.isInteger(retentionDays) || retentionDays < 1) throw new Error(`${at}.retentionDays: a whole number of days, at least 1`);
   const n = f.notify === undefined ? {} : record(f.notify, `${at}.notify`);
   const box = str(f.box, `${at}.box`, "forms");
+  const link = parseLink(`${at}.link`, f.link, fields);
   if (!BOX_NAME.test(box)) throw new Error(`${at}.box: letters, digits, spaces, . _ and - only`);
   return {
     name,
@@ -119,7 +122,19 @@ function parseForm(name: string, raw: unknown): Form {
       ntfy: n.ntfy === undefined || n.ntfy === null ? null : absoluteUrl(n.ntfy, `${at}.notify.ntfy`),
       webhook: n.webhook === undefined || n.webhook === null ? null : absoluteUrl(n.webhook, `${at}.notify.webhook`),
     },
+    link,
   };
+}
+
+/** `link` is a URL template, or `{ url, label }`; each `{name}` must be a field of the form. */
+function parseLink(at: string, raw: unknown, fields: Record<string, Field>): Form["link"] {
+  if (raw === undefined || raw === null) return null;
+  const o = typeof raw === "string" ? { url: raw } : record(raw, at);
+  const url = str(o.url, `${at}.url`, "");
+  const label = str(o.label, `${at}.label`, "Open");
+  for (const [, name] of url.matchAll(PLACEHOLDER)) if (!fields[name!]) throw new Error(`${at}: {${name}} is not a field of this form`);
+  absoluteUrl(url.replace(PLACEHOLDER, "x"), `${at}.url`);
+  return { url, label };
 }
 
 function parseField(at: string, raw: unknown): Field {

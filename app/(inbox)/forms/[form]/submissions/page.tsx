@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { KINDS, runtime, submissionPath, submissionsPath, summaryOf } from "@/backend";
+import { KINDS, linkFor, runtime, submissionPath, submissionsPath, summaryOf } from "@/backend";
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../StateMenu";
 
@@ -48,11 +48,13 @@ export default async function SubmissionsPage({ params, searchParams }: { params
                 <th className="hidden py-2 pr-3 pl-5 font-bold sm:table-cell">Received</th>
                 <th className="py-2 pr-3 pl-4 font-bold sm:pl-0">State</th>
                 <th className="py-2 pr-5 font-bold">Summary</th>
+                {form.link && <th className="py-2 pr-4"><span className="sr-only">{form.link.label}</span></th>}
               </tr>
             </thead>
             <tbody>
               {rows.map((s) => {
                 const href = submissionPath(s.form, s.id);
+                const link = linkFor(form, s);
                 return (
                   <tr key={s.id} className="border-b border-rule align-top last:border-0 hover:bg-soft/60">
                     <td className="hidden py-3 pr-3 pl-5 text-sm whitespace-nowrap text-muted tabular-nums sm:table-cell">
@@ -64,11 +66,20 @@ export default async function SubmissionsPage({ params, searchParams }: { params
                       <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, kind.closed)} next={[...(kind.next[s.state] ?? [])]} reasonRequired={[...kind.reasonRequired]} />
                     </td>
                     <td className="py-3 pr-5">
-                      <Link href={href} className="block break-words hover:underline">
+                      <Link href={href} className="block [overflow-wrap:anywhere] hover:underline">
                         {summaryOf(form, s) || <span className="text-muted">No text</span>}
                       </Link>
                       <span className="text-[13px] text-muted sm:hidden">{when(s.received_at)}</span>
                     </td>
+                    {form.link && (
+                      <td className="py-2.5 pr-4 text-right">
+                        {link && (
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" aria-label={link.label} title={link.label} className="text-muted hover:text-accent">
+                            ↗
+                          </a>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

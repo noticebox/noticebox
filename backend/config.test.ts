@@ -9,6 +9,7 @@ test("defaults fill in what the file leaves out", () => {
   const f = c.forms.contact!;
   expect(f.title).toBe("contact");
   expect(f.box).toBe("forms");
+  expect(f.link).toBeNull();
   expect(f.retentionDays).toBe(180);
   expect(f.origins).toEqual([]);
   expect(f.redirect).toBeNull();
@@ -45,4 +46,15 @@ test("origins lose a trailing slash and the file may take values from the enviro
   writeFileSync(path, JSON.stringify({ forms: { x: { kind: "report", fields: { a: {} }, notify: { ntfy: "https://ntfy.sh/${TOPIC}" } } } }));
   expect(loadConfig(path, { TOPIC: "t1" }).forms.x!.notify.ntfy).toBe("https://ntfy.sh/t1");
   expect(() => loadConfig("/nonexistent.json")).toThrow(/cannot read/);
+});
+
+test("a form's link is a URL template over its own fields", () => {
+  const base = { kind: "report", fields: { read_id: { type: "hidden" }, note_id: { type: "hidden" }, text: { type: "textarea" } } };
+  const plain = parseConfig({ forms: { r: { ...base, link: "https://notes.test/r/{read_id}/{note_id}" } } }).forms.r!.link;
+  expect(plain).toEqual({ url: "https://notes.test/r/{read_id}/{note_id}", label: "Open" });
+  const labelled = parseConfig({ forms: { r: { ...base, link: { url: "https://notes.test/r/{read_id}", label: "Open the note" } } } }).forms.r!.link;
+  expect(labelled?.label).toBe("Open the note");
+  expect(() => parseConfig({ forms: { r: { ...base, link: "https://notes.test/r/{feed}" } } })).toThrow("{feed} is not a field");
+  expect(() => parseConfig({ forms: { r: { ...base, link: "notes/{read_id}" } } })).toThrow("not a URL");
+  expect(() => parseConfig({ forms: { r: { ...base, link: "ftp://notes.test/{read_id}" } } })).toThrow("http(s)");
 });

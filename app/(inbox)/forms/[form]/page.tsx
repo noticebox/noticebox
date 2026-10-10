@@ -31,7 +31,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
   const plural = (n: number) => (n === 1 ? kind.label : `${kind.label}s`);
 
   return (
-    <div className="grid max-w-3xl gap-10">
+    <div className="grid max-w-3xl grid-cols-1 gap-10">
       <p className="text-[22px] leading-snug">
         <Link href={list} className="font-bold hover:underline">
           {open === 0 ? `No ${kind.label} waits for a decision.` : `${open} ${plural(open)} ${open === 1 ? "waits" : "wait"} for a decision.`}
@@ -62,18 +62,24 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
       <section>
         <h2 className="section-title">Posting to this form</h2>
         <div className="flex gap-2">
-          <code className="field truncate bg-soft text-sm leading-6">{endpoint}</code>
+          <code className="field min-w-0 truncate bg-soft text-sm leading-6">{endpoint}</code>
           <CopyButton text={endpoint} />
         </div>
-        <dl className="mt-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2">
+        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-[max-content_1fr] sm:gap-y-2">
           <dt className="text-muted">Takes posts from</dt>
-          <dd>{form.origins.length ? form.origins.join(", ") : "anywhere"}</dd>
+          <dd className="mb-2 sm:mb-0">{form.origins.length ? form.origins.join(", ") : "anywhere"}</dd>
           <dt className="text-muted">Afterwards the browser goes to</dt>
-          <dd className="break-all">{form.redirect ?? `the thank-you page at /f/${form.name}/thanks`}</dd>
+          <dd className="mb-2 break-all sm:mb-0">{form.redirect ?? `the thank-you page at /f/${form.name}/thanks`}</dd>
           <dt className="text-muted">Personal fields are removed</dt>
-          <dd>{form.retentionDays} days after a submission is closed</dd>
+          <dd className="mb-2 sm:mb-0">{form.retentionDays} {form.retentionDays === 1 ? "day" : "days"} after a submission is closed</dd>
           <dt className="text-muted">New submissions are announced</dt>
-          <dd>{[form.notify.ntfy && "on ntfy", form.notify.webhook && "to a webhook"].filter(Boolean).join(" and ") || "nowhere"}</dd>
+          <dd className="mb-2 sm:mb-0">{[form.notify.ntfy && "on ntfy", form.notify.webhook && "to a webhook"].filter(Boolean).join(" and ") || "nowhere"}</dd>
+          {form.link && (
+            <>
+              <dt className="text-muted">Each submission links to</dt>
+              <dd className="break-all">{form.link.url}</dd>
+            </>
+          )}
         </dl>
         <table className="mt-5 w-full text-sm">
           <thead>
