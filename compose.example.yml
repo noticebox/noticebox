@@ -1,0 +1,17 @@
+# One container, one SQLite file. The reverse proxy in front does the login for everything except the public paths
+# (see README, "Deploying").
+services:
+  noticebox:
+    image: ghcr.io/notefeed/noticebox:latest
+    container_name: noticebox
+    restart: unless-stopped
+    environment:
+      NOTICEBOX_BASE_URL: https://inbox.example.org
+      NOTICEBOX_SECRET: ${NOTICEBOX_SECRET}
+      NTFY_REPORTS_TOPIC: ${NTFY_REPORTS_TOPIC}
+      NTFY_CONTACT_TOPIC: ${NTFY_CONTACT_TOPIC}
+    volumes:
+      - ./noticebox.json:/app/noticebox.json:ro
+      - ./data:/data
+    ports:
+      - "127.0.0.1:3000:3000"

@@ -1,0 +1,33 @@
+{
+  "forms": {
+    "notefeed-report": {
+      "kind": "report",
+      "title": "Report content on notefeed.me",
+      "intro": "Say what is wrong with this note. The ids identify it. Leave an address only if you want an answer.",
+      "thanks": "Thank you. The report has been sent to the operator.",
+      "fields": {
+        "read_id": { "type": "hidden", "prefill": true },
+        "note_id": { "type": "hidden", "prefill": true },
+        "file": { "type": "hidden", "prefill": true },
+        "reason": { "type": "select", "label": "Reason", "required": true, "options": ["Illegal content", "Personal data", "Copyright", "Spam", "Other"] },
+        "text": { "type": "textarea", "label": "What is wrong", "required": true, "max": 4000 },
+        "email": { "type": "email", "label": "Your email", "help": "Optional. Used only to answer you, then removed." }
+      },
+      "retentionDays": 180,
+      "notify": { "ntfy": "https://ntfy.sh/${NTFY_REPORTS_TOPIC}" }
+    },
+    "contact": {
+      "kind": "message",
+      "title": "Contact",
+      "fields": {
+        "name": { "label": "Name", "required": true },
+        "email": { "type": "email", "label": "Email", "required": true },
+        "message": { "type": "textarea", "label": "Message", "required": true }
+      },
+      "origins": ["https://example.org"],
+      "redirect": "https://example.org/thanks",
+      "retentionDays": 365,
+      "notify": { "ntfy": "https://ntfy.sh/${NTFY_CONTACT_TOPIC}" }
+    }
+  }
+}

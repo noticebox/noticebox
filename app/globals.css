@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f6f5f1;
+  --ink: #1d2026;
+  --accent: #1f6f5a;
+  --rule: #d9d7cf;
+  --muted: #6b6e76;
+  --error: #b3261e;
+  --on-accent: #ffffff;
+  --soft: #ecebe5;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #16181c;
+    --ink: #e6e6e3;
+    --accent: #7fd1b5;
+    --rule: #2c2f36;
+    --muted: #9a9ea8;
+    --error: #ff8a80;
+    --on-accent: #16181c;
+    --soft: #1f2126;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-accent: var(--accent);
+  --color-rule: var(--rule);
+  --color-muted: var(--muted);
+  --color-error: var(--error);
+  --color-on-accent: var(--on-accent);
+  --color-soft: var(--soft);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.field {
+  @apply w-full rounded-sm border border-rule bg-transparent px-3 py-1.5 focus:border-accent focus:outline-none;
+}
+
+.badge {
+  @apply inline-block rounded-sm border border-rule px-1.5 text-sm whitespace-nowrap;
+}
+
+.gotcha {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

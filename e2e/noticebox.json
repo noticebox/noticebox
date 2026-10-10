@@ -1,0 +1,31 @@
+{
+  "forms": {
+    "report": {
+      "kind": "report",
+      "title": "Report content",
+      "intro": "Say what is wrong with this note.",
+      "fields": {
+        "read_id": { "type": "hidden", "prefill": true },
+        "note_id": { "type": "hidden", "prefill": true },
+        "file": { "type": "text", "label": "File", "prefill": true, "personal": false },
+        "reason": { "type": "select", "label": "Reason", "required": true, "options": ["Illegal content", "Personal data", "Spam", "Other"] },
+        "text": { "type": "textarea", "label": "What is wrong", "required": true, "max": 2000 },
+        "email": { "type": "email", "label": "Your email", "help": "Only to answer you." }
+      },
+      "retentionDays": 90,
+      "notify": { "ntfy": "${NTFY_URL}" }
+    },
+    "contact": {
+      "kind": "message",
+      "title": "Contact",
+      "fields": {
+        "name": { "label": "Name", "required": true },
+        "email": { "type": "email", "label": "Email", "required": true },
+        "message": { "type": "textarea", "label": "Message", "required": true }
+      },
+      "origins": ["https://example.org"],
+      "redirect": "https://example.org/thanks",
+      "retentionDays": 30
+    }
+  }
+}
