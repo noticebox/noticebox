@@ -26,6 +26,8 @@ test("retention removes the personal fields of closed submissions and keeps the 
   expect(store.get(late.id)!.fields).toEqual(REPORT);
   expect(store.sweep(config, new Date(t0.getTime() + 91 * DAY))).toBe(0);
   expect(store.sweep(config, new Date(t0.getTime() + 121 * DAY))).toBe(1);
+  expect(store.daily("report", new Date(t0.getTime() - DAY))).toEqual([{ day: "2026-01-01", n: 3 }]);
+  expect(store.daily("report", new Date(t0.getTime() + DAY))).toEqual([]);
   store.close();
 });
 

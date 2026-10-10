@@ -11,13 +11,13 @@ export type Field = {
   required: boolean;
   max: number;
   options: string[];
-  prefill: boolean; // the hosted form page takes the value from the query string
   personal: boolean; // blanked once the submission is closed and past the form's retention
   help: string;
 };
 
 export type Form = {
   name: string;
+  box: string; // the group the form is listed under (a site, a project)
   kind: KindName;
   title: string;
   intro: string;
@@ -32,6 +32,7 @@ export type Form = {
 export type Config = { forms: Record<string, Form> };
 
 export const FORM_NAME = /^[a-z][a-z0-9_-]{0,39}$/;
+const BOX_NAME = /^[a-z0-9][a-z0-9 ._-]{0,39}$/i;
 const FIELD_NAME = /^[a-z][a-z0-9_]{0,31}$/;
 const RESERVED = new Set(["_gotcha"]);
 const TYPES: FieldType[] = ["text", "textarea", "select", "email", "hidden"];
@@ -101,8 +102,11 @@ function parseForm(name: string, raw: unknown): Form {
   const retentionDays = f.retentionDays === undefined ? 180 : f.retentionDays;
   if (typeof retentionDays !== "number" || !Number.isInteger(retentionDays) || retentionDays < 1) throw new Error(`${at}.retentionDays: a whole number of days, at least 1`);
   const n = f.notify === undefined ? {} : record(f.notify, `${at}.notify`);
+  const box = str(f.box, `${at}.box`, "forms");
+  if (!BOX_NAME.test(box)) throw new Error(`${at}.box: letters, digits, spaces, . _ and - only`);
   return {
     name,
+    box,
     kind: f.kind,
     title: str(f.title, `${at}.title`, name),
     intro: str(f.intro, `${at}.intro`, ""),
@@ -134,7 +138,6 @@ function parseField(at: string, raw: unknown): Field {
     required: bool(f.required, `${at}.required`, false),
     max,
     options,
-    prefill: bool(f.prefill, `${at}.prefill`, false),
     personal: bool(f.personal, `${at}.personal`, t === "text" || t === "textarea" || t === "email"),
     help: str(f.help, `${at}.help`, ""),
   };

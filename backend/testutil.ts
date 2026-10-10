@@ -16,9 +16,9 @@ export function testConfig(ntfy: string | null = "https://ntfy.test/topic", webh
         title: "Report content",
         intro: "Say what is wrong.",
         fields: {
-          read_id: { type: "hidden", prefill: true },
-          note_id: { type: "hidden", prefill: true },
-          file: { type: "text", label: "File", prefill: true, personal: false },
+          read_id: { type: "hidden" },
+          note_id: { type: "hidden" },
+          file: { type: "text", label: "File", personal: false },
           reason: { type: "select", label: "Reason", required: true, options: ["Illegal content", "Personal data", "Spam", "Other"] },
           text: { type: "textarea", label: "What is wrong", required: true, max: 2000 },
           email: { type: "email", label: "Your email", help: "Only to answer you." },

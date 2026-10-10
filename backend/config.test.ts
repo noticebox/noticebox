@@ -8,11 +8,12 @@ test("defaults fill in what the file leaves out", () => {
   const c = parseConfig({ forms: { contact: { kind: "message", fields: { email: { type: "email" }, message: { type: "textarea", required: true }, topic: { type: "select", options: ["a"] } } } } });
   const f = c.forms.contact!;
   expect(f.title).toBe("contact");
+  expect(f.box).toBe("forms");
   expect(f.retentionDays).toBe(180);
   expect(f.origins).toEqual([]);
   expect(f.redirect).toBeNull();
   expect(f.notify).toEqual({ ntfy: null, webhook: null });
-  expect(f.fields.email).toEqual({ type: "email", label: "email", required: false, max: 254, options: [], prefill: false, personal: true, help: "" });
+  expect(f.fields.email).toEqual({ type: "email", label: "email", required: false, max: 254, options: [], personal: true, help: "" });
   expect(f.fields.message!.max).toBe(10000);
   expect(f.fields.topic!.personal).toBe(false);
 });

@@ -17,9 +17,10 @@ test("a browser submission is stored, answered with a redirect, and announced wi
   await until(() => rt.hits.length === 2);
   const ntfy = rt.hits.find((h) => h.url === "https://ntfy.test/topic")!;
   const hook = rt.hits.find((h) => h.url === "https://hook.test/in")!;
-  expect(ntfy.body).toBe(`${BASE}/s/${s!.id}`);
+  const link = `${BASE}/forms/report/submissions/${s!.id}`;
+  expect(ntfy.body).toBe(link);
   expect(ntfy.headers.title).toBe("New report: Report content");
-  expect(JSON.parse(hook.body)).toEqual({ form: "report", kind: "report", id: s!.id, received_at: s!.received_at, url: `${BASE}/s/${s!.id}` });
+  expect(JSON.parse(hook.body)).toEqual({ form: "report", kind: "report", id: s!.id, received_at: s!.received_at, url: link });
   for (const h of rt.hits) expect(h.body + JSON.stringify(h.headers)).not.toMatch(/spam|example\.org/i);
 });
 
@@ -41,15 +42,26 @@ test("a JSON submission gets its id back; what is missing or wrong is named", as
   expect(rt.store.list()).toHaveLength(1);
 });
 
-test("a refused browser submission goes back to the form with what was typed and what is wrong", async () => {
+test("a refused browser submission goes back to the page it came from with what was typed and what is wrong", async () => {
   const rt = testRuntime();
-  const res = await intakeRoute(formPost("/f/report", { read_id: "r1", text: "only text" }), "report", rt);
+  const data = { read_id: "r1", text: "only text" };
+  const res = await intakeRoute(formPost("/f/report", data, { referer: "https://notes.example/report?read_id=r1&error=old#x" }), "report", rt);
   expect(res.status).toBe(303);
-  const back = new URL(res.headers.get("location")!, BASE);
-  expect(back.pathname).toBe("/f/report");
+  const back = new URL(res.headers.get("location")!);
+  expect(back.origin + back.pathname).toBe("https://notes.example/report");
+  expect(back.hash).toBe("");
   expect(back.searchParams.getAll("error")).toEqual(["Reason is required"]);
   expect(back.searchParams.get("read_id")).toBe("r1");
   expect(back.searchParams.get("text")).toBe("only text");
+  // No page to go back to, or one the form does not take submissions from: the errors are the answer.
+  const bare = await intakeRoute(formPost("/f/report", data), "report", rt);
+  expect(bare.status).toBe(400);
+  expect(await bare.text()).toBe("Reason is required");
+  const contact = { name: "Ann", email: "ann@example.org" };
+  const elsewhere = await intakeRoute(formPost("/f/contact", contact, { origin: "https://example.org", referer: "https://evil.example/" }), "contact", rt);
+  expect(elsewhere.status).toBe(400);
+  const home = await intakeRoute(formPost("/f/contact", contact, { origin: "https://example.org", referer: "https://example.org/contact" }), "contact", rt);
+  expect(new URL(home.headers.get("location")!).searchParams.getAll("error")).toEqual(["message is required"]);
   expect(rt.store.list()).toHaveLength(0);
 });
 

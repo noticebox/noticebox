@@ -1,33 +1,24 @@
 import { headers } from "next/headers";
-import Link from "next/link";
-import { actorOf, runtime } from "@/backend";
+import { formPath, KINDS, runtime, type Form } from "@/backend";
+import { Shell, type Box } from "./Shell";
 
 export const dynamic = "force-dynamic";
 
 // The inbox: everything under here is behind the login proxy (proxy.ts), and the header says who is signed in.
 export default async function InboxLayout({ children }: { children: React.ReactNode }) {
   const rt = runtime();
-  const actor = actorOf(await headers(), rt);
-  const forms = Object.values(rt.config.forms);
+  const actor = (await headers()).get(rt.userHeader) ?? rt.devUser ?? "";
+  const counts = rt.store.counts();
+  const open = (f: Form) => counts.filter((c) => c.form === f.name && !KINDS[f.kind].closed.includes(c.state)).reduce((a, c) => a + c.n, 0);
+  const boxes = new Map<string, Box>();
+  for (const f of Object.values(rt.config.forms)) {
+    const box = boxes.get(f.box) ?? { name: f.box, forms: [] };
+    box.forms.push({ name: f.name, title: f.title, path: formPath(f.name), open: open(f) });
+    boxes.set(f.box, box);
+  }
   return (
-    <>
-      <header className="mb-6 flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b border-rule pb-3">
-        <h1 className="text-lg font-bold tracking-tight">
-          <Link href="/">noticebox</Link>
-        </h1>
-        <nav className="flex flex-wrap gap-x-4 text-sm">
-          <Link href="/">open</Link>
-          <Link href="/?open=0">closed</Link>
-          {forms.map((f) => (
-            <Link key={f.name} href={`/?form=${encodeURIComponent(f.name)}`}>
-              {f.title}
-            </Link>
-          ))}
-          <a href="/export.json">export</a>
-        </nav>
-        <span className="ml-auto text-sm text-muted">{actor}</span>
-      </header>
-      <main>{children}</main>
-    </>
+    <Shell boxes={[...boxes.values()]} actor={actor}>
+      {children}
+    </Shell>
   );
 }

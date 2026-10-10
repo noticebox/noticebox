@@ -91,7 +91,7 @@ test("tools act in the name of the person who allowed the client, and the trail 
 
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date("2026-01-01T00:00:00Z")).id;
   const listed = (await (await rpc(rt, "tools/call", { name: "list_submissions", arguments: {} }, auth)).json()).result.structuredContent;
-  expect(listed.submissions).toEqual([{ id, form: "report", kind: "report", state: "open", received_at: "2026-01-01T00:00:00.000Z", closed_at: null, url: `${BASE}/s/${id}`, summary: "This is spam. Second line." }]);
+  expect(listed.submissions).toEqual([{ id, form: "report", kind: "report", state: "open", received_at: "2026-01-01T00:00:00.000Z", closed_at: null, url: `${BASE}/forms/report/submissions/${id}`, summary: "This is spam. Second line." }]);
 
   const noted = (await (await rpc(rt, "tools/call", { name: "add_note", arguments: { id, text: "Looks like a genuine complaint." } }, auth)).json()).result;
   expect(noted.structuredContent.events.at(-1)).toMatchObject({ actor: "marcel via Claude", to_state: null, reason: "Looks like a genuine complaint." });

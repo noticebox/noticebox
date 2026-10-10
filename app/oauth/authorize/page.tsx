@@ -15,7 +15,8 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   const checked = checkAuthorize(params, h, rt);
   if (checked.kind === "redirect") redirect(checked.location);
   return (
-    <main className="mt-[18vh] mx-auto max-w-md">
+    <main className="mx-auto mt-[18vh] max-w-md px-4">
+      <div className="card p-6">
       <h1 className="mb-2 text-xl font-bold tracking-tight">noticebox</h1>
       {checked.kind === "error" ? (
         <p role="alert" className="text-error">
@@ -30,11 +31,12 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
             <strong>{checked.clientName}</strong> wants to read and decide submissions as <strong>{actor}</strong>.
           </p>
           <p className="mb-6 text-sm text-muted">Everything it does is recorded in your name, marked as done through it. Afterwards you are sent to {checked.redirectHost}.</p>
-          <button type="submit" className="rounded-sm bg-accent px-4 py-1.5 font-bold text-on-accent">
+          <button type="submit" className="btn-primary">
             Allow
           </button>
         </form>
       )}
+      </div>
     </main>
   );
 }

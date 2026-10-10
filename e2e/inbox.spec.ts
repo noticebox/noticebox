@@ -18,13 +18,14 @@ test.beforeAll(async () => {
 test.afterAll(() => new Promise<void>((r) => ntfy.close(() => r())));
 
 const USER = { "x-user": "marcel" };
+const REPORT = { read_id: "r1", note_id: "n1", file: "a.png", reason: "Personal data", text: "This note shows my address.", email: "who@example.org" };
 
 test("without the login header the inbox is closed; the public side is open", async ({ browser, request }) => {
   const anonymous = await browser.newContext({ extraHTTPHeaders: {} });
   const page = await anonymous.newPage();
-  const res = await page.goto("/");
-  expect(res?.status()).toBe(401);
-  expect((await page.goto("/f/report"))?.status()).toBe(200);
+  expect((await page.goto("/"))?.status()).toBe(401);
+  expect((await page.goto("/forms/report"))?.status()).toBe(401);
+  expect((await page.goto("/f/report/thanks"))?.status()).toBe(200);
   await anonymous.close();
   expect((await request.get("/healthz")).status()).toBe(200);
   const mcp = await request.post("/mcp", { data: {} });
@@ -33,68 +34,73 @@ test("without the login header the inbox is closed; the public side is open", as
   expect((await request.get("/.well-known/oauth-authorization-server")).ok()).toBeTruthy();
 });
 
-test("a report goes from the hosted form through the inbox to a recorded decision", async ({ page, request }) => {
-  await page.goto("/f/report?read_id=r1&note_id=n1&file=a.png");
-  await expect(page.getByLabel("File")).toHaveValue("a.png");
-  await expect(page.getByLabel("File")).toHaveAttribute("readonly", "");
-  await expect(page.locator('input[name="read_id"]')).toBeHidden();
-
-  // Refused by the server (a browser's own check is skipped here): the reason is missing, the text comes back.
-  const refused = await request.post("/f/report", { form: { read_id: "r1", file: "a.png", text: "This note shows my address." }, maxRedirects: 0 });
+test("a report goes from a page's form through the inbox to a recorded decision", async ({ page, request }) => {
+  // The page that posted it is where a refused post goes back to, with what was typed and what is wrong.
+  const refused = await request.post("/f/report", { form: { read_id: "r1", file: "a.png", text: REPORT.text }, headers: { referer: "https://notes.test/report?read_id=r1" }, maxRedirects: 0 });
   expect(refused.status()).toBe(303);
-  await page.goto(refused.headers()["location"]!);
-  await expect(page.locator("ul[role=alert]")).toContainText("Reason is required");
-  await expect(page.getByLabel("What is wrong")).toHaveValue("This note shows my address.");
-  await expect(page.getByLabel("File")).toHaveValue("a.png");
-  await expect(page.locator('input[name="read_id"]')).toHaveValue("r1");
+  const back = new URL(refused.headers()["location"]!);
+  expect(back.origin + back.pathname).toBe("https://notes.test/report");
+  expect(back.searchParams.getAll("error")).toEqual(["Reason is required"]);
+  expect(back.searchParams.get("text")).toBe(REPORT.text);
 
-  await page.getByLabel("Reason").selectOption("Personal data");
-  await page.getByLabel("Your email").fill("who@example.org");
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(page).toHaveURL(/\/f\/report\/thanks$/);
+  const sent = await request.post("/f/report", { form: REPORT, maxRedirects: 0 });
+  expect(sent.status()).toBe(303);
+  expect(sent.headers()["location"]).toBe("/f/report/thanks");
+  await page.goto("/f/report/thanks");
   await expect(page.getByText("Thank you")).toBeVisible();
 
   await expect.poll(() => pings.length).toBe(1);
   expect(pings[0]!.url).toBe("/reports");
   expect(pings[0]!.title).toBe("New report: Report content");
-  expect(pings[0]!.body).toMatch(/^http:\/\/localhost:3300\/s\/[A-Za-z0-9_-]+$/);
+  expect(pings[0]!.body).toMatch(/^http:\/\/localhost:3300\/forms\/report\/submissions\/[A-Za-z0-9_-]+$/);
   expect(pings[0]!.body + pings[0]!.title).not.toContain("address");
 
-  // The inbox, with the login header the proxy would set.
+  // The inbox, with the login header the proxy would set: the sidebar, the overview, the table.
   await page.setExtraHTTPHeaders(USER);
   await page.goto("/");
-  await expect(page.getByText(/Report content: \d+ open/)).toBeVisible();
-  const row = page.getByRole("row").filter({ hasText: "This note shows my address." });
-  await expect(row.getByRole("cell", { name: "open" })).toBeVisible();
-  await row.getByRole("link").click();
-  await expect(page).toHaveURL(/\/s\/[A-Za-z0-9_-]+$/);
-  await expect(page.getByText("received as")).toBeVisible();
+  await expect(page).toHaveURL(/\/forms\/report$/);
+  const sidebar = page.getByRole("complementary").first();
+  await expect(sidebar.getByText("notes.test")).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: /Report content \d+/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Report content/ })).toBeVisible();
+  await expect(page.getByText("Received per day")).toBeVisible();
+  await expect(page.getByText("http://localhost:3300/f/report")).toBeVisible();
+  await page.getByRole("link", { name: "Submissions" }).click();
+  await expect(page).toHaveURL(/\/forms\/report\/submissions$/);
+  const row = page.getByRole("row").filter({ hasText: REPORT.text });
+  await expect(row.getByRole("button", { name: "State: open" })).toBeVisible();
+
+  // Closing from the table: the dropdown on the state, then the dialog; without a reason it is refused and the
+  // choice stays, with one it is recorded in the signed-in person's name.
+  await row.locator("[data-hydrated]").waitFor();
+  await row.getByRole("button", { name: "State: open" }).click();
+  await row.getByRole("menuitem", { name: "Move to acted on" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Move to acted on" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Confirm" }).click();
+  await expect(dialog.getByRole("alert")).toHaveText("acted_on needs a reason");
+  await expect(dialog.getByLabel("Next state")).toHaveValue("acted_on");
+  await dialog.getByLabel("Reason").fill("Address blurred, reporter informed.");
+  await dialog.getByRole("button", { name: "Confirm" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByText(REPORT.text)).toHaveCount(0); // closed: no longer under "Open"
+  await page.getByRole("link", { name: "Closed", exact: true }).click();
+  await expect(row.getByRole("button", { name: "State: acted on" })).toBeVisible();
+
+  // The detail: fields, history, a note after the fact.
+  await row.getByRole("link", { name: REPORT.text }).click();
+  await expect(page).toHaveURL(/\/forms\/report\/submissions\/[A-Za-z0-9_-]+$/);
   await expect(page.getByText("who@example.org")).toBeVisible();
   await expect(page.getByText("r1", { exact: true })).toBeVisible();
-
-  // Closing without a reason is refused; with one, it is recorded in the signed-in person's name.
-  await page.locator("form[data-hydrated]").waitFor();
-  await page.getByLabel("Move to").selectOption("acted_on");
-  await page.getByRole("button", { name: "Record" }).click();
-  await expect(page.locator("p[role=alert]")).toHaveText("acted_on needs a reason");
-  await expect(page.getByLabel("Move to")).toHaveValue("acted_on"); // the refusal keeps the choice
-  await page.getByLabel("Reason").fill("Address blurred, reporter informed.");
-  await page.getByRole("button", { name: "Record" }).click();
-  const decided = page.locator("ol li").filter({ hasText: "Address blurred, reporter informed." });
-  await expect(decided).toContainText("marcel moved open to acted_on");
-  await expect(page.locator("main p").first()).toContainText("closed 20");
-
-  // A note after the fact, no state change.
-  await page.getByLabel("Reason").fill("Reporter said thanks.");
-  await page.getByRole("button", { name: "Record" }).click();
-  await expect(page.locator("ol li").filter({ hasText: "Reporter said thanks." })).toContainText("marcel noted");
-  await expect(page.locator("main p").first()).toContainText("state acted_on");
-
-  await page.goto("/");
-  await expect(page.getByText(/Report content: \d+ open/)).toBeVisible();
-  await expect(page.getByText("This note shows my address.")).toHaveCount(0);
-  await page.goto("/?open=0");
-  await expect(page.getByText("This note shows my address.")).toBeVisible();
+  const history = page.getByRole("list").filter({ hasText: "received as" });
+  await expect(history.getByRole("listitem").filter({ hasText: "Address blurred" })).toContainText("marcel moved open to acted on");
+  await page.locator("[data-hydrated]").waitFor();
+  await page.getByRole("button", { name: "Add a note" }).click();
+  await expect(page.getByRole("dialog").getByRole("heading", { name: "Add a note" })).toBeVisible();
+  await page.getByRole("dialog").getByLabel("Reason").fill("Reporter said thanks.");
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm" }).click();
+  await expect(history.getByRole("listitem").filter({ hasText: "Reporter said thanks." })).toContainText("marcel noted");
+  await expect(page.getByRole("button", { name: "State: acted on" })).toBeVisible();
 
   const exported = (await (await request.get("/export.json?form=report", { headers: USER })).json()) as { state: string; events: unknown[] }[];
   expect(exported[0]!.state).toBe("acted_on");
@@ -110,6 +116,9 @@ test("a contact message from a script: only from the allowed origin, with CORS",
   const { id } = (await ok.json()) as { id: string };
   const pre = await request.fetch("/f/contact", { method: "OPTIONS", headers: { origin: "https://example.org" } });
   expect(pre.status()).toBe(204);
-  const detail = await request.get(`/s/${id}`, { headers: USER });
+  const short = await request.get(`/s/${id}`, { headers: USER, maxRedirects: 0 });
+  expect(short.status()).toBe(307);
+  expect(short.headers()["location"]).toBe(`/forms/contact/submissions/${id}`);
+  const detail = await request.get(`/forms/contact/submissions/${id}`, { headers: USER });
   expect(await detail.text()).toContain("Hello there");
 });

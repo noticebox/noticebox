@@ -6,6 +6,7 @@ import * as z from "zod";
 import { bearerOf, mcpResource, publicUrl } from "./auth";
 import type { Submission } from "./db";
 import { KINDS } from "./kinds";
+import { submissionPath } from "./paths";
 import type { Runtime } from "./runtime";
 import { summaryOf } from "./summary";
 import { verify } from "./tokens";
@@ -21,7 +22,7 @@ const Full = Summary.extend({
 
 function server(rt: Runtime, actor: string, base: string): McpServer {
   const s = new McpServer({ name: "noticebox", version: "0.1.0" });
-  const summary = (x: Submission) => ({ id: x.id, form: x.form, kind: x.kind, state: x.state, received_at: x.received_at, closed_at: x.closed_at, url: `${base}/s/${x.id}`, summary: summaryOf(rt.config.forms[x.form], x, 120) });
+  const summary = (x: Submission) => ({ id: x.id, form: x.form, kind: x.kind, state: x.state, received_at: x.received_at, closed_at: x.closed_at, url: base + submissionPath(x.form, x.id), summary: summaryOf(rt.config.forms[x.form], x, 120) });
   const full = (x: Submission) => ({ ...summary(x), fields: x.fields, events: rt.store.events(x.id).map(({ at, actor, from_state, to_state, reason }) => ({ at, actor, from_state, to_state, reason })) });
 
   s.registerTool(

@@ -1,40 +1,58 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f6f5f1;
-  --ink: #1d2026;
+  --paper: #f3f4f6;
+  --card: #ffffff;
+  --ink: #111827;
   --accent: #1f6f5a;
-  --rule: #d9d7cf;
-  --muted: #6b6e76;
-  --error: #b3261e;
+  --accent-soft: #e3f1ec;
+  --rule: #e5e7eb;
+  --muted: #6b7280;
+  --error: #b91c1c;
   --on-accent: #ffffff;
-  --soft: #ecebe5;
+  --soft: #f9fafb;
+  --amber: #b45309;
+  --amber-soft: #fef3c7;
+  --ok: #15803d;
+  --ok-soft: #dcfce7;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #16181c;
-    --ink: #e6e6e3;
+    --paper: #0f1115;
+    --card: #171a20;
+    --ink: #e5e7eb;
     --accent: #7fd1b5;
-    --rule: #2c2f36;
-    --muted: #9a9ea8;
-    --error: #ff8a80;
-    --on-accent: #16181c;
-    --soft: #1f2126;
+    --accent-soft: #1c2f29;
+    --rule: #2a2f3a;
+    --muted: #9ca3af;
+    --error: #f87171;
+    --on-accent: #0f1115;
+    --soft: #1d2128;
+    --amber: #fbbf24;
+    --amber-soft: #3a2e10;
+    --ok: #4ade80;
+    --ok-soft: #14301f;
     color-scheme: dark;
   }
 }
 
 @theme inline {
   --color-paper: var(--paper);
+  --color-card: var(--card);
   --color-ink: var(--ink);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-rule: var(--rule);
   --color-muted: var(--muted);
   --color-error: var(--error);
   --color-on-accent: var(--on-accent);
   --color-soft: var(--soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
 }
 
 body {
@@ -42,12 +60,43 @@ body {
   color: var(--ink);
 }
 
-.field {
-  @apply w-full rounded-sm border border-rule bg-transparent px-3 py-1.5 focus:border-accent focus:outline-none;
-}
+@layer components {
+  .card {
+    @apply rounded-lg border border-rule bg-card;
+  }
 
-.badge {
-  @apply inline-block rounded-sm border border-rule px-1.5 text-sm whitespace-nowrap;
+  .card-title {
+    @apply border-b border-rule px-5 py-3 text-xs font-bold tracking-wider text-muted uppercase;
+  }
+
+  .field {
+    @apply w-full rounded-md border border-rule bg-card px-3 py-2 text-sm focus:border-accent focus:outline-none;
+  }
+
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-rule bg-card px-3 py-1.5 text-sm font-semibold hover:bg-soft disabled:opacity-60;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:opacity-90 disabled:opacity-60;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap;
+  }
+
+  .badge-open {
+    @apply border-accent/30 bg-accent-soft text-accent;
+  }
+  .badge-review {
+    @apply border-amber/30 bg-amber-soft text-amber;
+  }
+  .badge-done {
+    @apply border-ok/30 bg-ok-soft text-ok;
+  }
+  .badge-off {
+    @apply border-rule bg-soft text-muted;
+  }
 }
 
 .gotcha {
@@ -56,4 +105,8 @@ body {
   width: 1px;
   height: 1px;
   overflow: hidden;
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
 }

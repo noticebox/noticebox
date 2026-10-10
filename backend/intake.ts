@@ -100,17 +100,34 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
   const { fields, errors } = validate(form, data);
   if (errors.length) {
     if (wantsJson) return Response.json({ errors }, { status: 400, headers: cors.headers });
-    // Back to the hosted form with what was typed and what is wrong; the page shows both.
-    const back = new URLSearchParams();
-    for (const name of Object.keys(form.fields)) if (data[name]) back.set(name, data[name].slice(0, 2000));
-    for (const e of errors) back.append("error", e);
-    return seeOther(`/f/${form.name}?${back}`, cors.headers);
+    // Back to the page the post came from, with what was typed and what is wrong, so it can show both; only to a
+    // page on an origin the form takes submissions from. Without one, the errors are the answer.
+    const back = backTo(form, h.get("referer"));
+    if (!back) return text(400, errors.join("\n"));
+    for (const name of Object.keys(form.fields)) if (data[name]) back.searchParams.set(name, data[name].slice(0, 2000));
+    back.searchParams.delete("error");
+    for (const e of errors) back.searchParams.append("error", e);
+    return seeOther(back.toString(), cors.headers);
   }
   const s = rt.store.receive(form, fields, origin, at);
   const res = accepted(s.id);
   // The notification goes out after the answer is on its way; a slow ntfy never slows the reporter.
   void notify(form, s, publicBase(h, rt), rt.fetch, rt.log);
   return res;
+}
+
+function backTo(form: Form, referer: string | null): URL | null {
+  if (!referer) return null;
+  let u: URL;
+  try {
+    u = new URL(referer);
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  if (form.origins.length > 0 && !form.origins.includes(u.origin)) return null;
+  u.hash = "";
+  return u;
 }
 
 function publicBase(h: Headers, rt: Runtime): string {

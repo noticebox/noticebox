@@ -3,11 +3,12 @@
 import type { Form } from "./config";
 import type { Submission } from "./db";
 import { KINDS } from "./kinds";
+import { submissionPath } from "./paths";
 
 export type Fetch = typeof fetch;
 
 export async function notify(form: Form, s: Submission, baseUrl: string, fetchFn: Fetch = fetch, log: (line: string) => void = console.error): Promise<void> {
-  const link = `${baseUrl}/s/${s.id}`;
+  const link = baseUrl + submissionPath(form.name, s.id);
   const jobs: { target: string; p: Promise<Response> }[] = [];
   if (form.notify.ntfy) {
     jobs.push({

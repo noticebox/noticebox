@@ -121,6 +121,13 @@ export class Store {
     return this.db.prepare("select form, state, count(*) as n from submissions group by form, state").all() as { form: string; state: string; n: number }[];
   }
 
+  /** How many a form received per day (UTC) since `since`, for the overview's chart; days without any are absent. */
+  daily(form: string, since: Date): { day: string; n: number }[] {
+    return this.db
+      .prepare("select substr(received_at, 1, 10) as day, count(*) as n from submissions where form = ? and received_at >= ? group by day order by day")
+      .all(form, since.toISOString()) as { day: string; n: number }[];
+  }
+
   /** Adds a note: an event that changes no state. */
   note(id: string, actor: string, reason: string, now: Date): Outcome {
     const s = this.get(id);
