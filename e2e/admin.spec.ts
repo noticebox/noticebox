@@ -76,8 +76,11 @@ test("a box and a form are made in the inbox, the form's settings are saved to t
 test("an empty form is removed, and an empty box too", async ({ page }) => {
   await page.goto("/forms/new");
   await page.getByLabel("Name").fill("scratch");
-  await page.getByLabel("Box").selectOption("__new");
-  await page.getByPlaceholder("Name of the new box (only if chosen above)").fill("scratch box");
+  await page.getByLabel("Box").fill("scratch box");
+  await page.getByRole("button", { name: "Create the form" }).click();
+  await expect(page.locator("p[role=alert]")).toContainText("add the one you typed"); // not yet added
+  await page.getByRole("button", { name: "Add “scratch box” as a new box" }).click();
+  await expect(page.getByText("will be made with the form")).toBeVisible();
   await page.getByRole("button", { name: "Create the form" }).click();
   await expect(page).toHaveURL(/\/forms\/scratch\/settings$/);
   await page.getByRole("button", { name: "Remove the form" }).click();

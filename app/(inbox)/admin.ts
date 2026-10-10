@@ -52,8 +52,8 @@ export async function createForm(prev: AdminState, data: FormData): Promise<Admi
   const name = str(data, "name");
   const kind = str(data, "kind");
   if (kind !== "report" && kind !== "message") return { error: "Choose a kind.", n };
-  const box = str(data, "box") === "__new" ? str(data, "new_box") : str(data, "box");
-  if (!box) return { error: "Name the box.", n };
+  const box = str(data, "box");
+  if (!box) return { error: "Choose a box, or add the one you typed as a new box.", n };
   const r = runtime().forms.createForm(name, box, kind, str(data, "title"));
   if (!r.ok) return { error: r.error, n };
   revalidatePath("/", "layout");

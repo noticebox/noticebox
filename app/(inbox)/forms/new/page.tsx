@@ -1,5 +1,6 @@
 import { KINDS, runtime } from "@/backend";
 import { ActionForm } from "../../ActionForm";
+import { BoxPicker } from "../../BoxPicker";
 import { createForm } from "../../admin";
 
 export const dynamic = "force-dynamic";
@@ -30,20 +31,7 @@ export default async function NewFormPage({ searchParams }: { searchParams: Prom
           </label>
           <input id="form-title" name="title" maxLength={120} className="field" placeholder="Contact" />
         </div>
-        <div>
-          <label htmlFor="form-box" className="mb-1 block font-bold">
-            Box
-          </label>
-          <select id="form-box" name="box" defaultValue={preset && boxes.includes(preset) ? preset : boxes[0] ?? "__new"} className="field">
-            {boxes.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-            <option value="__new">A new box…</option>
-          </select>
-          <input name="new_box" maxLength={40} className="field mt-2" placeholder="Name of the new box (only if chosen above)" />
-        </div>
+        <BoxPicker boxes={boxes} defaultValue={preset && boxes.includes(preset) ? preset : (boxes[0] ?? "")} />
         <fieldset>
           <legend className="mb-1 block font-bold">Kind</legend>
           {(Object.keys(KINDS) as (keyof typeof KINDS)[]).map((k, i) => (
