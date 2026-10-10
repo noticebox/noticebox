@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -15,9 +15,25 @@ const atkinson = localFont({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "noticebox",
-  robots: { index: false, follow: false },
+const description = "An inbox for the forms on static pages.";
+
+export function generateMetadata(): Metadata {
+  const base = process.env.NOTICEBOX_BASE_URL;
+  return {
+    metadataBase: base ? new URL(base) : undefined,
+    title: "noticebox",
+    description,
+    robots: { index: false, follow: false },
+    openGraph: { title: "noticebox", description, siteName: "noticebox", type: "website" },
+    twitter: { card: "summary_large_image" },
+  };
+}
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f6f7f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#15181b" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
