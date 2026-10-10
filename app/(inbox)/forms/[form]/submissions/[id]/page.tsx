@@ -6,7 +6,8 @@ import { StateMenu } from "../../../../StateMenu";
 
 export const dynamic = "force-dynamic";
 
-// One submission: its fields, its state as the dropdown that moves it on, and everything that happened to it.
+// One submission: its fields, its state as the dropdown that moves it on, and everything that happened to it. A
+// recorded reason is set large: it is what the box exists to keep.
 export default async function SubmissionPage({ params }: { params: Promise<{ form: string; id: string }> }) {
   const { form: name, id } = await params;
   const rt = runtime();
@@ -20,73 +21,55 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
   const badge = (state: string) => <span className={`badge ${stateTone(state, kind.closed)}`}>{stateLabel(state)}</span>;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-      <div className="grid gap-6">
-        <section className="card">
-          <div className="flex flex-wrap items-center gap-3 border-b border-rule px-5 py-3">
-            <Link href={submissionsPath(form.name)} className="text-sm text-muted hover:text-ink">
-              ← Submissions
-            </Link>
-            <span className="text-sm text-muted">{when(s.received_at)}</span>
-            <code className="text-xs text-muted">{s.id}</code>
-            <div className="ml-auto">
-              <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, kind.closed)} next={[...(kind.next[s.state] ?? [])]} reasonRequired={[...kind.reasonRequired]} size="lg" withNote />
-            </div>
-          </div>
+    <div>
+      <p className="mb-4 text-sm">
+        <Link href={submissionsPath(form.name)} className="text-muted hover:text-ink hover:underline">
+          All submissions
+        </Link>
+      </p>
+      <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, kind.closed)} next={[...(kind.next[s.state] ?? [])]} reasonRequired={[...kind.reasonRequired]} size="lg" withNote />
+        <span className="text-muted">
+          Received {when(s.received_at)}
+          {s.origin && ` from ${s.origin}`}
+        </span>
+      </div>
+
+      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <section>
+          <h2 className="section-title">{kind.label === "report" ? "The report" : "The message"}</h2>
           {shown.length === 0 ? (
-            <p className="p-5 text-sm text-muted">No fields kept.</p>
+            <p className="text-muted">The fields were removed after the retention period; the decision below stands.</p>
           ) : (
-            <dl className="grid gap-4 p-5">
+            <dl className="grid gap-5">
               {shown.map((n) => (
                 <div key={n}>
-                  <dt className="text-xs font-semibold text-muted">{form.fields[n]?.label ?? n}</dt>
-                  <dd className="mt-0.5 break-words whitespace-pre-wrap">{s.fields[n]}</dd>
+                  <dt className="text-[13px] text-muted">{form.fields[n]?.label ?? n}</dt>
+                  <dd className="mt-0.5 max-w-prose break-words whitespace-pre-wrap">{s.fields[n]}</dd>
                 </div>
               ))}
             </dl>
           )}
-          {s.purged_at && <p className="border-t border-rule px-5 py-2 text-xs text-muted">Personal fields removed {when(s.purged_at)}.</p>}
+          {s.purged_at && <p className="mt-4 text-[13px] text-muted">Personal fields removed {when(s.purged_at)}.</p>}
         </section>
-      </div>
 
-      <aside className="grid content-start gap-6">
-        <section className="card">
-          <h2 className="card-title">History</h2>
-          <ol className="grid gap-4 p-5 text-sm">
+        <aside>
+          <h2 className="section-title">History</h2>
+          <ol className="grid gap-5">
             {events.map((e) => (
-              <li key={e.id} className="grid gap-1">
-                <div className="text-xs text-muted">{when(e.at)}</div>
+              <li key={e.id}>
+                <div className="text-[13px] text-muted">{when(e.at)}</div>
                 <div>
-                  <span className="font-semibold">{e.actor}</span>{" "}
-                  {e.to_state === null ? "noted" : e.from_state === null ? <>received as {badge(e.to_state)}</> : <>moved {badge(e.from_state)} to {badge(e.to_state)}</>}
+                  <span className="font-bold">{e.actor}</span>{" "}
+                  {e.to_state === null ? "noted" : e.from_state === null ? <>received it as {badge(e.to_state)}</> : <>moved it from {badge(e.from_state)} to {badge(e.to_state)}</>}
                 </div>
-                {e.reason && <div className="rounded-md bg-soft px-3 py-2 whitespace-pre-wrap">{e.reason}</div>}
+                {e.reason && <blockquote className={`mt-1.5 border-l-2 pl-3 whitespace-pre-wrap ${e.to_state && kind.reasonRequired.includes(e.to_state) ? "border-accent text-[17px] leading-snug" : "border-rule text-muted"}`}>{e.reason}</blockquote>}
               </li>
             ))}
           </ol>
-        </section>
-        <section className="card">
-          <h2 className="card-title">About</h2>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 p-5 text-sm">
-            <dt className="text-muted">Form</dt>
-            <dd>{form.title}</dd>
-            <dt className="text-muted">Kind</dt>
-            <dd>{kind.label}</dd>
-            {s.origin && (
-              <>
-                <dt className="text-muted">From</dt>
-                <dd className="break-all">{s.origin}</dd>
-              </>
-            )}
-            {s.closed_at && (
-              <>
-                <dt className="text-muted">Closed</dt>
-                <dd>{when(s.closed_at)}</dd>
-              </>
-            )}
-          </dl>
-        </section>
-      </aside>
+          <p className="mt-6 text-[13px] text-muted">Submission {s.id}</p>
+        </aside>
+      </div>
     </div>
   );
 }

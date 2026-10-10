@@ -27,53 +27,56 @@ export default async function SubmissionsPage({ params, searchParams }: { params
     { href: `${base}?show=all`, label: "All", active: show === "all" },
     ...Object.keys(kind.next).map((s) => ({ href: `${base}?state=${s}`, label: stateLabel(s), active: state === s })),
   ];
+  const empty = show === "open" ? `Nothing open. New ${kind.label}s appear here as they arrive.` : "Nothing here.";
 
   return (
-    <section className="card">
-      <div className="flex flex-wrap gap-1 border-b border-rule px-3 py-2">
-        {filters.map((f) => (
-          <Link key={f.label} href={f.href} aria-current={f.active ? "page" : undefined} className={`rounded-md px-2.5 py-1 text-sm ${f.active ? "bg-soft font-semibold" : "text-muted hover:text-ink"}`}>
+    <div>
+      <nav aria-label="Filter" className="mb-3 flex flex-wrap gap-1 text-sm">
+        {filters.map((f, i) => (
+          <Link key={f.label} href={f.href} aria-current={f.active ? "page" : undefined} className={`rounded-md px-2.5 py-1 ${f.active ? "bg-soft font-bold" : "text-muted hover:text-ink"} ${i === 3 ? "ml-3" : ""}`}>
             {f.label}
           </Link>
         ))}
+      </nav>
+      <div className="sheet overflow-hidden">
+        {rows.length === 0 ? (
+          <p className="px-5 py-10 text-center text-muted">{empty}</p>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-rule text-left text-sm text-muted">
+                <th className="hidden py-2 pr-3 pl-5 font-bold sm:table-cell">Received</th>
+                <th className="py-2 pr-3 pl-4 font-bold sm:pl-0">State</th>
+                <th className="py-2 pr-5 font-bold">Summary</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((s) => {
+                const href = submissionPath(s.form, s.id);
+                return (
+                  <tr key={s.id} className="border-b border-rule align-top last:border-0 hover:bg-soft/60">
+                    <td className="hidden py-3 pr-3 pl-5 text-sm whitespace-nowrap text-muted tabular-nums sm:table-cell">
+                      <Link href={href} className="hover:text-ink">
+                        {when(s.received_at)}
+                      </Link>
+                    </td>
+                    <td className="py-2.5 pr-3 pl-4 sm:pl-0">
+                      <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, kind.closed)} next={[...(kind.next[s.state] ?? [])]} reasonRequired={[...kind.reasonRequired]} />
+                    </td>
+                    <td className="py-3 pr-5">
+                      <Link href={href} className="block break-words hover:underline">
+                        {summaryOf(form, s) || <span className="text-muted">No text</span>}
+                      </Link>
+                      <span className="text-[13px] text-muted sm:hidden">{when(s.received_at)}</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
-      {rows.length === 0 ? (
-        <p className="p-8 text-center text-sm text-muted">Nothing here.</p>
-      ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-rule text-left text-xs text-muted uppercase">
-              <th className="hidden py-2 pr-3 pl-5 font-semibold sm:table-cell">Received</th>
-              <th className="py-2 pr-3 pl-4 font-semibold sm:pl-0">State</th>
-              <th className="py-2 pr-5 font-semibold">Summary</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((s) => {
-              const href = submissionPath(s.form, s.id);
-              return (
-                <tr key={s.id} className="border-b border-rule align-top last:border-0 hover:bg-soft">
-                  <td className="hidden py-2.5 pr-3 pl-5 whitespace-nowrap sm:table-cell">
-                    <Link href={href} className="text-muted hover:text-ink">
-                      {when(s.received_at)}
-                    </Link>
-                  </td>
-                  <td className="py-2 pr-3 pl-4 sm:pl-0">
-                    <StateMenu id={s.id} state={s.state} tone={stateTone(s.state, kind.closed)} next={[...(kind.next[s.state] ?? [])]} reasonRequired={[...kind.reasonRequired]} />
-                  </td>
-                  <td className="py-2.5 pr-5">
-                    <Link href={href} className="block break-words hover:underline">
-                      {summaryOf(form, s) || <span className="text-muted">(no text)</span>}
-                    </Link>
-                    <span className="text-xs text-muted sm:hidden">{when(s.received_at)}</span>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-      {rows.length >= 200 && <p className="border-t border-rule px-5 py-2 text-xs text-muted">The newest 200; the rest is in the export.</p>}
-    </section>
+      {rows.length >= 200 && <p className="mt-2 text-[13px] text-muted">The newest 200 are shown; the download has all of them.</p>}
+    </div>
   );
 }

@@ -1,0 +1,3 @@
+Atkinson Hyperlegible, by Braille Institute of America, Inc.
+SIL Open Font License 1.1: https://github.com/googlefonts/atkinson-hyperlegible
+Files from Google Fonts, latin subset.

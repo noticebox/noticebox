@@ -28,83 +28,76 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
   const open = counts.filter((c) => !kind.closed.includes(c.state)).reduce((a, c) => a + c.n, 0);
   const endpoint = `${publicUrl(await headers(), rt)}/f/${form.name}`;
   const list = submissionsPath(form.name);
+  const plural = (n: number) => (n === 1 ? kind.label : `${kind.label}s`);
 
   return (
-    <div className="grid gap-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Link href={list} className="card block p-5 hover:border-accent">
-          <p className="text-3xl font-bold">{open}</p>
-          <p className="mt-1 text-sm text-muted">Open {kind.label}s</p>
-        </Link>
-        <div className="card p-5">
-          <p className="text-3xl font-bold">{recent}</p>
-          <p className="mt-1 text-sm text-muted">Received in the last {WINDOW} days</p>
-        </div>
-      </div>
+    <div className="grid max-w-3xl gap-10">
+      <p className="text-[22px] leading-snug">
+        <Link href={list} className="font-bold hover:underline">
+          {open === 0 ? `No ${kind.label} waits for a decision.` : `${open} ${plural(open)} ${open === 1 ? "waits" : "wait"} for a decision.`}
+        </Link>{" "}
+        <span className="text-muted">
+          {recent} {recent === 1 ? "arrived" : "arrived"} in the last {WINDOW} days.
+        </span>
+      </p>
 
-      <section className="card">
-        <h2 className="card-title">Received per day</h2>
-        <div className="p-5">
-          <Chart days={days} counts={daily} />
-        </div>
+      <section>
+        <h2 className="section-title">Received per day</h2>
+        <Chart days={days} counts={daily} />
       </section>
 
-      <section className="card">
-        <h2 className="card-title">By state</h2>
-        <ul className="flex flex-wrap gap-2 p-5">
+      <section>
+        <h2 className="section-title">By state</h2>
+        <ul className="flex flex-wrap gap-2">
           {Object.keys(kind.next).map((s) => (
             <li key={s}>
               <Link href={`${list}?state=${s}`} className={`badge ${stateTone(s, kind.closed)} hover:opacity-80`}>
-                {stateLabel(s)} <span className="opacity-70">{byState(s)}</span>
+                {stateLabel(s)} <span className="font-normal opacity-80">{byState(s)}</span>
               </Link>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="card">
-        <h2 className="card-title">Integration</h2>
-        <div className="grid gap-5 p-5">
-          <div>
-            <p className="mb-1 text-sm font-semibold">Form endpoint</p>
-            <div className="flex gap-2">
-              <code className="field truncate bg-soft font-mono text-xs leading-5">{endpoint}</code>
-              <CopyButton text={endpoint} />
-            </div>
-            <p className="mt-1 text-xs text-muted">A plain form post or JSON. {form.origins.length ? `Only from ${form.origins.join(", ")}.` : "From anywhere."}</p>
-          </div>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-1 text-sm">
-            <dt className="font-semibold">After a post</dt>
-            <dd className="text-muted">{form.redirect ?? `the thanks page at /f/${form.name}/thanks`}</dd>
-            <dt className="font-semibold">Retention</dt>
-            <dd className="text-muted">personal fields removed {form.retentionDays} days after closing</dd>
-            <dt className="font-semibold">Notifies</dt>
-            <dd className="text-muted">{[form.notify.ntfy && "ntfy", form.notify.webhook && "a webhook"].filter(Boolean).join(" and ") || "nobody"}</dd>
-          </dl>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-rule text-left text-xs text-muted uppercase">
-                <th className="py-1.5 pr-3 font-semibold">Field</th>
-                <th className="py-1.5 pr-3 font-semibold">Type</th>
-                <th className="py-1.5 pr-3 font-semibold">Required</th>
-                <th className="py-1.5 font-semibold">Personal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Object.entries(form.fields).map(([n, f]) => (
-                <tr key={n} className="border-b border-rule last:border-0">
-                  <td className="py-1.5 pr-3 font-mono text-xs">{n}</td>
-                  <td className="py-1.5 pr-3">
-                    {f.type}
-                    {f.type === "select" && <span className="text-muted"> ({f.options.join(", ")})</span>}
-                  </td>
-                  <td className="py-1.5 pr-3">{f.required ? "yes" : ""}</td>
-                  <td className="py-1.5">{f.personal ? "yes" : ""}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <section>
+        <h2 className="section-title">Posting to this form</h2>
+        <div className="flex gap-2">
+          <code className="field truncate bg-soft text-sm leading-6">{endpoint}</code>
+          <CopyButton text={endpoint} />
         </div>
+        <dl className="mt-4 grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2">
+          <dt className="text-muted">Takes posts from</dt>
+          <dd>{form.origins.length ? form.origins.join(", ") : "anywhere"}</dd>
+          <dt className="text-muted">Afterwards the browser goes to</dt>
+          <dd className="break-all">{form.redirect ?? `the thank-you page at /f/${form.name}/thanks`}</dd>
+          <dt className="text-muted">Personal fields are removed</dt>
+          <dd>{form.retentionDays} days after a submission is closed</dd>
+          <dt className="text-muted">New submissions are announced</dt>
+          <dd>{[form.notify.ntfy && "on ntfy", form.notify.webhook && "to a webhook"].filter(Boolean).join(" and ") || "nowhere"}</dd>
+        </dl>
+        <table className="mt-5 w-full text-sm">
+          <thead>
+            <tr className="border-b border-rule text-left text-muted">
+              <th className="py-1.5 pr-3 font-bold">Field</th>
+              <th className="py-1.5 pr-3 font-bold">Type</th>
+              <th className="py-1.5 pr-3 font-bold">Required</th>
+              <th className="py-1.5 font-bold">Personal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Object.entries(form.fields).map(([n, f]) => (
+              <tr key={n} className="border-b border-rule last:border-0">
+                <td className="py-1.5 pr-3">{n}</td>
+                <td className="py-1.5 pr-3">
+                  {f.type}
+                  {f.type === "select" && <span className="text-muted">: {f.options.join(", ")}</span>}
+                </td>
+                <td className="py-1.5 pr-3">{f.required ? "yes" : ""}</td>
+                <td className="py-1.5">{f.personal ? "yes" : ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </section>
     </div>
   );

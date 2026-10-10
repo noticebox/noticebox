@@ -63,6 +63,7 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   await expect(sidebar.getByText("notes.test")).toBeVisible();
   await expect(sidebar.getByRole("link", { name: /Report content \d+/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Report content/ })).toBeVisible();
+  await expect(page.getByText(/1 report waits for a decision/)).toBeVisible();
   await expect(page.getByText("Received per day")).toBeVisible();
   await expect(page.getByText("http://localhost:3300/f/report")).toBeVisible();
   await page.getByRole("link", { name: "Submissions" }).click();
@@ -74,14 +75,16 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   // choice stays, with one it is recorded in the signed-in person's name.
   await row.locator("[data-hydrated]").waitFor();
   await row.getByRole("button", { name: "State: open" }).click();
-  await row.getByRole("menuitem", { name: "Move to acted on" }).click();
+  await row.getByRole("menuitem", { name: "Mark as acted on" }).click();
   const dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("heading", { name: "Move to acted on" })).toBeVisible();
-  await dialog.getByRole("button", { name: "Confirm" }).click();
+  await expect(dialog.getByRole("heading", { name: "Mark as acted on" })).toBeVisible();
+  // The browser's own check is skipped: the server has to refuse a decision without a reason too.
+  await dialog.getByLabel("Reason").evaluate((el) => el.removeAttribute("required"));
+  await dialog.getByRole("button", { name: "Mark as acted on" }).click();
   await expect(dialog.getByRole("alert")).toHaveText("acted_on needs a reason");
-  await expect(dialog.getByLabel("Next state")).toHaveValue("acted_on");
+  await expect(dialog.getByLabel("Then")).toHaveValue("acted_on");
   await dialog.getByLabel("Reason").fill("Address blurred, reporter informed.");
-  await dialog.getByRole("button", { name: "Confirm" }).click();
+  await dialog.getByRole("button", { name: "Mark as acted on" }).click();
   await expect(dialog).toBeHidden();
   await expect(page.getByText(REPORT.text)).toHaveCount(0); // closed: no longer under "Open"
   await page.getByRole("link", { name: "Closed", exact: true }).click();
@@ -92,13 +95,13 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   await expect(page).toHaveURL(/\/forms\/report\/submissions\/[A-Za-z0-9_-]+$/);
   await expect(page.getByText("who@example.org")).toBeVisible();
   await expect(page.getByText("r1", { exact: true })).toBeVisible();
-  const history = page.getByRole("list").filter({ hasText: "received as" });
-  await expect(history.getByRole("listitem").filter({ hasText: "Address blurred" })).toContainText("marcel moved open to acted on");
+  const history = page.getByRole("list").filter({ hasText: "received it as" });
+  await expect(history.getByRole("listitem").filter({ hasText: "Address blurred" })).toContainText("marcel moved it from open to acted on");
   await page.locator("[data-hydrated]").waitFor();
   await page.getByRole("button", { name: "Add a note" }).click();
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Add a note" })).toBeVisible();
-  await page.getByRole("dialog").getByLabel("Reason").fill("Reporter said thanks.");
-  await page.getByRole("dialog").getByRole("button", { name: "Confirm" }).click();
+  await page.getByRole("dialog").getByLabel("Note").fill("Reporter said thanks.");
+  await page.getByRole("dialog").getByRole("button", { name: "Add a note" }).click();
   await expect(history.getByRole("listitem").filter({ hasText: "Reporter said thanks." })).toContainText("marcel noted");
   await expect(page.getByRole("button", { name: "State: acted on" })).toBeVisible();
 

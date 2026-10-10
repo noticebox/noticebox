@@ -11,9 +11,9 @@ export function Tabs({ base }: { base: string }) {
     { href: `${base}/submissions`, label: "Submissions", active: pathname.startsWith(`${base}/submissions`) },
   ];
   return (
-    <nav className="-mb-px flex gap-6 text-sm">
+    <nav aria-label="Sections" className="-mb-px flex gap-7">
       {tabs.map((t) => (
-        <Link key={t.href} href={t.href} aria-current={t.active ? "page" : undefined} className={`border-b-2 pb-2 ${t.active ? "border-accent font-semibold" : "border-transparent text-muted hover:text-ink"}`}>
+        <Link key={t.href} href={t.href} aria-current={t.active ? "page" : undefined} className={`border-b-2 pb-2.5 ${t.active ? "border-accent font-bold" : "border-transparent text-muted hover:text-ink"}`}>
           {t.label}
         </Link>
       ))}

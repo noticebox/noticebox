@@ -1,44 +1,45 @@
 @import "tailwindcss";
 
 :root {
-  --paper: #f3f4f6;
+  --paper: #f6f7f5;
   --card: #ffffff;
-  --ink: #111827;
-  --accent: #1f6f5a;
-  --accent-soft: #e3f1ec;
-  --rule: #e5e7eb;
-  --muted: #6b7280;
-  --error: #b91c1c;
+  --ink: #1b2229;
+  --accent: #176b5c;
+  --accent-soft: #e2efeb;
+  --rule: #dfe3e2;
+  --muted: #5f6b74;
+  --error: #a12d1f;
   --on-accent: #ffffff;
-  --soft: #f9fafb;
-  --amber: #b45309;
-  --amber-soft: #fef3c7;
-  --ok: #15803d;
-  --ok-soft: #dcfce7;
+  --soft: #eef0ee;
+  --amber: #8a5a0b;
+  --amber-soft: #f8ecd2;
+  --ok: #176b5c;
+  --ok-soft: #e2efeb;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #0f1115;
-    --card: #171a20;
-    --ink: #e5e7eb;
-    --accent: #7fd1b5;
-    --accent-soft: #1c2f29;
-    --rule: #2a2f3a;
-    --muted: #9ca3af;
-    --error: #f87171;
-    --on-accent: #0f1115;
-    --soft: #1d2128;
-    --amber: #fbbf24;
-    --amber-soft: #3a2e10;
-    --ok: #4ade80;
-    --ok-soft: #14301f;
+    --paper: #15181b;
+    --card: #1c2024;
+    --ink: #e4e7e6;
+    --accent: #7fcdb6;
+    --accent-soft: #1f3530;
+    --rule: #2e3438;
+    --muted: #9aa4aa;
+    --error: #f08b7c;
+    --on-accent: #15181b;
+    --soft: #23282c;
+    --amber: #e8b85a;
+    --amber-soft: #3a2f16;
+    --ok: #7fcdb6;
+    --ok-soft: #1f3530;
     color-scheme: dark;
   }
 }
 
 @theme inline {
+  --font-sans: var(--font-atkinson), system-ui, sans-serif;
   --color-paper: var(--paper);
   --color-card: var(--card);
   --color-ink: var(--ink);
@@ -58,44 +59,61 @@
 body {
   background: var(--paper);
   color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 @layer components {
-  .card {
-    @apply rounded-lg border border-rule bg-card;
-  }
-
-  .card-title {
-    @apply border-b border-rule px-5 py-3 text-xs font-bold tracking-wider text-muted uppercase;
+  /* A sheet: the table, the dialog, the menu. Everything else sits on the paper. */
+  .sheet {
+    @apply rounded-md border border-rule bg-card;
   }
 
   .field {
-    @apply w-full rounded-md border border-rule bg-card px-3 py-2 text-sm focus:border-accent focus:outline-none;
+    @apply w-full rounded-md border border-rule bg-card px-3 py-2 text-[15px] focus:border-accent focus:outline-none;
   }
 
   .btn {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-rule bg-card px-3 py-1.5 text-sm font-semibold hover:bg-soft disabled:opacity-60;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-rule bg-card px-3 py-1.5 text-sm font-bold hover:bg-soft disabled:opacity-60;
   }
 
   .btn-primary {
-    @apply inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-on-accent hover:opacity-90 disabled:opacity-60;
+    @apply inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-bold text-on-accent hover:opacity-90 disabled:opacity-60;
   }
 
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap;
+    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[13px] font-bold whitespace-nowrap;
   }
 
   .badge-open {
-    @apply border-accent/30 bg-accent-soft text-accent;
+    @apply border-ink bg-card text-ink;
   }
   .badge-review {
-    @apply border-amber/30 bg-amber-soft text-amber;
+    @apply border-amber/40 bg-amber-soft text-amber;
   }
   .badge-done {
-    @apply border-ok/30 bg-ok-soft text-ok;
+    @apply border-ok/40 bg-ok-soft text-ok;
   }
   .badge-off {
     @apply border-rule bg-soft text-muted;
+  }
+
+  /* A section of a page: a heading on a rule, no box. */
+  .section-title {
+    @apply mb-3 border-b border-rule pb-2 text-base font-bold;
   }
 }
 
@@ -108,5 +126,5 @@ body {
 }
 
 dialog::backdrop {
-  background: rgb(0 0 0 / 0.4);
+  background: rgb(27 34 41 / 0.45);
 }
