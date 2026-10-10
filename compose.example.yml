@@ -2,7 +2,7 @@
 # (see README, "Deploying").
 services:
   noticebox:
-    image: ghcr.io/notefeed/noticebox:latest
+    image: ghcr.io/noticebox/noticebox:latest
     container_name: noticebox
     restart: unless-stopped
     environment:

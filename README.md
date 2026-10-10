@@ -20,7 +20,7 @@ One container, no database server, no accounts of its own: the login is the reve
 # compose.yml, see compose.example.yml
 services:
   noticebox:
-    image: ghcr.io/notefeed/noticebox:latest
+    image: ghcr.io/noticebox/noticebox:latest
     environment:
       NOTICEBOX_BASE_URL: https://inbox.example.org
       NOTICEBOX_SECRET: ${NOTICEBOX_SECRET}   # 32+ random characters; signs the MCP tokens
