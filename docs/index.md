@@ -8,7 +8,7 @@ It exists for the two forms a small public service needs and no form tool did we
 
 ## Where to go next
 
-- **Get started:** the [Quick start](get-started/quick-start.md) runs noticebox with Docker Compose and takes the first submission; [Concepts](get-started/concepts.md) explains boxes, forms, kinds, states and the audit trail.
+- **Get started:** the [Quick start](get-started/quick-start.md) runs noticebox with Docker Compose and takes the first submission; [Concepts](get-started/concepts.md) explains boxes, forms, kinds, states and the audit trail; [Compared with other tools](get-started/compared.md) says how noticebox differs from Formspree, form builders and the like, and when to pick something else.
 - **Using noticebox:** [the inbox](using/inbox.md), and [states, reasons and kinds](using/kinds.md).
 - **Integrations:** [posting from a page](integrations/forms.md), plain or with JavaScript, and the [MCP endpoint](integrations/mcp.md) that lets an assistant review in your name.
 - **Self-hosting:** [configuration](self-hosting/configuration.md), [the login in front](self-hosting/login.md), [notifications](self-hosting/notifications.md), [retention, export and backups](self-hosting/retention.md) and [upgrading](self-hosting/upgrading.md).
