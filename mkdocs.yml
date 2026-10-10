@@ -1,0 +1,74 @@
+site_name: noticebox
+site_description: An inbox for the forms on static pages, with states, reasons and an audit trail.
+site_url: https://noticebox.github.io/noticebox/
+repo_url: https://github.com/noticebox/noticebox
+repo_name: noticebox/noticebox
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  font:
+    text: Atkinson Hyperlegible
+    code: Atkinson Hyperlegible Mono
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  logo: assets/icon.svg
+  favicon: assets/icon.svg
+  features:
+    - content.code.copy
+    - navigation.footer
+    - search.highlight
+    - navigation.sections
+    - navigation.indexes
+
+plugins:
+  - search
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - pymdownx.keys
+
+validation:
+  anchors: warn
+
+nav:
+  - Home: index.md
+  - Get started:
+      - Quick start: get-started/quick-start.md
+      - Concepts: get-started/concepts.md
+  - Using noticebox:
+      - The inbox: using/inbox.md
+      - Reports and messages: using/kinds.md
+  - Integrations:
+      - Posting from a page: integrations/forms.md
+      - MCP: integrations/mcp.md
+  - Self-hosting:
+      - Configuration: self-hosting/configuration.md
+      - The login in front: self-hosting/login.md
+      - Notifications: self-hosting/notifications.md
+      - Retention, export and backups: self-hosting/retention.md
+      - Upgrading: self-hosting/upgrading.md

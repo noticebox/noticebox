@@ -8,3 +8,5 @@ data/
 test-results/
 playwright-report/
 *.tsbuildinfo
+.venv-docs/
+site/

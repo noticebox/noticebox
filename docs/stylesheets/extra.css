@@ -1,0 +1,39 @@
+/* noticebox's green, as the app sets it, so the docs and the app look related. Made by palette.py (docs plugin). */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #176b5c;
+  --md-primary-fg-color--light: #418679;
+  --md-primary-fg-color--dark: #125348;
+  --md-accent-fg-color: #176b5c;
+}
+
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #7fcdb6;
+  --md-primary-fg-color--light: #96d6c3;
+  --md-primary-fg-color--dark: #63a08e;
+  --md-primary-bg-color: #15181b;
+  --md-accent-fg-color: #7fcdb6;
+}
+
+/* Screenshots of the app: framed like a window instead of a flat box. No display/margin on the img itself: that would
+   override Material's #only-light/#only-dark hiding. */
+.md-typeset p:has(> img[src*="assets/screenshot-"]) {
+  text-align: center;
+  margin: 1.5em 0 2em;
+}
+
+.md-typeset img[src*="assets/screenshot-"] {
+  max-width: min(100%, 36rem);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.6rem;
+  box-shadow: 0 0.6rem 2rem rgb(0 0 0 / 12%);
+}
+
+[data-md-color-scheme="slate"] .md-typeset img[src*="assets/screenshot-"] {
+  box-shadow: 0 0.6rem 2rem rgb(0 0 0 / 45%);
+}
+
+/* Tables whose first column is a name in code (settings, tools, fields): keep it on one line. */
+.md-typeset td:first-child > code {
+  white-space: nowrap;
+  word-break: normal;
+}

@@ -1,5 +1,7 @@
 # noticebox
 
+Documentation: https://noticebox.github.io/noticebox/
+
 An inbox for the forms on static pages. A page points its form at `https://inbox.example.org/f/<form>`; what comes in lands in one SQLite file and in an inbox where each submission is walked through its states, with every step, who took it and why, kept as an audit trail. Reports about content and contact messages are the two kinds it knows. The page with the form stays yours: noticebox hosts no forms, only the endpoint, the inbox and a thank-you page for forms that name no `redirect`.
 
 One container, no database server, no accounts of its own: the login is the reverse proxy's (Authentik or any forward-auth), which tells noticebox who is signed in. An MCP endpoint, guarded by OAuth 2.1, lets an assistant read, annotate and decide submissions in that person's name.
