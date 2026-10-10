@@ -60,6 +60,7 @@ nav:
   - Get started:
       - Quick start: get-started/quick-start.md
       - Concepts: get-started/concepts.md
+      - Compared with other tools: get-started/compared.md
   - Using noticebox:
       - The inbox: using/inbox.md
       - States, reasons and kinds: using/kinds.md
