@@ -18,7 +18,7 @@ A form's first tab: how many submissions wait, how many arrived in the last 30 d
 
 ## Submissions
 
-The table of a form. *Open* is the default; *Closed*, *All* and each state are a click away. A row shows when a submission arrived, its state and the first text it contains. The date and the text open the submission; the arrow at the end opens what it is about, when the form has a [link](../get-started/concepts.md).
+The table of a form: every submission in one table, newest first. A row shows when a submission arrived, its state and the first text it contains; the date and the text open the submission, and the arrow at the end opens what it is about, when the form has a [link](../get-started/concepts.md). Above the table, the filter box narrows it to rows containing the words typed, and the state menu to *Open*, *Closed* or one state. A click on a column heading sorts by it, and again reverses it. *Columns* shows or hides columns, including one for each field of the form.
 
 **The state is a dropdown.** Click the badge: it lists the form's other states, named by what moving there does: *Start review*, *Mark as acted on*, *Mark as rejected*, *Reopen*. Choosing one opens the dialog.
 

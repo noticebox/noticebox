@@ -79,6 +79,10 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Mark as acted on" })).toBeVisible();
   // The browser's own check is skipped: the server has to refuse a decision without a reason too.
+  // The button follows the choice in "Then"; keeping the state makes it a plain note.
+  await dialog.getByLabel("Then").selectOption("");
+  await expect(dialog.getByRole("button", { name: "Add a note" })).toBeVisible();
+  await dialog.getByLabel("Then").selectOption("acted_on");
   await dialog.getByLabel("Reason").evaluate((el) => el.removeAttribute("required"));
   await dialog.getByRole("button", { name: "Mark as acted on" }).click();
   await expect(dialog.getByRole("alert")).toHaveText("acted_on needs a reason");
@@ -86,9 +90,13 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   await dialog.getByLabel("Reason").fill("Address blurred, reporter informed.");
   await dialog.getByRole("button", { name: "Mark as acted on" }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByText(REPORT.text)).toHaveCount(0); // closed: no longer under "Open"
-  await page.getByRole("link", { name: "Closed", exact: true }).click();
-  await expect(row.getByRole("button", { name: "State: acted on" })).toBeVisible();
+  await expect(row.getByRole("button", { name: "State: acted on" })).toBeVisible(); // the table keeps every state
+  await page.getByLabel("Filter by state").selectOption("open"); // "Open" hides what is closed
+  await expect(page.getByText(REPORT.text)).toHaveCount(0);
+  await page.getByLabel("Filter by state").selectOption("all");
+  await page.getByLabel("Filter submissions").fill("nothing like this");
+  await expect(page.getByText("Nothing matches.")).toBeVisible();
+  await page.getByLabel("Filter submissions").fill("");
 
   // The detail: fields, history, a note after the fact.
   await row.getByRole("link", { name: REPORT.text }).click();
