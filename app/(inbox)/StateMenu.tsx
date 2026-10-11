@@ -24,6 +24,7 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
   const reasonRequired = states.filter((s) => s.reason).map((s) => s.name);
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<string | null>(null); // the dialog is open while this is a string
+  const [pick, setPick] = useState(""); // what the dialog's "Then" says now; the title, the button and the reason's need follow it
   const dialog = useRef<HTMLDialogElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const [result, action, pending] = useActionState<DecideState, FormData>(async (prev, data) => {
@@ -50,9 +51,10 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
 
   const choose = (to: string) => {
     setOpen(false);
+    setPick(to);
     setTarget(to);
   };
-  const chosen = result.ok ? (target ?? "") : (result.to ?? target ?? "");
+  const chosen = pick;
   const title = chosen ? verbFor(chosen, initial) : "Add a note";
   const needs = reasonRequired.includes(chosen);
   const big = size === "lg";
@@ -102,7 +104,7 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
             <label htmlFor={`to-${id}`} className="mt-4 mb-1 block font-bold">
               Then
             </label>
-            <select key={`to-${attempt}`} id={`to-${id}`} name="to" className="field" defaultValue={chosen}>
+            <select key={`to-${attempt}`} id={`to-${id}`} name="to" className="field" defaultValue={pick} onChange={(e) => setPick(e.target.value)}>
               <option value="">keep it {stateLabel(state)}</option>
               {next.map((t) => (
                 <option key={t} value={t}>
