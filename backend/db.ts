@@ -82,6 +82,12 @@ export class Store {
     this.db.exec(SCHEMA);
   }
 
+  /** Throws unless the database can be read and written (a write lock is taken and released, nothing is stored). */
+  ping(): void {
+    this.db.prepare("select 1 from submissions limit 1").get();
+    this.db.exec("begin immediate; rollback");
+  }
+
   /** Stores a new submission in its kind's first state, with the `received` event. */
   receive(form: Form, fields: Record<string, string>, origin: string | null, now: Date): Submission {
     const id = newId();
