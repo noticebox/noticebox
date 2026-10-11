@@ -45,11 +45,11 @@ services:
 
 The `${VAR}` references in `noticebox.json` are filled from the container's environment, so topics and other secrets stay out of the file.
 
-**The login in front.** Everything except `/f/` (the endpoint and the thank-you page), `/healthz`, `/mcp`, `/oauth/token`, `/oauth/register` and `/.well-known/` must go through the proxy's login, and the proxy must pass the user's name in a header. With Caddy and an Authentik proxy outpost:
+**The login in front.** Everything except `/f/` (the endpoint and the thank-you page), `/health`, `/mcp`, `/oauth/token`, `/oauth/register` and `/.well-known/` must go through the proxy's login, and the proxy must pass the user's name in a header. With Caddy and an Authentik proxy outpost:
 
 ```caddyfile
 inbox.example.org {
-    @public path /f/* /healthz /mcp /oauth/token /oauth/register /.well-known/*
+    @public path /f/* /health /mcp /oauth/token /oauth/register /.well-known/*
     handle @public {
         reverse_proxy noticebox:3000
     }

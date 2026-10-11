@@ -18,7 +18,7 @@ export default defineConfig({
   projects: [{ name: "app" }],
   webServer: {
     command: "next start -p 3300",
-    url: "http://localhost:3300/healthz",
+    url: "http://localhost:3300/health",
     reuseExistingServer: !process.env.CI,
     env: {
       NOTICEBOX_CONFIG: ".e2e/noticebox.json",

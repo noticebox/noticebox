@@ -7,7 +7,7 @@ noticebox has no accounts. A reverse proxy with forward authentication puts the 
 The endpoint, the thank-you page, the health check, the MCP endpoint and its OAuth paths check for themselves and must bypass the login:
 
 ```
-/f/*   /healthz   /mcp   /oauth/token   /oauth/register   /.well-known/*
+/f/*   /health   /mcp   /oauth/token   /oauth/register   /.well-known/*
 ```
 
 Everything else, the inbox and the OAuth authorize page included, must go through the login, and the proxy must pass the person's name in the header named by `NOTICEBOX_USER_HEADER` (`X-Authentik-Username` by default).
@@ -22,7 +22,7 @@ With Caddy and an Authentik proxy outpost (a forward-auth provider in *forward s
 
 ```caddyfile
 inbox.example.org {
-    @public path /f/* /healthz /mcp /oauth/token /oauth/register /.well-known/*
+    @public path /f/* /health /mcp /oauth/token /oauth/register /.well-known/*
     handle @public {
         request_header -X-Authentik-Username
         reverse_proxy noticebox:3000

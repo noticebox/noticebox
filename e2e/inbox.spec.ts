@@ -27,7 +27,7 @@ test("without the login header the inbox is closed; the public side is open", as
   expect((await page.goto("/forms/report"))?.status()).toBe(401);
   expect((await page.goto("/f/report/thanks"))?.status()).toBe(200);
   await anonymous.close();
-  expect((await request.get("/healthz")).status()).toBe(200);
+  expect((await request.get("/health")).status()).toBe(200);
   const mcp = await request.post("/mcp", { data: {} });
   expect(mcp.status()).toBe(401);
   expect(mcp.headers()["www-authenticate"]).toContain("resource_metadata=");
