@@ -1,6 +1,6 @@
 {
   "name": "noticebox",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "An inbox for the forms on static pages: one endpoint per form, SQLite, and a small app that walks each notice through its states with an audit trail. MCP for assisted reviews.",
   "license": "AGPL-3.0-only",
   "private": true,

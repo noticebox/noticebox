@@ -4,7 +4,7 @@ import { NextResponse, type NextRequest } from "next/server";
 // client calls on its own (each checks its token itself). Everything else is the inbox, which the login proxy in
 // front of this app guards; it tells us the user in a header, and without that header the inbox answers 401, so
 // a deployment without the proxy fails closed.
-const FORM = /^\/f\/([a-z][a-z0-9_-]{0,39})$/;
+const FORM = /^\/f\/([a-z0-9][a-z0-9_-]{0,39})$/;
 const PUBLIC = /^\/(f\/|api\/f\/|health$|mcp$|oauth\/(token|register)$|\.well-known\/|(icon\.svg|apple-icon\.png|opengraph-image\.png)$)/;
 
 export function proxy(req: NextRequest) {
