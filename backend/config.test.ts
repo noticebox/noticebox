@@ -30,6 +30,7 @@ test("mistakes are named with their place", () => {
   const bad = (raw: unknown, re: RegExp) => expect(() => parseConfig(raw)).toThrow(re);
   bad({ forms: [] }, /forms: must be an object/);
   bad({ forms: { "Bad Name": { kind: "report", fields: { a: {} } } } }, /form name "Bad Name"/);
+  bad({ forms: { "-x": { kind: "report", fields: { a: {} } } } }, /form name "-x"/);
   bad({ forms: { x: { kind: "poll", fields: { a: {} } } } }, /kind must be "report" or "message"/);
   bad({ forms: { x: { kind: "report", states: [] } } }, /states: a list of at least one state/);
   bad({ forms: { x: { kind: "report", states: ["open", "open"] } } }, /listed twice/);
@@ -65,4 +66,10 @@ test("a form's link is a URL template over its own fields", () => {
   expect(() => parseConfig({ forms: { r: { ...base, link: "https://notes.test/r/{feed}" } } })).toThrow("{feed} is not a field");
   expect(() => parseConfig({ forms: { r: { ...base, link: "notes/{read_id}" } } })).toThrow("not a URL");
   expect(() => parseConfig({ forms: { r: { ...base, link: "ftp://notes.test/{read_id}" } } })).toThrow("http(s)");
+});
+
+test("a form name may start with a digit, like a domain", () => {
+  expect(Object.keys(parseConfig({ forms: { "3dbruckner-order": { kind: "message", fields: { a: {} } } } }).forms)).toEqual([
+    "3dbruckner-order",
+  ]);
 });

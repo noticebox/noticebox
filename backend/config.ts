@@ -37,7 +37,7 @@ export type Target = { type: "ntfy" | "webhook"; url: string };
 
 export type Config = { boxes: string[]; forms: Record<string, Form> }; // `boxes` lists every box, also those without a form yet
 
-export const FORM_NAME = /^[a-z][a-z0-9_-]{0,39}$/;
+export const FORM_NAME = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 const BOX_NAME = /^[a-z0-9][a-z0-9 ._-]{0,39}$/i;
 export const FIELD_NAME = /^[a-z][a-z0-9_]{0,31}$/;
 export const RESERVED_FIELDS = new Set(["_gotcha"]);

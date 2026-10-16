@@ -53,7 +53,7 @@ noticebox is configured by environment variables and one JSON file with the form
 
 ### A form
 
-The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 characters; it is the path of the endpoint, `/f/<name>`.
+The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 characters, starting with a letter or digit; it is the path of the endpoint, `/f/<name>`.
 
 | Key | Default | Meaning |
 |---|---|---|
