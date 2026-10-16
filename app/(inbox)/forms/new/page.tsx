@@ -22,7 +22,7 @@ export default async function NewFormPage({ searchParams }: { searchParams: Prom
           <label htmlFor="form-name" className="mb-1 block font-bold">
             Name
           </label>
-          <input id="form-name" name="name" required maxLength={40} pattern="[a-z][a-z0-9_-]*" autoFocus className="field" placeholder="contact" />
+          <input id="form-name" name="name" required maxLength={40} pattern="[a-z0-9][a-z0-9_-]*" autoFocus className="field" placeholder="contact" />
           <p className="mt-1 text-[13px] text-muted">Lowercase letters, digits, dashes and underscores. It cannot be changed later.</p>
         </div>
         <div>
