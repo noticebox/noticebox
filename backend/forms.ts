@@ -92,6 +92,15 @@ export class Forms {
     });
   }
 
+  /** Creates the form or replaces it as a whole (what an assistant sends over MCP); validated like any edit. */
+  putForm(name: string, form: RawForm): Outcome {
+    return this.edit((raw) => {
+      if (!FORM_NAME.test(name)) return "a form name is lowercase letters, digits, - and _, up to 40 characters";
+      raw.forms![name] = form;
+      raw.boxes = (raw.boxes ?? []).filter((b) => b !== form.box);
+    });
+  }
+
   /** Adds descriptions for fields the file does not describe yet (what a page said about them); existing ones stay. */
   describe(name: string, fields: Record<string, RawForm>): Outcome {
     return this.edit((raw) => {

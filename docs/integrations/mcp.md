@@ -1,6 +1,6 @@
 # MCP
 
-noticebox has an MCP endpoint at `/mcp`, so an assistant can read, annotate and decide submissions, in the name of the person who allowed it. Everything it does is in the history as *name via client*.
+noticebox has an MCP endpoint at `/mcp`, so an assistant can read, annotate and decide submissions and set up forms, in the name of the person who allowed it. Everything it does is in the history as *name via client*.
 
 ## Connecting
 
@@ -23,6 +23,10 @@ Each *Allow* is a connection, listed under *Your settings* with the client's nam
 | `get_submission` | One submission with its fields and history |
 | `add_note` | A note on a submission |
 | `decide` | A move to another state, with the reason; refused like in the UI when the reason is missing or the move is not allowed |
+| `get_form` | One form as the forms file has it, `${VAR}` references unexpanded |
+| `put_form` | Creates a form or replaces it as a whole; the file is validated before it is written, so an invalid form, or a `${VAR}` the environment does not have, changes nothing |
+
+`put_form` does what *Add new* and the *Settings* tab do, through the same validation; secrets such as an ntfy topic go in as `${VAR}` references that the container's environment must provide.
 
 A summary carries `link`, the form's link template filled in, so an assistant can look at what a report is about before suggesting a decision.
 
