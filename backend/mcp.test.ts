@@ -81,7 +81,7 @@ test("tools act in the name of the person who allowed the client, and the trail 
   const auth = { authorization: `Bearer ${access}` };
 
   const tools = (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string }[];
-  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "decide", "get_submission", "list_forms", "list_submissions"]);
+  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "decide", "get_form", "get_submission", "list_forms", "list_submissions", "put_form"]);
 
   const forms = (await (await rpc(rt, "tools/call", { name: "list_forms", arguments: {} }, auth)).json()).result.structuredContent;
   expect(forms.forms.map((f: { name: string; states: { name: string; closed: boolean; reason: boolean }[] }) => [f.name, f.states.map((s) => s.name), f.states.filter((s) => s.reason).map((s) => s.name)])).toEqual([
@@ -154,4 +154,47 @@ test("a revoked connection stops working at once: the access token, the refresh 
   expect(call.status).toBe(401);
   const again = await tokenRoute(formPost("/oauth/token", { grant_type: "refresh_token", refresh_token: refresh, client_id: clientId }), rt);
   expect(again.status).toBe(400);
+});
+
+test("an assistant reads a form, creates one and replaces it; an invalid form changes nothing", async () => {
+  const rt = testRuntime();
+  const { access } = await connect(rt);
+  const auth = { authorization: `Bearer ${access}` };
+  const call = async (name: string, args: Record<string, unknown>) => (await (await rpc(rt, "tools/call", { name, arguments: args }, auth)).json()).result;
+
+  const report = await call("get_form", { name: "report" });
+  expect(report.structuredContent.form).toMatchObject({ kind: "report" });
+  expect((await call("get_form", { name: "nope" })).isError).toBe(true);
+
+  const order = {
+    box: "shop.test",
+    kind: "message",
+    title: "Orders",
+    fields: { name: { type: "text", label: "Name", required: true }, email: { type: "email", required: true }, material: { type: "text", personal: false } },
+    strict: true,
+    origins: ["https://shop.test"],
+    retentionDays: 30,
+    notify: [{ type: "ntfy", url: "https://ntfy.sh/orders-topic" }],
+  };
+  const created = await call("put_form", { name: "order", form: order });
+  expect(created.structuredContent).toMatchObject({ name: "order", created: true });
+  expect(created.structuredContent.form.notify).toEqual([{ type: "ntfy", url: "https://ntfy.sh/orders-topic" }]);
+  expect(rt.config.forms.order).toMatchObject({ box: "shop.test", kind: "message", strict: true, retentionDays: 30 });
+  expect(rt.config.forms.order!.fields.material!.personal).toBe(false);
+
+  const replaced = await call("put_form", { name: "order", form: { ...order, title: "Order requests" } });
+  expect(replaced.structuredContent.created).toBe(false);
+  expect(rt.config.forms.order!.title).toBe("Order requests");
+
+  // A `${VAR}` the environment does not have is refused, not written: set the variable first.
+  const unset = await call("put_form", { name: "order", form: { ...order, notify: [{ type: "ntfy", url: "https://ntfy.sh/${NOT_SET}" }] } });
+  expect(unset.isError).toBe(true);
+  expect(unset.content[0].text).toContain("NOT_SET");
+  expect(rt.forms.rawForm("order")!.notify).toEqual(order.notify);
+
+  const bad = await call("put_form", { name: "order", form: { ...order, kind: "nonsense" } });
+  expect(bad.isError).toBe(true);
+  expect(rt.config.forms.order!.kind).toBe("message");
+  expect((await call("put_form", { name: "Bad Name", form: order })).isError).toBe(true);
+  expect(rt.config.forms["Bad Name"]).toBeUndefined();
 });

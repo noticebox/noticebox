@@ -4,7 +4,7 @@ Documentation: https://noticebox.github.io/noticebox/
 
 An inbox for the forms on static pages. A page points its form at `https://inbox.example.org/f/<form>`; what comes in lands in one SQLite file and in an inbox where each submission is walked through its states, with every step, who took it and why, kept as an audit trail. Reports about content and contact messages are the two kinds it knows. The page with the form stays yours: noticebox hosts no forms, only the endpoint, the inbox and a thank-you page for forms that name no `redirect`.
 
-One container, no database server, no accounts of its own: the login is the reverse proxy's (Authentik or any forward-auth), which tells noticebox who is signed in. An MCP endpoint, guarded by OAuth 2.1, lets an assistant read, annotate and decide submissions in that person's name.
+One container, no database server, no accounts of its own: the login is the reverse proxy's (Authentik or any forward-auth), which tells noticebox who is signed in. An MCP endpoint, guarded by OAuth 2.1, lets an assistant read, annotate and decide submissions, and set up forms, in that person's name.
 
 ## How it works
 
@@ -15,7 +15,7 @@ One container, no database server, no accounts of its own: the login is the reve
 - **Notifications** say that something arrived and where to look, never what it says: an ntfy topic gets a title and the link, a webhook gets `{form, kind, id, received_at, url}`.
 - **Retention**: a submission closed longer ago than the form's `retentionDays` loses its personal fields (free text, email; anything not marked `personal: false`). The ids, the category, the states and the audit trail stay.
 - **The inbox**: the sidebar lists the boxes and their forms with what is open, and *Add new* makes a box or a form; each form has a *Settings* tab that edits the file (fields, origins, redirect, notification targets, retention, link), validated as a whole before it is written; a form has an overview (what waits, received per day, the endpoint and the fields) and the table of its submissions, where the state of each row is a dropdown: choose the next state, write the reason in the dialog, confirm. `/forms/<form>/submissions/<id>` shows one submission with its fields and history; notifications link there. `/export.json` gives everything with its events.
-- **MCP** at `/mcp` has five tools: `list_forms`, `list_submissions`, `get_submission`, `add_note`, `decide`. An MCP client registers itself, the signed-in person allows it on `/oauth/authorize`, and everything the assistant does is recorded as `<person> via <client>`. The connections are listed under *Your settings* and can be revoked.
+- **MCP** at `/mcp` has seven tools: `list_forms`, `list_submissions`, `get_submission`, `add_note`, `decide` for the submissions, and `get_form`, `put_form` to read and write a form as the forms file has it. An MCP client registers itself, the signed-in person allows it on `/oauth/authorize`, and everything the assistant does is recorded as `<person> via <client>`. The connections are listed under *Your settings* and can be revoked.
 
 ## Deploying
 

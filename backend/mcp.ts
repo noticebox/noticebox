@@ -1,4 +1,4 @@
-// The MCP endpoint: POST /mcp, five tools over the same store the pages use. The bearer is an access token this
+// The MCP endpoint: POST /mcp, seven tools over the same store and forms file the pages use. The bearer is an access token this
 // instance signed at /oauth/token, so every action is done in the name of the person who allowed the client, and
 // the audit trail says so: "<user> via <client>".
 import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotocol/server";
@@ -37,6 +37,36 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
       ok({
         forms: Object.values(rt.config.forms).map((f) => ({ name: f.name, title: f.title, kind: f.kind, states: f.states, retention_days: f.retentionDays })),
       }),
+  );
+
+  s.registerTool(
+    "get_form",
+    {
+      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, notify, link, states. `${VAR}` references stay as written, never expanded. Change what you need and send the whole form back with put_form.",
+      inputSchema: z.object({ name: z.string() }),
+      outputSchema: z.object({ name: z.string(), form: z.record(z.string(), z.unknown()) }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ name }) => {
+      const form = rt.forms.rawForm(name);
+      return form ? ok({ name, form }) : refuse(`no form called "${name}"`);
+    },
+  );
+
+  s.registerTool(
+    "put_form",
+    {
+      description:
+        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, notify ([{type: ntfy|webhook, url}]), link ({url, label}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes.",
+      inputSchema: z.object({ name: z.string().describe("lowercase letters, digits, - and _"), form: z.record(z.string(), z.unknown()) }),
+      outputSchema: z.object({ name: z.string(), created: z.boolean(), form: z.record(z.string(), z.unknown()) }),
+      annotations: { destructiveHint: true, idempotentHint: true },
+    },
+    async ({ name, form }) => {
+      const created = rt.forms.rawForm(name) === undefined;
+      const r = rt.forms.putForm(name, form);
+      return r.ok ? ok({ name, created, form: rt.forms.rawForm(name)! }) : refuse(r.error);
+    },
   );
 
   s.registerTool(
