@@ -19,6 +19,8 @@ export type Settings = {
   linkUrl: string;
   linkLabel: string;
   notify: RawTarget[];
+  githubRepo: string;
+  githubLabels: string; // comma-separated
   fields: RawFieldRow[];
 };
 
@@ -53,6 +55,8 @@ function toRaw(s: Settings): Record<string, unknown> {
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
   if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim() }));
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
+  const labels = s.githubLabels.split(",").map((x) => x.trim()).filter(Boolean);
+  if (s.githubRepo.trim()) raw.github = labels.length ? { repo: s.githubRepo.trim(), labels } : s.githubRepo.trim();
   return raw;
 }
 
@@ -323,6 +327,29 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 Link text
               </label>
               <input id="s-link-label" value={s.linkLabel} onChange={(e) => patch({ linkLabel: e.target.value })} className="field" placeholder="Open" />
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="section-title">GitHub issues</h2>
+          <p className="mb-3 text-muted">
+            A submission can be turned into an issue in this repository, from its page or over MCP. The token is <code>NOTICEBOX_GITHUB_TOKEN</code> in the environment. The draft carries only the fields that are not personal.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="s-github-repo" className={label}>
+                Repository
+              </label>
+              <input id="s-github-repo" value={s.githubRepo} onChange={(e) => patch({ githubRepo: e.target.value })} className="field" placeholder="owner/name" />
+              <p className={hint}>Empty: no issues.</p>
+            </div>
+            <div>
+              <label htmlFor="s-github-labels" className={label}>
+                Labels
+              </label>
+              <input id="s-github-labels" value={s.githubLabels} onChange={(e) => patch({ githubLabels: e.target.value })} className="field" placeholder="report, triage" />
+              <p className={hint}>Separated by commas.</p>
             </div>
           </div>
         </section>

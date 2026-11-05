@@ -67,6 +67,7 @@ nav:
   - Integrations:
       - Posting from a page: integrations/forms.md
       - MCP: integrations/mcp.md
+      - GitHub issues: integrations/github.md
   - Self-hosting:
       - Configuration: self-hosting/configuration.md
       - The login in front: self-hosting/login.md

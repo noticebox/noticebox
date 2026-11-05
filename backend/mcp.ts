@@ -1,10 +1,11 @@
-// The MCP endpoint: POST /mcp, seven tools over the same store and forms file the pages use. The bearer is an access token this
+// The MCP endpoint: POST /mcp, eight tools over the same store and forms file the pages use. The bearer is an access token this
 // instance signed at /oauth/token, so every action is done in the name of the person who allowed the client, and
 // the audit trail says so: "<user> via <client>".
 import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotocol/server";
 import * as z from "zod";
 import { bearerOf, mcpResource, publicUrl } from "./auth";
 import type { Submission } from "./db";
+import { openIssue } from "./github";
 import { linkFor } from "./links";
 import { submissionPath } from "./paths";
 import type { Runtime } from "./runtime";
@@ -17,13 +18,18 @@ const refuse = (message: string) => ({ isError: true as const, content: [{ type:
 const Summary = z.object({ id: z.string(), form: z.string(), kind: z.string(), state: z.string(), received_at: z.string(), closed_at: z.string().nullable(), url: z.string(), link: z.string().nullable(), summary: z.string() });
 const Full = Summary.extend({
   fields: z.record(z.string(), z.string()),
+  issue: z.object({ repo: z.string(), number: z.number(), url: z.string() }).nullable(),
   events: z.array(z.object({ at: z.string(), actor: z.string(), from_state: z.string().nullable(), to_state: z.string().nullable(), reason: z.string() })),
 });
 
 function server(rt: Runtime, actor: string, base: string): McpServer {
   const s = new McpServer({ name: "noticebox", version: "0.1.0" });
   const summary = (x: Submission) => ({ id: x.id, form: x.form, kind: x.kind, state: x.state, received_at: x.received_at, closed_at: x.closed_at, url: base + submissionPath(x.form, x.id), link: linkFor(rt.config.forms[x.form], x)?.url ?? null, summary: summaryOf(rt.config.forms[x.form], x, 120) });
-  const full = (x: Submission) => ({ ...summary(x), fields: x.fields, events: rt.store.events(x.id).map(({ at, actor, from_state, to_state, reason }) => ({ at, actor, from_state, to_state, reason })) });
+  const issueOf = (id: string) => {
+    const i = rt.store.issue(id);
+    return i ? { repo: i.repo, number: i.number, url: i.url } : null;
+  };
+  const full = (x: Submission) => ({ ...summary(x), fields: x.fields, issue: issueOf(x.id), events: rt.store.events(x.id).map(({ at, actor, from_state, to_state, reason }) => ({ at, actor, from_state, to_state, reason })) });
 
   s.registerTool(
     "list_forms",
@@ -42,7 +48,7 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
   s.registerTool(
     "get_form",
     {
-      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, notify, link, states. `${VAR}` references stay as written, never expanded. Change what you need and send the whole form back with put_form.",
+      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, notify, link, github, states. `${VAR}` references stay as written, never expanded. Change what you need and send the whole form back with put_form.",
       inputSchema: z.object({ name: z.string() }),
       outputSchema: z.object({ name: z.string(), form: z.record(z.string(), z.unknown()) }),
       annotations: { readOnlyHint: true },
@@ -57,7 +63,7 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
     "put_form",
     {
       description:
-        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, notify ([{type: ntfy|webhook, url}]), link ({url, label}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes.",
+        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, notify ([{type: ntfy|webhook, url}]), link ({url, label}), github ({repo: owner/name, labels}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes.",
       inputSchema: z.object({ name: z.string().describe("lowercase letters, digits, - and _"), form: z.record(z.string(), z.unknown()) }),
       outputSchema: z.object({ name: z.string(), created: z.boolean(), form: z.record(z.string(), z.unknown()) }),
       annotations: { destructiveHint: true, idempotentHint: true },
@@ -120,6 +126,20 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
       const form = x && rt.config.forms[x.form];
       if (!x || !form) return refuse("no such submission");
       const r = rt.store.transition(form, id, actor, to, reason, rt.now());
+      return r.ok ? ok(full(rt.store.get(id)!)) : refuse(r.error);
+    },
+  );
+  s.registerTool(
+    "create_issue",
+    {
+      description:
+        "Open a GitHub issue from a submission, in the repository its form names (get_form: github), and record it in the submission's history. One issue per submission. Without title and body the issue carries only the fields marked personal: false, the form's link and the submission's id; if you write them yourself, leave out names, email addresses and anything else that identifies the person who wrote in, since the issue may be public. Recorded in your name.",
+      inputSchema: z.object({ id: z.string(), title: z.string().max(256).optional(), body: z.string().max(65536).optional() }),
+      outputSchema: Full,
+      annotations: { openWorldHint: true },
+    },
+    async ({ id, title, body }) => {
+      const r = await openIssue(rt, id, actor, { title, body });
       return r.ok ? ok(full(rt.store.get(id)!)) : refuse(r.error);
     },
   );

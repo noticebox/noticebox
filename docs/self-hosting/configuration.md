@@ -11,6 +11,7 @@ noticebox is configured by environment variables and one JSON file with the form
 | `NOTICEBOX_BASE_URL` | from the request's `X-Forwarded-*` headers | The public URL, used in notifications and as the OAuth issuer. Set it. |
 | `NOTICEBOX_USER_HEADER` | `X-Authentik-Username` | The header the login proxy sets with the signed-in person's name |
 | `NOTICEBOX_SECRET` | none: no MCP | 32 or more random characters that sign the OAuth tokens |
+| `NOTICEBOX_GITHUB_TOKEN` | none: no issues | A GitHub token that may write issues in the repositories the forms name, see [GitHub issues](../integrations/github.md) |
 | `NOTICEBOX_RATE_LIMIT` | `10` | Posts per client address and form in ten minutes; `0` turns it off |
 | `NOTICEBOX_TRUST_PROXY` | on | `0` to ignore `X-Forwarded-For` and take the connecting address |
 | `NOTICEBOX_DEV_USER` | none | A fixed name standing in for the login, for development. Never in production. |
@@ -69,6 +70,7 @@ The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 cha
 | `retentionDays` | `180` | Days after closing until the personal fields are removed |
 | `notify` | none | A list of targets, `{ "type": "ntfy", "url": … }` or `{ "type": "webhook", "url": … }`, see [Notifications](notifications.md). The older `{ "ntfy": …, "webhook": … }` object is read too. |
 | `link` | none | A URL template over the fields, or `{ "url": …, "label": … }`; see below |
+| `github` | none | The repository issues are opened in, `"owner/name"` or `{ "repo": …, "labels": [ … ] }`; see [GitHub issues](../integrations/github.md) |
 
 ### A field
 
