@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { issueDraft, KINDS, linkFor, runtime, stateOf, submissionsPath } from "@/backend";
+import { gitHubToken, issueDraft, KINDS, linkFor, runtime, stateOf, submissionsPath } from "@/backend";
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
 import { IssueButton } from "../../../../IssueButton";
 import { StateMenu } from "../../../../StateMenu";
@@ -22,7 +22,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
   const events = rt.store.events(s.id);
   const link = linkFor(form, s);
   const issue = rt.store.issue(s.id);
-  const draft = form.github && !issue && rt.githubToken ? issueDraft(form, s) : null;
+  const draft = form.github && !issue && gitHubToken(rt, form.name)?.readable ? issueDraft(form, s) : null;
   const badge = (state: string) => <span className={`badge ${stateTone(state, states)}`}>{stateLabel(state)}</span>;
 
   return (

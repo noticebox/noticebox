@@ -1,18 +1,24 @@
 # GitHub issues
 
-A submission can become an issue in a GitHub repository: a report about a broken page becomes a bug in the site's repository, a request becomes a task. Each form names its own repository, and each submission gets at most one issue.
+A submission can become an issue in a GitHub repository: a report about a broken page becomes a bug in the site's repository, a request becomes a task. Each form names its own repository and has its own token, and each submission gets at most one issue.
 
 ## Setting it up
 
-1. Create a token that may write issues in the repositories your forms name. A [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) limited to those repositories, with **Issues: Read and write**, is enough.
-2. Give it to the container as `NOTICEBOX_GITHUB_TOKEN`, from your password manager or `.env`, never in the forms file.
-3. Name the repository on the form: on its *Settings* tab under *GitHub issues*, over MCP with `put_form`, or in the forms file:
+1. Name the repository on the form: on its *Settings* tab under *GitHub issues*, over MCP with `put_form`, or in the forms file:
 
 ```json
 "github": { "repo": "example/site", "labels": ["report"] }
 ```
 
 `"github": "example/site"` is the short form without labels. Labels that do not exist yet are created by GitHub, if the token may.
+
+2. Create a fine-grained personal access token for that repository. The form's *Settings* tab, under *GitHub token*, has *How to make the token* with a link to GitHub's new-token page, filled in for this form (name, description, the owner, a year's expiry, Issues write), and the steps for the rest; over MCP, `github_token_guide` returns the same link and steps. What the token needs:
+    - **Resource owner**: the repository's owner (an organisation may have to allow or approve fine-grained tokens)
+    - **Repository access**: *Only select repositories*, that one repository
+    - **Permissions**: *Issues: Read and write*, nothing else (*Metadata: Read-only* is added by GitHub)
+3. Set it: paste it on the *Settings* tab and save, or have an assistant call `set_github_token`. From then on noticebox says who set it and when, never the token; replace it before it expires, remove it to stop issues. Keep it in your password manager too.
+
+The token is the form's, not the instance's: a fine-grained token reaches one owner, and a form for one product should not be able to write to another's repositories. It is stored in the database encrypted with a key derived from `NOTICEBOX_SECRET`, so the database file and its backups never hold it in clear; changing the secret makes it unreadable, and the *Settings* tab asks for it again. No page and no tool returns it again; `get_form` and `github_token_guide` say only whether a form has one, who set it and when. A token set over MCP has passed through the assistant's conversation; where that matters, paste it on the *Settings* tab instead.
 
 ## Opening an issue
 

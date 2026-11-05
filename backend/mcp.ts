@@ -1,13 +1,13 @@
-// The MCP endpoint: POST /mcp, eight tools over the same store and forms file the pages use. The bearer is an access token this
+// The MCP endpoint: POST /mcp, ten tools over the same store and forms file the pages use. The bearer is an access token this
 // instance signed at /oauth/token, so every action is done in the name of the person who allowed the client, and
 // the audit trail says so: "<user> via <client>".
 import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotocol/server";
 import * as z from "zod";
 import { bearerOf, mcpResource, publicUrl } from "./auth";
 import type { Submission } from "./db";
-import { openIssue } from "./github";
+import { gitHubToken, openIssue, setGitHubToken, tokenGuide } from "./github";
 import { linkFor } from "./links";
-import { submissionPath } from "./paths";
+import { formPath, submissionPath } from "./paths";
 import type { Runtime } from "./runtime";
 import { summaryOf } from "./summary";
 import { verify } from "./tokens";
@@ -48,14 +48,14 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
   s.registerTool(
     "get_form",
     {
-      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, notify, link, github, states. `${VAR}` references stay as written, never expanded. Change what you need and send the whole form back with put_form.",
+      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, notify, link, github, states. `${VAR}` references stay as written, never expanded. github_token says whether the form has a token for GitHub issues and who set it; the token itself is never shown (see github_token_guide, set_github_token). Change what you need and send the whole form back with put_form.",
       inputSchema: z.object({ name: z.string() }),
-      outputSchema: z.object({ name: z.string(), form: z.record(z.string(), z.unknown()) }),
+      outputSchema: z.object({ name: z.string(), form: z.record(z.string(), z.unknown()), github_token: z.object({ set_by: z.string(), set_at: z.string(), readable: z.boolean() }).nullable() }),
       annotations: { readOnlyHint: true },
     },
     async ({ name }) => {
       const form = rt.forms.rawForm(name);
-      return form ? ok({ name, form }) : refuse(`no form called "${name}"`);
+      return form ? ok({ name, form, github_token: gitHubToken(rt, name) }) : refuse(`no form called "${name}"`);
     },
   );
 
@@ -130,10 +130,39 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
     },
   );
   s.registerTool(
+    "github_token_guide",
+    {
+      description: "Where and how to create the GitHub token a form needs to open issues: a link to GitHub's new-token page, filled in for this form's repository, the permissions it needs (Issues: Read and write, nothing else) and the steps. Give the user the link and the steps; the token is then set with set_github_token or on the form's Settings tab.",
+      inputSchema: z.object({ form: z.string() }),
+      outputSchema: z.object({ form: z.string(), repo: z.string().nullable(), url: z.string(), permissions: z.array(z.string()), steps: z.array(z.string()), settings: z.string(), token: z.object({ set_by: z.string(), set_at: z.string(), readable: z.boolean() }).nullable() }),
+      annotations: { readOnlyHint: true },
+    },
+    async ({ form }) => {
+      const f = rt.config.forms[form];
+      if (!f) return refuse(`no form called "${form}"`);
+      return ok({ form, ...tokenGuide(f), settings: `${base}${formPath(form)}/settings`, token: gitHubToken(rt, form) });
+    },
+  );
+
+  s.registerTool(
+    "set_github_token",
+    {
+      description: "Set the GitHub token a form opens issues with (see github_token_guide for how to make one), replacing any it had; an empty token removes it. It is stored encrypted and never returned by any tool. Recorded in your name.",
+      inputSchema: z.object({ form: z.string(), token: z.string().max(300).describe("a fine-grained token (github_pat_…), or empty to remove") }),
+      outputSchema: z.object({ form: z.string(), token: z.object({ set_by: z.string(), set_at: z.string(), readable: z.boolean() }).nullable() }),
+      annotations: { destructiveHint: true, idempotentHint: true },
+    },
+    async ({ form, token }) => {
+      const r = setGitHubToken(rt, form, token, actor);
+      return r.ok ? ok({ form, token: gitHubToken(rt, form) }) : refuse(r.error);
+    },
+  );
+
+  s.registerTool(
     "create_issue",
     {
       description:
-        "Open a GitHub issue from a submission, in the repository its form names (get_form: github), and record it in the submission's history. One issue per submission. Without title and body the issue carries only the fields marked personal: false, the form's link and the submission's id; if you write them yourself, leave out names, email addresses and anything else that identifies the person who wrote in, since the issue may be public. Recorded in your name.",
+        "Open a GitHub issue from a submission, in the repository its form names (get_form: github, with its github_token set), and record it in the submission's history. One issue per submission. Without title and body the issue carries only the fields marked personal: false, the form's link and the submission's id; if you write them yourself, leave out names, email addresses and anything else that identifies the person who wrote in, since the issue may be public. Recorded in your name.",
       inputSchema: z.object({ id: z.string(), title: z.string().max(256).optional(), body: z.string().max(65536).optional() }),
       outputSchema: Full,
       annotations: { openWorldHint: true },

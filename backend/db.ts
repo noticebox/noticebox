@@ -67,6 +67,12 @@ create table if not exists grants (
   revoked_at text
 );
 create index if not exists grants_by_actor on grants (actor, created_at);
+create table if not exists form_tokens (
+  form text primary key,
+  sealed text not null,
+  set_by text not null,
+  set_at text not null
+);
 create table if not exists issues (
   submission_id text primary key references submissions (id),
   repo text not null,
@@ -210,6 +216,19 @@ export class Store {
       }
     }
     return purged;
+  }
+
+  /** A form's GitHub token, sealed (see sealed.ts), with who set it and when. */
+  formToken(form: string): { sealed: string; set_by: string; set_at: string } | undefined {
+    return this.db.prepare("select sealed, set_by, set_at from form_tokens where form = ?").get(form) as { sealed: string; set_by: string; set_at: string } | undefined;
+  }
+
+  setFormToken(form: string, sealed: string, actor: string, now: Date): void {
+    this.db.prepare("insert into form_tokens (form, sealed, set_by, set_at) values (?, ?, ?, ?) on conflict (form) do update set sealed = excluded.sealed, set_by = excluded.set_by, set_at = excluded.set_at").run(form, sealed, actor, now.toISOString());
+  }
+
+  clearFormToken(form: string): void {
+    this.db.prepare("delete from form_tokens where form = ?").run(form);
   }
 
   /** The GitHub issue opened from a submission, if one was. */

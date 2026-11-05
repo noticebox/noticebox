@@ -1,14 +1,17 @@
-// A GitHub issue from a submission: the form names the repository (`github`), NOTICEBOX_GITHUB_TOKEN may open issues
-// there. An issue leaves the box for someone else's server, often a public one, so the draft carries only the fields
+// A GitHub issue from a submission: the form names the repository (`github`) and has a token of its own, set on its
+// settings and kept sealed in the database (a fine-grained token reaches one owner, so one per form, never one for the
+// instance). It may be set in the inbox or over MCP; it is never shown or returned again. An issue leaves the box for someone else's server, often a public one, so the draft carries only the fields
 // marked `personal: false` (undescribed fields count as personal), the form's link and the submission's id; the person
 // opening it sees the draft and may change it. One issue per submission, recorded in its history.
 import type { Form } from "./config";
-import type { Issue, Submission } from "./db";
+import type { Issue, Outcome, Submission } from "./db";
 import { linkFor } from "./links";
 import type { Runtime } from "./runtime";
+import { seal, unseal } from "./sealed";
 import { summaryOf } from "./summary";
 
 export type Draft = { title: string; body: string };
+export type TokenInfo = { set_by: string; set_at: string; readable: boolean };
 export type Opened = { ok: true; issue: Issue } | { ok: false; error: string };
 
 const API = "https://api.github.com";
@@ -40,13 +43,61 @@ const quote = (text: string) =>
     .map((l) => `> ${l}`)
     .join("\n");
 
+export type TokenGuide = { repo: string | null; url: string; permissions: string[]; steps: string[] };
+
+/**
+ * Where and how to make the token a form needs: a link to GitHub's form for a new fine-grained token, filled in as far as
+ * GitHub takes parameters (name, description, owner, a year, Issues write), and the steps for what it does not take.
+ */
+export function tokenGuide(form: Form): TokenGuide {
+  const repo = form.github?.repo ?? null;
+  const owner = repo?.split("/")[0];
+  const q = new URLSearchParams({ name: `noticebox ${form.name}`.slice(0, 40), description: `noticebox opens issues from the form "${form.name}"${repo ? ` in ${repo}` : ""}`, expires_in: "365", issues: "write" });
+  if (owner) q.set("target_name", owner);
+  return {
+    repo,
+    url: `https://github.com/settings/personal-access-tokens/new?${q.toString()}`,
+    permissions: ["Issues: Read and write", "Metadata: Read-only (GitHub adds it by itself)"],
+    steps: [
+      ...(repo ? [] : ["Name the form's repository first (github: owner/name)."]),
+      "Open the link, signed in to GitHub; it fills in the name, the description, a year's expiry and Issues: Read and write. Check each, GitHub may not take every one.",
+      `Resource owner: ${owner ?? "the owner of the repository"}. An organisation may have to allow fine-grained tokens, or approve this one.`,
+      `Repository access: Only select repositories, and pick ${repo ?? "the form's repository"} alone.`,
+      "Permissions: under Repository permissions only Issues, Read and write. Nothing else.",
+      "Generate the token, copy it once, and set it on the form: on its Settings tab under GitHub token, or with set_github_token. Keep it in the password manager too, and set a new one before it expires.",
+    ],
+  };
+}
+
+/** Whether a form has a token, who set it and when; never the token. */
+export function gitHubToken(rt: Runtime, form: string): TokenInfo | null {
+  const t = rt.store.formToken(form);
+  return t ? { set_by: t.set_by, set_at: t.set_at, readable: !!rt.secret && unseal(rt.secret, t.sealed) !== null } : null;
+}
+
+/** Sets (or, with an empty token, removes) the token a form opens issues with. */
+export function setGitHubToken(rt: Runtime, form: string, token: string, actor: string): Outcome {
+  if (!rt.config.forms[form]) return { ok: false, error: `no form called "${form}"` };
+  const t = token.trim();
+  if (!t) {
+    rt.store.clearFormToken(form);
+    return { ok: true };
+  }
+  if (!rt.secret) return { ok: false, error: "a token is kept encrypted with NOTICEBOX_SECRET, which is not set" };
+  if (!/^(github_pat_|ghp_|gho_|ghu_|ghs_)[A-Za-z0-9_]{20,255}$/.test(t)) return { ok: false, error: "that does not look like a GitHub token" };
+  rt.store.setFormToken(form, seal(rt.secret, t), actor, rt.now());
+  return { ok: true };
+}
+
 /** Opens the submission's issue in its form's repository, unless it has one, and records it in the history. */
 export async function openIssue(rt: Runtime, id: string, actor: string, draft: Partial<Draft> = {}): Promise<Opened> {
   const s = rt.store.get(id);
   const form = s && rt.config.forms[s.form];
   if (!s || !form) return { ok: false, error: "no such submission" };
   if (!form.github) return { ok: false, error: `the form "${form.name}" names no GitHub repository` };
-  if (!rt.githubToken) return { ok: false, error: "NOTICEBOX_GITHUB_TOKEN is not set" };
+  const sealed = rt.store.formToken(form.name)?.sealed;
+  const token = sealed && rt.secret ? unseal(rt.secret, sealed) : null;
+  if (!token) return { ok: false, error: sealed ? "the form's GitHub token cannot be read (NOTICEBOX_SECRET changed?); set it again on the form's settings" : "the form has no GitHub token; its Settings tab, or github_token_guide over MCP, says how to make one" };
   const had = rt.store.issue(id);
   if (had) return { ok: false, error: `this submission already has issue ${had.repo}#${had.number}: ${had.url}` };
   if (opening.has(id)) return { ok: false, error: "the issue is already being opened" };
@@ -63,7 +114,7 @@ export async function openIssue(rt: Runtime, id: string, actor: string, draft: P
     try {
       res = await rt.fetch(`${API}/repos/${repo}/issues`, {
         method: "POST",
-        headers: { accept: "application/vnd.github+json", authorization: `Bearer ${rt.githubToken}`, "x-github-api-version": "2022-11-28", "content-type": "application/json", "user-agent": "noticebox" },
+        headers: { accept: "application/vnd.github+json", authorization: `Bearer ${token}`, "x-github-api-version": "2022-11-28", "content-type": "application/json", "user-agent": "noticebox" },
         body: JSON.stringify(labels.length ? { title, body, labels } : { title, body }),
         signal: AbortSignal.timeout(10000),
       });

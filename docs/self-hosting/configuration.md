@@ -10,8 +10,7 @@ noticebox is configured by environment variables and one JSON file with the form
 | `NOTICEBOX_DB` | `data/noticebox.sqlite` (`/data/noticebox.sqlite` in the image) | The SQLite file; created at the first start |
 | `NOTICEBOX_BASE_URL` | from the request's `X-Forwarded-*` headers | The public URL, used in notifications and as the OAuth issuer. Set it. |
 | `NOTICEBOX_USER_HEADER` | `X-Authentik-Username` | The header the login proxy sets with the signed-in person's name |
-| `NOTICEBOX_SECRET` | none: no MCP | 32 or more random characters that sign the OAuth tokens |
-| `NOTICEBOX_GITHUB_TOKEN` | none: no issues | A GitHub token that may write issues in the repositories the forms name, see [GitHub issues](../integrations/github.md) |
+| `NOTICEBOX_SECRET` | none: no MCP | 32 or more random characters that sign the OAuth tokens and encrypt the forms' [GitHub tokens](../integrations/github.md); changing it ends every MCP connection and makes the GitHub tokens unreadable |
 | `NOTICEBOX_RATE_LIMIT` | `10` | Posts per client address and form in ten minutes; `0` turns it off |
 | `NOTICEBOX_TRUST_PROXY` | on | `0` to ignore `X-Forwarded-For` and take the connecting address |
 | `NOTICEBOX_DEV_USER` | none | A fixed name standing in for the login, for development. Never in production. |

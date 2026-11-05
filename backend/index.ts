@@ -4,7 +4,7 @@ export type { Config, Field, Form, GitHub, State, Target } from "./config";
 export type { Event, Grant, Issue } from "./db";
 export type { RawForm } from "./forms";
 export type { ListFilter, Outcome, Submission } from "./db";
-export { issueDraft, openIssue, type Draft } from "./github";
+export { gitHubToken, issueDraft, openIssue, setGitHubToken, tokenGuide, type Draft, type TokenGuide, type TokenInfo } from "./github";
 export { healthRoute } from "./health";
 export { intakePreflight, intakeRoute } from "./intake";
 export { KINDS, stateOf, type KindName } from "./kinds";
