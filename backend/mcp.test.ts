@@ -5,7 +5,7 @@ import { beforeEach, expect, test } from "vitest";
 import { mcpRoute } from "./mcp";
 import { authorizeRoute, authServerRoute, checkAuthorize, protectedResourceRoute, registerRoute, tokenRoute } from "./oauth";
 import { resetTokensForTests } from "./tokens";
-import { BASE, formPost, jsonPost, REPORT, testRuntime, type TestRuntime } from "./testutil";
+import { BASE, formPost, jsonPost, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
 
 const V = "2026-07-28";
 const META = { "io.modelcontextprotocol/clientInfo": { name: "t", version: "0" }, "io.modelcontextprotocol/clientCapabilities": {} };
@@ -81,7 +81,7 @@ test("tools act in the name of the person who allowed the client, and the trail 
   const auth = { authorization: `Bearer ${access}` };
 
   const tools = (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string }[];
-  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "decide", "get_form", "get_submission", "list_forms", "list_submissions", "put_form"]);
+  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "create_issue", "decide", "get_form", "get_submission", "list_forms", "list_submissions", "put_form"]);
 
   const forms = (await (await rpc(rt, "tools/call", { name: "list_forms", arguments: {} }, auth)).json()).result.structuredContent;
   expect(forms.forms.map((f: { name: string; states: { name: string; closed: boolean; reason: boolean }[] }) => [f.name, f.states.map((s) => s.name), f.states.filter((s) => s.reason).map((s) => s.name)])).toEqual([
@@ -197,4 +197,31 @@ test("an assistant reads a form, creates one and replaces it; an invalid form ch
   expect(rt.config.forms.order!.kind).toBe("message");
   expect((await call("put_form", { name: "Bad Name", form: order })).isError).toBe(true);
   expect(rt.config.forms["Bad Name"]).toBeUndefined();
+});
+
+test("an assistant opens a GitHub issue from a report, once, recorded in its name", async () => {
+  const config = testConfig();
+  config.forms.report!.github = { repo: "acme/site", labels: [] };
+  const sent: string[] = [];
+  const rt = testRuntime({
+    config,
+    githubToken: "ghp_test",
+    fetch: (async (url: string, init: RequestInit) => {
+      sent.push(String(init.body));
+      return String(url).startsWith("https://api.github.com/") ? Response.json({ number: 3, html_url: "https://github.com/acme/site/issues/3" }, { status: 201 }) : new Response("ok");
+    }) as typeof fetch,
+  });
+  const { access } = await connect(rt);
+  const auth = { authorization: `Bearer ${access}` };
+  const call = async (name: string, args: Record<string, unknown>) => (await (await rpc(rt, "tools/call", { name, arguments: args }, auth)).json()).result;
+  const s = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date());
+
+  expect((await call("get_submission", { id: s.id })).structuredContent.issue).toBeNull();
+  const made = (await call("create_issue", { id: s.id })).structuredContent;
+  expect(made.issue).toEqual({ repo: "acme/site", number: 3, url: "https://github.com/acme/site/issues/3" });
+  expect(made.events.at(-1)).toMatchObject({ actor: "marcel via Claude", to_state: null });
+  expect(sent.at(-1)).not.toContain("who@example.org");
+  const again = await call("create_issue", { id: s.id });
+  expect(again.isError).toBe(true);
+  expect(again.content[0].text).toContain("acme/site#3");
 });

@@ -51,6 +51,8 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
     linkUrl: typeof link === "string" ? link : str((link as Record<string, unknown> | undefined)?.url),
     linkLabel: typeof link === "object" && link ? str((link as Record<string, unknown>).label) : "",
     notify,
+    githubRepo: form.github ? (typeof raw.github === "string" ? raw.github : str((raw.github as Record<string, unknown>).repo)) : "",
+    githubLabels: form.github?.labels.join(", ") ?? "",
     fields,
   };
   const hasSubmissions = rt.store.counts().some((c) => c.form === name && c.n > 0);

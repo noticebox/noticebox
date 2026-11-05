@@ -16,7 +16,8 @@
       "origins": ["https://notefeed.me"],
       "redirect": "https://notefeed.me/report/thanks",
       "retentionDays": 180,
-      "notify": [{ "type": "ntfy", "url": "https://ntfy.sh/${NTFY_REPORTS_TOPIC}" }]
+      "notify": [{ "type": "ntfy", "url": "https://ntfy.sh/${NTFY_REPORTS_TOPIC}" }],
+      "github": { "repo": "example/notefeed", "labels": ["report"] }
     },
     "contact": {
       "box": "example.org",

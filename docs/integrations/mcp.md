@@ -24,6 +24,7 @@ Each *Allow* is a connection, listed under *Your settings* with the client's nam
 | `add_note` | A note on a submission |
 | `decide` | A move to another state, with the reason; refused like in the UI when the reason is missing or the move is not allowed |
 | `get_form` | One form as the forms file has it, `${VAR}` references unexpanded |
+| `create_issue` | Opens a GitHub issue from a submission in the repository its form names, once; see [GitHub issues](github.md) |
 | `put_form` | Creates a form or replaces it as a whole; the file is validated before it is written, so an invalid form, or a `${VAR}` the environment does not have, changes nothing |
 
 `put_form` does what *Add new* and the *Settings* tab do, through the same validation; secrets such as an ntfy topic go in as `${VAR}` references that the container's environment must provide.

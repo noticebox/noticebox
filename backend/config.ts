@@ -31,7 +31,10 @@ export type Form = {
   retentionDays: number;
   notify: Target[]; // where a new submission is announced (title and link, never the content)
   link: { url: string; label: string } | null; // where the thing a submission is about can be looked at: a URL template with {field} placeholders
+  github: GitHub | null; // where an issue can be opened from a submission
 };
+
+export type GitHub = { repo: string; labels: string[] }; // repo is owner/name
 
 export type Target = { type: "ntfy" | "webhook"; url: string };
 
@@ -41,6 +44,7 @@ export const FORM_NAME = /^[a-z0-9][a-z0-9_-]{0,39}$/;
 const BOX_NAME = /^[a-z0-9][a-z0-9 ._-]{0,39}$/i;
 export const FIELD_NAME = /^[a-z][a-z0-9_]{0,31}$/;
 export const RESERVED_FIELDS = new Set(["_gotcha"]);
+const REPO = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/;
 export const PLACEHOLDER = /\{([a-z][a-z0-9_]{0,31})\}/g;
 const TYPES: FieldType[] = ["text", "textarea", "select", "email", "hidden"];
 const DEFAULT_MAX: Record<FieldType, number> = { text: 500, textarea: 10000, select: 200, email: 254, hidden: 200 };
@@ -114,6 +118,7 @@ function parseForm(name: string, raw: unknown): Form {
   const states = parseStates(`${at}.states`, f.states, f.kind);
   const strict = bool(f.strict, `${at}.strict`, false);
   const link = parseLink(`${at}.link`, f.link, fields);
+  const github = parseGitHub(`${at}.github`, f.github);
   if (!BOX_NAME.test(box)) throw new Error(`${at}.box: letters, digits, spaces, . _ and - only`);
   return {
     name,
@@ -130,7 +135,18 @@ function parseForm(name: string, raw: unknown): Form {
     retentionDays,
     notify,
     link,
+    github,
   };
+}
+
+/** `github` is the repository issues are opened in, `"owner/name"` or `{ repo, labels }`. */
+function parseGitHub(at: string, raw: unknown): GitHub | null {
+  if (raw === undefined || raw === null) return null;
+  const o = typeof raw === "string" ? { repo: raw } : record(raw, at);
+  const repo = str(o.repo, `${at}.repo`, "");
+  if (!REPO.test(repo)) throw new Error(`${at}.repo: "owner/name" of a GitHub repository`);
+  const labels = stringList(o.labels, `${at}.labels`).map((l) => l.trim()).filter(Boolean);
+  return { repo, labels };
 }
 
 /** `notify` is a list of `{ type, url }` targets; the older `{ ntfy, webhook }` object is read as such a list. */

@@ -67,7 +67,17 @@ create table if not exists grants (
   revoked_at text
 );
 create index if not exists grants_by_actor on grants (actor, created_at);
+create table if not exists issues (
+  submission_id text primary key references submissions (id),
+  repo text not null,
+  number integer not null,
+  url text not null,
+  actor text not null,
+  created_at text not null
+);
 `;
+
+export type Issue = { submission_id: string; repo: string; number: number; url: string; actor: string; created_at: string };
 
 export type Grant = { id: string; actor: string; client_hash: string; client_name: string; created_at: string; last_used_at: string; revoked_at: string | null };
 
@@ -200,6 +210,26 @@ export class Store {
       }
     }
     return purged;
+  }
+
+  /** The GitHub issue opened from a submission, if one was. */
+  issue(id: string): Issue | undefined {
+    return this.db.prepare("select * from issues where submission_id = ?").get(id) as Issue | undefined;
+  }
+
+  /** Records the issue opened from a submission, with a note in its history that links it. */
+  recordIssue(i: Issue): void {
+    const s = this.get(i.submission_id);
+    if (!s) throw new Error("no such submission");
+    this.db.exec("begin");
+    try {
+      this.db.prepare("insert into issues (submission_id, repo, number, url, actor, created_at) values (?, ?, ?, ?, ?, ?)").run(i.submission_id, i.repo, i.number, i.url, i.actor, i.created_at);
+      this.db.prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, ?, ?, null, ?)").run(i.submission_id, i.created_at, i.actor, s.state, `Opened GitHub issue ${i.repo}#${i.number}: ${i.url}`);
+      this.db.exec("commit");
+    } catch (e) {
+      this.db.exec("rollback");
+      throw e;
+    }
   }
 
   /** An MCP client the person allowed: the grant every token of that connection names. */
