@@ -5,7 +5,7 @@ import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotoco
 import * as z from "zod";
 import { bearerOf, mcpResource, publicUrl } from "./auth";
 import type { Submission } from "./db";
-import { openIssue } from "./github";
+import { gitHubToken, openIssue } from "./github";
 import { linkFor } from "./links";
 import { submissionPath } from "./paths";
 import type { Runtime } from "./runtime";
@@ -48,14 +48,14 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
   s.registerTool(
     "get_form",
     {
-      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, notify, link, github, states. `${VAR}` references stay as written, never expanded. Change what you need and send the whole form back with put_form.",
+      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, notify, link, github, states. `${VAR}` references stay as written, never expanded. github_token says whether the form has a token for GitHub issues (set by a person on the form's settings in the inbox, never over MCP, and never shown). Change what you need and send the whole form back with put_form.",
       inputSchema: z.object({ name: z.string() }),
-      outputSchema: z.object({ name: z.string(), form: z.record(z.string(), z.unknown()) }),
+      outputSchema: z.object({ name: z.string(), form: z.record(z.string(), z.unknown()), github_token: z.object({ set_by: z.string(), set_at: z.string(), readable: z.boolean() }).nullable() }),
       annotations: { readOnlyHint: true },
     },
     async ({ name }) => {
       const form = rt.forms.rawForm(name);
-      return form ? ok({ name, form }) : refuse(`no form called "${name}"`);
+      return form ? ok({ name, form, github_token: gitHubToken(rt, name) }) : refuse(`no form called "${name}"`);
     },
   );
 
@@ -133,7 +133,7 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
     "create_issue",
     {
       description:
-        "Open a GitHub issue from a submission, in the repository its form names (get_form: github), and record it in the submission's history. One issue per submission. Without title and body the issue carries only the fields marked personal: false, the form's link and the submission's id; if you write them yourself, leave out names, email addresses and anything else that identifies the person who wrote in, since the issue may be public. Recorded in your name.",
+        "Open a GitHub issue from a submission, in the repository its form names (get_form: github, with its github_token set), and record it in the submission's history. One issue per submission. Without title and body the issue carries only the fields marked personal: false, the form's link and the submission's id; if you write them yourself, leave out names, email addresses and anything else that identifies the person who wrote in, since the issue may be public. Recorded in your name.",
       inputSchema: z.object({ id: z.string(), title: z.string().max(256).optional(), body: z.string().max(65536).optional() }),
       outputSchema: Full,
       annotations: { openWorldHint: true },

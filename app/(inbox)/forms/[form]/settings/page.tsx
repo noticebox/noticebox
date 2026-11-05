@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { runtime } from "@/backend";
+import { gitHubToken, runtime } from "@/backend";
+import { when } from "@/app/_lib/format";
 import { FormSettings, type RawFieldRow, type RawTarget, type Settings, type StateRow } from "./FormSettings";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +56,7 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
     githubLabels: form.github?.labels.join(", ") ?? "",
     fields,
   };
+  const token = gitHubToken(rt, name);
   const hasSubmissions = rt.store.counts().some((c) => c.form === name && c.n > 0);
-  return <FormSettings name={name} boxes={rt.config.boxes} initial={initial} hasSubmissions={hasSubmissions} seen={seen} statesInUse={inUse} />;
+  return <FormSettings name={name} boxes={rt.config.boxes} initial={initial} hasSubmissions={hasSubmissions} seen={seen} statesInUse={inUse} token={token} tokenWhen={token ? when(token.set_at) : ""} />;
 }

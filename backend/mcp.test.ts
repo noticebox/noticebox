@@ -2,6 +2,7 @@
 // act in that person's name.
 import { createHash, randomBytes } from "node:crypto";
 import { beforeEach, expect, test } from "vitest";
+import { setGitHubToken } from "./github";
 import { mcpRoute } from "./mcp";
 import { authorizeRoute, authServerRoute, checkAuthorize, protectedResourceRoute, registerRoute, tokenRoute } from "./oauth";
 import { resetTokensForTests } from "./tokens";
@@ -205,7 +206,6 @@ test("an assistant opens a GitHub issue from a report, once, recorded in its nam
   const sent: string[] = [];
   const rt = testRuntime({
     config,
-    githubToken: "ghp_test",
     fetch: (async (url: string, init: RequestInit) => {
       sent.push(String(init.body));
       return String(url).startsWith("https://api.github.com/") ? Response.json({ number: 3, html_url: "https://github.com/acme/site/issues/3" }, { status: 201 }) : new Response("ok");
@@ -215,6 +215,12 @@ test("an assistant opens a GitHub issue from a report, once, recorded in its nam
   const auth = { authorization: `Bearer ${access}` };
   const call = async (name: string, args: Record<string, unknown>) => (await (await rpc(rt, "tools/call", { name, arguments: args }, auth)).json()).result;
   const s = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date());
+  expect((await call("get_form", { name: "report" })).structuredContent.github_token).toBeNull();
+  expect((await call("create_issue", { id: s.id })).content[0].text).toContain("has no GitHub token");
+  setGitHubToken(rt, "report", "github_pat_" + "b".repeat(40), "marcel");
+  const tokenInfo = (await call("get_form", { name: "report" })).structuredContent.github_token;
+  expect(tokenInfo).toMatchObject({ set_by: "marcel", readable: true });
+  expect(JSON.stringify(tokenInfo)).not.toContain("github_pat_");
 
   expect((await call("get_submission", { id: s.id })).structuredContent.issue).toBeNull();
   const made = (await call("create_issue", { id: s.id })).structuredContent;

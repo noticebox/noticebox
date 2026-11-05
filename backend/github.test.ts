@@ -2,7 +2,8 @@
 // submission, and the refusals.
 import { expect, test } from "vitest";
 import { parseConfig } from "./config";
-import { issueDraft, openIssue } from "./github";
+import { gitHubToken, issueDraft, openIssue, setGitHubToken } from "./github";
+import { SECRET } from "./testutil";
 import { REPORT, testConfig, testRuntime } from "./testutil";
 
 const withGitHub = () => {
@@ -11,16 +12,18 @@ const withGitHub = () => {
   return c;
 };
 
-function githubRuntime(status = 201, token: string | null = "ghp_test") {
+const TOKEN = "github_pat_" + "a".repeat(40);
+
+function githubRuntime(status = 201, token: string | null = TOKEN) {
   const calls: { url: string; headers: Headers; body: Record<string, unknown> }[] = [];
   const rt = testRuntime({
     config: withGitHub(),
-    githubToken: token,
     fetch: (async (url: string, init: RequestInit) => {
       calls.push({ url: String(url), headers: new Headers(init.headers), body: JSON.parse(String(init.body)) as Record<string, unknown> });
       return status === 201 ? Response.json({ number: 7, html_url: "https://github.com/acme/site/issues/7" }, { status }) : Response.json({ message: "Not Found" }, { status });
     }) as typeof fetch,
   });
+  if (token) expect(setGitHubToken(rt, "report", token, "marcel")).toEqual({ ok: true });
   const s = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date("2026-11-01T10:00:00Z"));
   return { rt, s, calls };
 }
@@ -52,7 +55,7 @@ test("an issue is opened in the form's repository, recorded in the history, and 
   expect(r.ok).toBe(true);
   expect(calls).toHaveLength(1);
   expect(calls[0]!.url).toBe("https://api.github.com/repos/acme/site/issues");
-  expect(calls[0]!.headers.get("authorization")).toBe("Bearer ghp_test");
+  expect(calls[0]!.headers.get("authorization")).toBe(`Bearer ${TOKEN}`);
   expect(calls[0]!.body).toMatchObject({ title: "Spam on a note", labels: ["report"] });
   expect(calls[0]!.body.body).not.toContain("who@example.org");
   expect(rt.store.issue(s.id)).toMatchObject({ repo: "acme/site", number: 7, url: "https://github.com/acme/site/issues/7", actor: "marcel" });
@@ -65,7 +68,7 @@ test("an issue is opened in the form's repository, recorded in the history, and 
 
 test("refused without a repository, without a token, and when GitHub says no", async () => {
   const noToken = githubRuntime(201, null);
-  expect(await openIssue(noToken.rt, noToken.s.id, "marcel")).toEqual({ ok: false, error: "NOTICEBOX_GITHUB_TOKEN is not set" });
+  expect(await openIssue(noToken.rt, noToken.s.id, "marcel")).toEqual({ ok: false, error: expect.stringContaining("has no GitHub token") });
   const contact = noToken.rt.store.receive(noToken.rt.config.forms["contact-open"]!, { a: "b" }, null, new Date());
   const plain = githubRuntime();
   expect((await openIssue(plain.rt, contact.id, "marcel")).ok).toBe(false);
@@ -74,4 +77,20 @@ test("refused without a repository, without a token, and when GitHub says no", a
   expect(r).toEqual({ ok: false, error: expect.stringContaining("may not open issues in acme/site") });
   expect(denied.rt.store.issue(denied.s.id)).toBeUndefined();
   expect(await openIssue(denied.rt, denied.s.id, "marcel", { title: " " })).toEqual({ ok: false, error: "an issue needs a title" });
+});
+
+test("a form's token is kept sealed, shown only as who set it, and lost with the secret", () => {
+  const { rt } = githubRuntime();
+  const row = rt.store.formToken("report")!;
+  expect(row.sealed).not.toContain(TOKEN.slice(11));
+  expect(gitHubToken(rt, "report")).toMatchObject({ set_by: "marcel", readable: true });
+  expect(setGitHubToken(rt, "report", "hunter2", "marcel")).toEqual({ ok: false, error: "that does not look like a GitHub token" });
+  expect(setGitHubToken(rt, "nope", TOKEN, "marcel").ok).toBe(false);
+  rt.secret = "another-secret-".padEnd(32, "y");
+  expect(gitHubToken(rt, "report")!.readable).toBe(false);
+  rt.secret = SECRET;
+  expect(setGitHubToken(rt, "report", "", "marcel")).toEqual({ ok: true });
+  expect(gitHubToken(rt, "report")).toBeNull();
+  const noSecret = testRuntime({ secret: null });
+  expect(setGitHubToken(noSecret, "report", TOKEN, "marcel").ok).toBe(false);
 });

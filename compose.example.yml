@@ -8,7 +8,6 @@ services:
     environment:
       NOTICEBOX_BASE_URL: https://inbox.example.org
       NOTICEBOX_SECRET: ${NOTICEBOX_SECRET}
-      NOTICEBOX_GITHUB_TOKEN: ${NOTICEBOX_GITHUB_TOKEN} # optional: issues from submissions
       NTFY_REPORTS_TOPIC: ${NTFY_REPORTS_TOPIC}
       NTFY_CONTACT_TOPIC: ${NTFY_CONTACT_TOPIC}
     volumes:

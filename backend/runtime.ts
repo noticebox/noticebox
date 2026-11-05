@@ -9,7 +9,6 @@
 //   NOTICEBOX_TRUST_PROXY  0 to take client addresses from the socket instead of X-Forwarded-For
 //   NOTICEBOX_RATE_LIMIT   submissions per client and form in ten minutes (default 10; 0 switches the limit off)
 //   NOTICEBOX_SIGN_OUT_URL where "Sign out" goes (default the Authentik outpost's /outpost.goauthentik.io/sign_out)
-//   NOTICEBOX_GITHUB_TOKEN a GitHub token that may open issues in the forms' `github` repositories; unset, there are none
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import type { Config } from "./config";
@@ -47,7 +46,6 @@ export type Runtime = {
   devUser: string | null;
   trustProxy: boolean;
   secret: string | null;
-  githubToken: string | null;
   bodyLimit: number;
   now: () => Date;
   fetch: Fetch;
@@ -65,7 +63,6 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config">> & { forms?: Form
     devUser: null,
     trustProxy: true,
     secret: null,
-    githubToken: null,
     bodyLimit: 64 * 1024,
     now: () => new Date(),
     fetch,
@@ -112,7 +109,6 @@ function fromEnv(env: Record<string, string | undefined>): Runtime {
     devUser: env.NOTICEBOX_DEV_USER || null,
     trustProxy: env.NOTICEBOX_TRUST_PROXY !== "0",
     secret,
-    githubToken: env.NOTICEBOX_GITHUB_TOKEN || null,
   });
 }
 

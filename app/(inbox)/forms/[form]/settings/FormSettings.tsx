@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { type AdminState, deleteForm, updateForm } from "../../../admin";
+import { type AdminState, deleteForm, setFormToken, updateForm } from "../../../admin";
 
 export type RawFieldRow = { name: string; type: string; label: string; required: boolean; max: string; options: string; personal: "default" | "yes" | "no"; help: string };
 export type RawTarget = { type: "ntfy" | "webhook"; url: string };
@@ -68,13 +68,16 @@ const small = "field py-1 text-sm";
 // React's, so a refused save keeps what was typed and shows why it was refused.
 const EMPTY_FIELD = (name = ""): RawFieldRow => ({ name, type: "text", label: "", required: false, max: "", options: "", personal: "default", help: "" });
 
-export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[] }) {
+export type TokenView = { set_by: string; set_at: string; readable: boolean } | null;
+
+export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse, token, tokenWhen }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[]; token: TokenView; tokenWhen: string }) {
   const [s, set] = useState<Settings>(initial);
   const [saved, save, saving] = useActionState<AdminState, FormData>(async (prev, data) => {
     const r = await updateForm(prev, data);
     return r;
   }, {});
   const [removed, remove, removing] = useActionState<AdminState, FormData>(deleteForm, {});
+  const [tokenSaved, saveToken, savingToken] = useActionState<AdminState, FormData>(setFormToken, {});
   const patch = (p: Partial<Settings>) => set((x) => ({ ...x, ...p }));
   const field = (i: number, p: Partial<RawFieldRow>) => set((x) => ({ ...x, fields: x.fields.map((f, j) => (j === i ? { ...f, ...p } : f)) }));
   const target = (i: number, p: Partial<RawTarget>) => set((x) => ({ ...x, notify: x.notify.map((t, j) => (j === i ? { ...t, ...p } : t)) }));
@@ -334,7 +337,7 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
         <section>
           <h2 className="section-title">GitHub issues</h2>
           <p className="mb-3 text-muted">
-            A submission can be turned into an issue in this repository, from its page or over MCP. The token is <code>NOTICEBOX_GITHUB_TOKEN</code> in the environment. The draft carries only the fields that are not personal.
+            A submission can be turned into an issue in this repository, from its page or over MCP, once the form has a token (below). The draft carries only the fields that are not personal.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -370,6 +373,44 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
           </button>
         </div>
       </form>
+
+      <section>
+        <h2 className="section-title">GitHub token</h2>
+        <p className="mb-3 text-muted">
+          A fine-grained token for this form&apos;s repository alone, with <em>Issues: read and write</em>. It is kept encrypted and never shown again; replace it when it expires.
+        </p>
+        <p className="mb-3">
+          {token ? (
+            <>
+              Set by <span className="font-bold">{token.set_by}</span> on {tokenWhen}.{!token.readable && <span className="text-error"> It can no longer be read (the instance secret changed); set it again.</span>}
+            </>
+          ) : (
+            "No token: this form opens no issues."
+          )}
+        </p>
+        <form action={saveToken} className="flex flex-wrap items-end gap-2" key={`token-${tokenSaved.n ?? 0}`}>
+          <input type="hidden" name="name" value={name} />
+          <div className="min-w-64 flex-1">
+            <label htmlFor="s-github-token" className={label}>
+              {token ? "Replace the token" : "Token"}
+            </label>
+            <input id="s-github-token" name="token" type="password" autoComplete="off" spellCheck={false} className="field font-mono" placeholder="github_pat_…" />
+          </div>
+          <button type="submit" disabled={savingToken} className="btn-primary">
+            Save the token
+          </button>
+          {token && (
+            <button type="submit" name="remove" value="1" disabled={savingToken} className="btn text-error">
+              Remove the token
+            </button>
+          )}
+        </form>
+        {tokenSaved.error && (
+          <p role="alert" className="mt-2 text-error">
+            {tokenSaved.error}
+          </p>
+        )}
+      </section>
 
       <section>
         <h2 className="section-title">Remove</h2>

@@ -1,18 +1,21 @@
 # GitHub issues
 
-A submission can become an issue in a GitHub repository: a report about a broken page becomes a bug in the site's repository, a request becomes a task. Each form names its own repository, and each submission gets at most one issue.
+A submission can become an issue in a GitHub repository: a report about a broken page becomes a bug in the site's repository, a request becomes a task. Each form names its own repository and has its own token, and each submission gets at most one issue.
 
 ## Setting it up
 
-1. Create a token that may write issues in the repositories your forms name. A [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) limited to those repositories, with **Issues: Read and write**, is enough.
-2. Give it to the container as `NOTICEBOX_GITHUB_TOKEN`, from your password manager or `.env`, never in the forms file.
-3. Name the repository on the form: on its *Settings* tab under *GitHub issues*, over MCP with `put_form`, or in the forms file:
+1. Name the repository on the form: on its *Settings* tab under *GitHub issues*, over MCP with `put_form`, or in the forms file:
 
 ```json
 "github": { "repo": "example/site", "labels": ["report"] }
 ```
 
 `"github": "example/site"` is the short form without labels. Labels that do not exist yet are created by GitHub, if the token may.
+
+2. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with the repository's owner as resource owner, that one repository only, and **Issues: Read and write**. Keep it in your password manager.
+3. Paste it on the form's *Settings* tab under *GitHub token* and save. From then on the page says who set it and when, never the token; *Replace* when it expires, *Remove* to stop issues.
+
+The token is the form's, not the instance's: a fine-grained token reaches one owner, and a form for one product should not be able to write to another's repositories. It is stored in the database encrypted with a key derived from `NOTICEBOX_SECRET`, so the database file and its backups never hold it in clear; changing the secret makes it unreadable, and the *Settings* tab asks for it again. It is set only in the inbox, never over MCP, so it does not pass through an assistant's conversation; `get_form` says only whether a form has one.
 
 ## Opening an issue
 
