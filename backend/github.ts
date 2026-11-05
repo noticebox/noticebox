@@ -1,40 +1,63 @@
-// A GitHub issue from a submission: the form names the repository (`github`) and has a token of its own, set on its
-// settings and kept sealed in the database (a fine-grained token reaches one owner, so one per form, never one for the
-// instance). It may be set in the inbox or over MCP; it is never shown or returned again. An issue leaves the box for someone else's server, often a public one, so the draft carries only the fields
-// marked `personal: false` (undescribed fields count as personal), the form's link and the submission's id; the person
-// opening it sees the draft and may change it. One issue per submission, recorded in its history.
+// A GitHub issue from a submission, as a link: the form names the repository (`github`), and each submission links to
+// that repository's new-issue page with the title, the body and the labels filled in from what the person sent, except
+// their email address. noticebox calls no GitHub API and holds no token: the operator, signed in to GitHub, reads the
+// draft there, changes what should not be public, and submits it.
 import type { Form } from "./config";
-import type { Issue, Outcome, Submission } from "./db";
+import type { Submission } from "./db";
 import { linkFor } from "./links";
-import type { Runtime } from "./runtime";
-import { seal, unseal } from "./sealed";
+import { submissionPath } from "./paths";
 import { summaryOf } from "./summary";
 
 export type Draft = { title: string; body: string };
-export type TokenInfo = { set_by: string; set_at: string; readable: boolean };
-export type Opened = { ok: true; issue: Issue } | { ok: false; error: string };
 
-const API = "https://api.github.com";
-const opening = new Set<string>(); // submissions whose issue is being opened, so a double click opens one
+// GitHub answers a new-issue URL of more than about 8 KB with an error; the body is cut to keep the whole URL below it.
+const MAX_URL = 7500;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** What the issue says unless the person changes it. */
-export function issueDraft(form: Form, s: Submission): Draft {
-  const summary = summaryOf(form, { ...s, fields: publicFields(form, s) }, 80);
-  const title = summary ? `${form.title}: ${summary}` : `${form.title} ${s.id}`;
+/** Whether a field is left out of the issue: an email field, or an undescribed one that holds an email address. */
+function isEmail(form: Form, name: string, value: string): boolean {
+  const f = form.fields[name];
+  return f ? f.type === "email" : EMAIL.test(value.trim());
+}
+
+/** The issue as it is filled in: every field the person sent but their email, the form's link, and where it is in the inbox. */
+export function issueDraft(form: Form, s: Submission, baseUrl: string): Draft {
+  const fields = Object.fromEntries(Object.entries(s.fields).filter(([n, v]) => v && !isEmail(form, n, v)));
+  const titleField = Object.entries(form.fields).find(([n, f]) => f.type === "text" && /title|subject|betreff|titel/i.test(`${n} ${f.label}`) && fields[n]);
+  const summary = titleField ? fields[titleField[0]]!.replace(/\s+/g, " ").trim() : summaryOf(form, { ...s, fields }, 80);
+  const title = (summary || `${form.title} ${s.id}`).slice(0, 200);
+  const names = [...Object.keys(form.fields), ...Object.keys(fields).filter((n) => !form.fields[n])];
   const lines: string[] = [];
-  for (const [name, value] of Object.entries(publicFields(form, s))) {
+  for (const name of names) {
+    const value = fields[name];
+    if (!value) continue;
     const label = form.fields[name]?.label ?? name;
     lines.push(value.includes("\n") ? `**${label}**\n\n${quote(value)}` : `**${label}:** ${value}`);
   }
   const link = linkFor(form, s);
   if (link) lines.push(`**${link.label}:** ${link.url}`);
-  lines.push(`_From noticebox, ${form.name} submission \`${s.id}\`, received ${s.received_at.slice(0, 10)}._`);
+  lines.push(`_From noticebox, received ${s.received_at.slice(0, 10)}: ${baseUrl}${submissionPath(form.name, s.id)}_`);
   return { title, body: lines.join("\n\n") };
 }
 
-/** The fields an issue may carry: described, and not personal. */
-function publicFields(form: Form, s: Submission): Record<string, string> {
-  return Object.fromEntries(Object.entries(s.fields).filter(([n, v]) => v && form.fields[n] && !form.fields[n].personal));
+/** The link to the form's repository's new-issue page, filled in; null when the form names no repository. */
+export function issueUrl(form: Form | undefined, s: Submission, baseUrl: string): string | null {
+  if (!form?.github) return null;
+  const { repo, labels } = form.github;
+  const draft = issueDraft(form, s, baseUrl);
+  const url = (body: string) => {
+    const q = new URLSearchParams({ title: draft.title, body });
+    if (labels.length) q.set("labels", labels.join(","));
+    return `https://github.com/${repo}/issues/new?${q.toString()}`;
+  };
+  let full = url(draft.body);
+  const note = "\n\n_(Cut to fit the link; the whole submission is in noticebox.)_";
+  let keep = draft.body.length;
+  while (keep > 0 && full.length > MAX_URL) {
+    keep = Math.floor(keep * 0.9);
+    full = url(draft.body.slice(0, keep) + note);
+  }
+  return full;
 }
 
 const quote = (text: string) =>
@@ -42,100 +65,3 @@ const quote = (text: string) =>
     .split(/\r?\n/)
     .map((l) => `> ${l}`)
     .join("\n");
-
-export type TokenGuide = { repo: string | null; url: string; permissions: string[]; steps: string[] };
-
-/**
- * Where and how to make the token a form needs: a link to GitHub's form for a new fine-grained token, filled in as far as
- * GitHub takes parameters (name, description, owner, a year, Issues write), and the steps for what it does not take.
- */
-export function tokenGuide(form: Form): TokenGuide {
-  const repo = form.github?.repo ?? null;
-  const owner = repo?.split("/")[0];
-  const q = new URLSearchParams({ name: `noticebox ${form.name}`.slice(0, 40), description: `noticebox opens issues from the form "${form.name}"${repo ? ` in ${repo}` : ""}`, expires_in: "365", issues: "write" });
-  if (owner) q.set("target_name", owner);
-  return {
-    repo,
-    url: `https://github.com/settings/personal-access-tokens/new?${q.toString()}`,
-    permissions: ["Issues: Read and write", "Metadata: Read-only (GitHub adds it by itself)"],
-    steps: [
-      ...(repo ? [] : ["Name the form's repository first (github: owner/name)."]),
-      "Open the link, signed in to GitHub; it fills in the name, the description, a year's expiry and Issues: Read and write. Check each, GitHub may not take every one.",
-      `Resource owner: ${owner ?? "the owner of the repository"}. An organisation may have to allow fine-grained tokens, or approve this one.`,
-      `Repository access: Only select repositories, and pick ${repo ?? "the form's repository"} alone.`,
-      "Permissions: under Repository permissions only Issues, Read and write. Nothing else.",
-      "Generate the token, copy it once, and set it on the form: on its Settings tab under GitHub token, or with set_github_token. Keep it in the password manager too, and set a new one before it expires.",
-    ],
-  };
-}
-
-/** Whether a form has a token, who set it and when; never the token. */
-export function gitHubToken(rt: Runtime, form: string): TokenInfo | null {
-  const t = rt.store.formToken(form);
-  return t ? { set_by: t.set_by, set_at: t.set_at, readable: !!rt.secret && unseal(rt.secret, t.sealed) !== null } : null;
-}
-
-/** Sets (or, with an empty token, removes) the token a form opens issues with. */
-export function setGitHubToken(rt: Runtime, form: string, token: string, actor: string): Outcome {
-  if (!rt.config.forms[form]) return { ok: false, error: `no form called "${form}"` };
-  const t = token.trim();
-  if (!t) {
-    rt.store.clearFormToken(form);
-    return { ok: true };
-  }
-  if (!rt.secret) return { ok: false, error: "a token is kept encrypted with NOTICEBOX_SECRET, which is not set" };
-  if (!/^(github_pat_|ghp_|gho_|ghu_|ghs_)[A-Za-z0-9_]{20,255}$/.test(t)) return { ok: false, error: "that does not look like a GitHub token" };
-  rt.store.setFormToken(form, seal(rt.secret, t), actor, rt.now());
-  return { ok: true };
-}
-
-/** Opens the submission's issue in its form's repository, unless it has one, and records it in the history. */
-export async function openIssue(rt: Runtime, id: string, actor: string, draft: Partial<Draft> = {}): Promise<Opened> {
-  const s = rt.store.get(id);
-  const form = s && rt.config.forms[s.form];
-  if (!s || !form) return { ok: false, error: "no such submission" };
-  if (!form.github) return { ok: false, error: `the form "${form.name}" names no GitHub repository` };
-  const sealed = rt.store.formToken(form.name)?.sealed;
-  const token = sealed && rt.secret ? unseal(rt.secret, sealed) : null;
-  if (!token) return { ok: false, error: sealed ? "the form's GitHub token cannot be read (NOTICEBOX_SECRET changed?); set it again on the form's settings" : "the form has no GitHub token; its Settings tab, or github_token_guide over MCP, says how to make one" };
-  const had = rt.store.issue(id);
-  if (had) return { ok: false, error: `this submission already has issue ${had.repo}#${had.number}: ${had.url}` };
-  if (opening.has(id)) return { ok: false, error: "the issue is already being opened" };
-  const base = issueDraft(form, s);
-  const title = (draft.title ?? base.title).trim();
-  const body = draft.body ?? base.body;
-  if (!title) return { ok: false, error: "an issue needs a title" };
-  if (title.length > 256) return { ok: false, error: "the title is longer than 256 characters" };
-  if (body.length > 65536) return { ok: false, error: "the body is longer than 65536 characters" };
-  const { repo, labels } = form.github;
-  opening.add(id);
-  try {
-    let res: Response;
-    try {
-      res = await rt.fetch(`${API}/repos/${repo}/issues`, {
-        method: "POST",
-        headers: { accept: "application/vnd.github+json", authorization: `Bearer ${token}`, "x-github-api-version": "2022-11-28", "content-type": "application/json", "user-agent": "noticebox" },
-        body: JSON.stringify(labels.length ? { title, body, labels } : { title, body }),
-        signal: AbortSignal.timeout(10000),
-      });
-    } catch (e) {
-      rt.log(`github ${form.name} ${id}: ${(e as Error).message}`);
-      return { ok: false, error: "GitHub could not be reached" };
-    }
-    if (!res.ok) {
-      const message = await res
-        .json()
-        .then((j: { message?: string }) => j.message ?? "")
-        .catch(() => "");
-      rt.log(`github ${form.name} ${id}: HTTP ${res.status} ${message}`);
-      const why = res.status === 401 ? "the token was refused" : res.status === 403 || res.status === 404 ? `the token may not open issues in ${repo}, or it does not exist` : res.status === 410 ? `issues are turned off in ${repo}` : `HTTP ${res.status}`;
-      return { ok: false, error: `GitHub did not open the issue: ${why}${message ? ` (${message})` : ""}` };
-    }
-    const made = (await res.json()) as { number: number; html_url: string };
-    const issue: Issue = { submission_id: id, repo, number: made.number, url: made.html_url, actor, created_at: rt.now().toISOString() };
-    rt.store.recordIssue(issue);
-    return { ok: true, issue };
-  } finally {
-    opening.delete(id);
-  }
-}
