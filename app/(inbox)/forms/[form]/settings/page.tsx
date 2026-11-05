@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { gitHubToken, runtime } from "@/backend";
+import { gitHubToken, runtime, tokenGuide } from "@/backend";
 import { when } from "@/app/_lib/format";
 import { FormSettings, type RawFieldRow, type RawTarget, type Settings, type StateRow } from "./FormSettings";
 
@@ -58,5 +58,5 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
   };
   const token = gitHubToken(rt, name);
   const hasSubmissions = rt.store.counts().some((c) => c.form === name && c.n > 0);
-  return <FormSettings name={name} boxes={rt.config.boxes} initial={initial} hasSubmissions={hasSubmissions} seen={seen} statesInUse={inUse} token={token} tokenWhen={token ? when(token.set_at) : ""} />;
+  return <FormSettings name={name} boxes={rt.config.boxes} initial={initial} hasSubmissions={hasSubmissions} seen={seen} statesInUse={inUse} token={token} tokenWhen={token ? when(token.set_at) : ""} guide={tokenGuide(form)} />;
 }

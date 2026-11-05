@@ -69,8 +69,9 @@ const small = "field py-1 text-sm";
 const EMPTY_FIELD = (name = ""): RawFieldRow => ({ name, type: "text", label: "", required: false, max: "", options: "", personal: "default", help: "" });
 
 export type TokenView = { set_by: string; set_at: string; readable: boolean } | null;
+export type GuideView = { repo: string | null; url: string; permissions: string[]; steps: string[] };
 
-export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse, token, tokenWhen }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[]; token: TokenView; tokenWhen: string }) {
+export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse, token, tokenWhen, guide }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[]; token: TokenView; tokenWhen: string; guide: GuideView }) {
   const [s, set] = useState<Settings>(initial);
   const [saved, save, saving] = useActionState<AdminState, FormData>(async (prev, data) => {
     const r = await updateForm(prev, data);
@@ -377,8 +378,23 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
       <section>
         <h2 className="section-title">GitHub token</h2>
         <p className="mb-3 text-muted">
-          A fine-grained token for this form&apos;s repository alone, with <em>Issues: read and write</em>. It is kept encrypted and never shown again; replace it when it expires.
+          A fine-grained token for {guide.repo ? <code>{guide.repo}</code> : "this form's repository"} alone. It is kept encrypted and never shown again; replace it before it expires. It can also be set over MCP with <code>set_github_token</code>.
         </p>
+        <details className="mb-4" open={!token}>
+          <summary className="cursor-pointer font-bold">How to make the token</summary>
+          <p className="mt-2">
+            <a href={guide.url} target="_blank" rel="noopener noreferrer" className="btn">
+              Create the token on GitHub
+              <span aria-hidden="true">↗</span>
+            </a>
+          </p>
+          <ol className="mt-3 grid list-decimal gap-1.5 pl-5">
+            {guide.steps.map((st) => (
+              <li key={st}>{st}</li>
+            ))}
+          </ol>
+          <p className="mt-3 text-[13px] text-muted">Permissions: {guide.permissions.join("; ")}.</p>
+        </details>
         <p className="mb-3">
           {token ? (
             <>

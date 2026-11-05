@@ -12,10 +12,13 @@ A submission can become an issue in a GitHub repository: a report about a broken
 
 `"github": "example/site"` is the short form without labels. Labels that do not exist yet are created by GitHub, if the token may.
 
-2. Create a [fine-grained personal access token](https://github.com/settings/personal-access-tokens/new) with the repository's owner as resource owner, that one repository only, and **Issues: Read and write**. Keep it in your password manager.
-3. Paste it on the form's *Settings* tab under *GitHub token* and save. From then on the page says who set it and when, never the token; *Replace* when it expires, *Remove* to stop issues.
+2. Create a fine-grained personal access token for that repository. The form's *Settings* tab, under *GitHub token*, has *How to make the token* with a link to GitHub's new-token page, filled in for this form (name, description, the owner, a year's expiry, Issues write), and the steps for the rest; over MCP, `github_token_guide` returns the same link and steps. What the token needs:
+    - **Resource owner**: the repository's owner (an organisation may have to allow or approve fine-grained tokens)
+    - **Repository access**: *Only select repositories*, that one repository
+    - **Permissions**: *Issues: Read and write*, nothing else (*Metadata: Read-only* is added by GitHub)
+3. Set it: paste it on the *Settings* tab and save, or have an assistant call `set_github_token`. From then on noticebox says who set it and when, never the token; replace it before it expires, remove it to stop issues. Keep it in your password manager too.
 
-The token is the form's, not the instance's: a fine-grained token reaches one owner, and a form for one product should not be able to write to another's repositories. It is stored in the database encrypted with a key derived from `NOTICEBOX_SECRET`, so the database file and its backups never hold it in clear; changing the secret makes it unreadable, and the *Settings* tab asks for it again. It is set only in the inbox, never over MCP, so it does not pass through an assistant's conversation; `get_form` says only whether a form has one.
+The token is the form's, not the instance's: a fine-grained token reaches one owner, and a form for one product should not be able to write to another's repositories. It is stored in the database encrypted with a key derived from `NOTICEBOX_SECRET`, so the database file and its backups never hold it in clear; changing the secret makes it unreadable, and the *Settings* tab asks for it again. No page and no tool returns it again; `get_form` and `github_token_guide` say only whether a form has one, who set it and when. A token set over MCP has passed through the assistant's conversation; where that matters, paste it on the *Settings* tab instead.
 
 ## Opening an issue
 

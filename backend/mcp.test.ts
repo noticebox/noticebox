@@ -2,7 +2,6 @@
 // act in that person's name.
 import { createHash, randomBytes } from "node:crypto";
 import { beforeEach, expect, test } from "vitest";
-import { setGitHubToken } from "./github";
 import { mcpRoute } from "./mcp";
 import { authorizeRoute, authServerRoute, checkAuthorize, protectedResourceRoute, registerRoute, tokenRoute } from "./oauth";
 import { resetTokensForTests } from "./tokens";
@@ -82,7 +81,7 @@ test("tools act in the name of the person who allowed the client, and the trail 
   const auth = { authorization: `Bearer ${access}` };
 
   const tools = (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string }[];
-  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "create_issue", "decide", "get_form", "get_submission", "list_forms", "list_submissions", "put_form"]);
+  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "create_issue", "decide", "get_form", "get_submission", "github_token_guide", "list_forms", "list_submissions", "put_form", "set_github_token"]);
 
   const forms = (await (await rpc(rt, "tools/call", { name: "list_forms", arguments: {} }, auth)).json()).result.structuredContent;
   expect(forms.forms.map((f: { name: string; states: { name: string; closed: boolean; reason: boolean }[] }) => [f.name, f.states.map((s) => s.name), f.states.filter((s) => s.reason).map((s) => s.name)])).toEqual([
@@ -217,9 +216,16 @@ test("an assistant opens a GitHub issue from a report, once, recorded in its nam
   const s = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date());
   expect((await call("get_form", { name: "report" })).structuredContent.github_token).toBeNull();
   expect((await call("create_issue", { id: s.id })).content[0].text).toContain("has no GitHub token");
-  setGitHubToken(rt, "report", "github_pat_" + "b".repeat(40), "marcel");
+  const guide = (await call("github_token_guide", { form: "report" })).structuredContent;
+  expect(guide).toMatchObject({ repo: "acme/site", settings: `${BASE}/forms/report/settings`, token: null });
+  expect(new URL(guide.url).searchParams.get("target_name")).toBe("acme");
+  expect(new URL(guide.url).searchParams.get("issues")).toBe("write");
+  expect(guide.steps.join(" ")).toContain("Only select repositories, and pick acme/site alone");
+  expect((await call("set_github_token", { form: "report", token: "nonsense" })).isError).toBe(true);
+  const set = await call("set_github_token", { form: "report", token: "github_pat_" + "b".repeat(40) });
+  expect(JSON.stringify(set)).not.toContain("github_pat_");
   const tokenInfo = (await call("get_form", { name: "report" })).structuredContent.github_token;
-  expect(tokenInfo).toMatchObject({ set_by: "marcel", readable: true });
+  expect(tokenInfo).toMatchObject({ set_by: "marcel via Claude", readable: true });
   expect(JSON.stringify(tokenInfo)).not.toContain("github_pat_");
 
   expect((await call("get_submission", { id: s.id })).structuredContent.issue).toBeNull();
