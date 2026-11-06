@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { actorOf, formPath, runtime, setGitHubToken, type RawForm } from "@/backend";
+import { actorOf, formPath, runtime, type RawForm } from "@/backend";
 
 // The settings pages' actions: boxes and forms are edits of the forms file (backend/forms.ts), each validated as a
 // whole before it is written; a connection is a grant in the store. Every action needs the signed-in person, and
@@ -89,23 +89,8 @@ export async function deleteForm(prev: AdminState, data: FormData): Promise<Admi
   const has = rt.store.counts().some((c) => c.form === name && c.n > 0);
   const r = rt.forms.deleteForm(name, has);
   if (!r.ok) return { error: r.error, n };
-  rt.store.clearFormToken(name);
   revalidatePath("/", "layout");
   redirect("/");
-}
-
-// The form's GitHub token: written here, never read back to a page. An empty token with `remove` takes it away.
-export async function setFormToken(prev: AdminState, data: FormData): Promise<AdminState> {
-  const n = (prev.n ?? 0) + 1;
-  const actor = await signedIn();
-  if (!actor) return { error: "Sign in first.", n };
-  const remove = data.get("remove") !== null;
-  const token = remove ? "" : str(data, "token");
-  if (!remove && !token) return { error: "Paste the token first.", n };
-  const r = setGitHubToken(runtime(), str(data, "name"), token, actor);
-  if (!r.ok) return { error: r.error, n };
-  revalidatePath("/", "layout");
-  return { n };
 }
 
 export async function revokeGrant(prev: AdminState, data: FormData): Promise<AdminState> {

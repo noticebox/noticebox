@@ -67,23 +67,9 @@ create table if not exists grants (
   revoked_at text
 );
 create index if not exists grants_by_actor on grants (actor, created_at);
-create table if not exists form_tokens (
-  form text primary key,
-  sealed text not null,
-  set_by text not null,
-  set_at text not null
-);
-create table if not exists issues (
-  submission_id text primary key references submissions (id),
-  repo text not null,
-  number integer not null,
-  url text not null,
-  actor text not null,
-  created_at text not null
-);
+drop table if exists form_tokens;
+drop table if exists issues;
 `;
-
-export type Issue = { submission_id: string; repo: string; number: number; url: string; actor: string; created_at: string };
 
 export type Grant = { id: string; actor: string; client_hash: string; client_name: string; created_at: string; last_used_at: string; revoked_at: string | null };
 
@@ -216,39 +202,6 @@ export class Store {
       }
     }
     return purged;
-  }
-
-  /** A form's GitHub token, sealed (see sealed.ts), with who set it and when. */
-  formToken(form: string): { sealed: string; set_by: string; set_at: string } | undefined {
-    return this.db.prepare("select sealed, set_by, set_at from form_tokens where form = ?").get(form) as { sealed: string; set_by: string; set_at: string } | undefined;
-  }
-
-  setFormToken(form: string, sealed: string, actor: string, now: Date): void {
-    this.db.prepare("insert into form_tokens (form, sealed, set_by, set_at) values (?, ?, ?, ?) on conflict (form) do update set sealed = excluded.sealed, set_by = excluded.set_by, set_at = excluded.set_at").run(form, sealed, actor, now.toISOString());
-  }
-
-  clearFormToken(form: string): void {
-    this.db.prepare("delete from form_tokens where form = ?").run(form);
-  }
-
-  /** The GitHub issue opened from a submission, if one was. */
-  issue(id: string): Issue | undefined {
-    return this.db.prepare("select * from issues where submission_id = ?").get(id) as Issue | undefined;
-  }
-
-  /** Records the issue opened from a submission, with a note in its history that links it. */
-  recordIssue(i: Issue): void {
-    const s = this.get(i.submission_id);
-    if (!s) throw new Error("no such submission");
-    this.db.exec("begin");
-    try {
-      this.db.prepare("insert into issues (submission_id, repo, number, url, actor, created_at) values (?, ?, ?, ?, ?, ?)").run(i.submission_id, i.repo, i.number, i.url, i.actor, i.created_at);
-      this.db.prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, ?, ?, null, ?)").run(i.submission_id, i.created_at, i.actor, s.state, `Opened GitHub issue ${i.repo}#${i.number}: ${i.url}`);
-      this.db.exec("commit");
-    } catch (e) {
-      this.db.exec("rollback");
-      throw e;
-    }
   }
 
   /** An MCP client the person allowed: the grant every token of that connection names. */

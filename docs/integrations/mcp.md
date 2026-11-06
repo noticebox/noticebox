@@ -20,13 +20,10 @@ Each *Allow* is a connection, listed under *Your settings* with the client's nam
 |---|---|
 | `list_forms` | The forms with their kinds and states |
 | `list_submissions` | Submissions, filtered by form, state or open/closed; each with its summary, its URL in the inbox and its link |
-| `get_submission` | One submission with its fields and history |
+| `get_submission` | One submission with its fields and history, and `github_issue_url` when its form names a [repository](github.md) |
 | `add_note` | A note on a submission |
 | `decide` | A move to another state, with the reason; refused like in the UI when the reason is missing or the move is not allowed |
 | `get_form` | One form as the forms file has it, `${VAR}` references unexpanded |
-| `github_token_guide` | Where and how to create a form's GitHub token: a filled-in link to GitHub, the permissions and the steps |
-| `set_github_token` | Sets or removes a form's GitHub token; it is stored encrypted and never returned |
-| `create_issue` | Opens a GitHub issue from a submission in the repository its form names, once; see [GitHub issues](github.md) |
 | `put_form` | Creates a form or replaces it as a whole; the file is validated before it is written, so an invalid form, or a `${VAR}` the environment does not have, changes nothing |
 
 `put_form` does what *Add new* and the *Settings* tab do, through the same validation; secrets such as an ntfy topic go in as `${VAR}` references that the container's environment must provide.

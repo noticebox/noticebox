@@ -14,9 +14,9 @@ One container, no database server, no accounts of its own: the login is the reve
 - **Intake** is `POST /f/<form>`, as a plain form post (answered with a redirect) or as JSON (answered with the id, or the errors). A hidden field nobody sees catches bots, each client gets ten submissions per form in ten minutes, and a form with `origins` refuses posts from anywhere else. A refused plain post is sent back to the page it came from with `?error=…` and what was typed, so the page can show both; a page without JavaScript needs nothing more.
 - **Notifications** say that something arrived and where to look, never what it says: an ntfy topic gets a title and the link, a webhook gets `{form, kind, id, received_at, url}`.
 - **Retention**: a submission closed longer ago than the form's `retentionDays` loses its personal fields (free text, email; anything not marked `personal: false`). The ids, the category, the states and the audit trail stay.
-- **GitHub issues**: a form may name a repository (`github`); a submission's page then has *Open GitHub issue*, with a draft of the fields that are not personal, and the issue is recorded in the history. Each form has its own token, set on its *Settings* tab or over MCP, kept encrypted; both say how to make one.
+- **GitHub issues**: a form may name a repository (`github`); a submission's page then has *Open GitHub issue*, GitHub's new-issue page filled in with everything the person sent except their email, to check and submit there. No token.
 - **The inbox**: the sidebar lists the boxes and their forms with what is open, and *Add new* makes a box or a form; each form has a *Settings* tab that edits the file (fields, origins, redirect, notification targets, retention, link), validated as a whole before it is written; a form has an overview (what waits, received per day, the endpoint and the fields) and the table of its submissions, where the state of each row is a dropdown: choose the next state, write the reason in the dialog, confirm. `/forms/<form>/submissions/<id>` shows one submission with its fields and history; notifications link there. `/export.json` gives everything with its events.
-- **MCP** at `/mcp` has ten tools: `list_forms`, `list_submissions`, `get_submission`, `add_note`, `decide`, `create_issue` for the submissions, `get_form`, `put_form` to read and write a form as the forms file has it, and `github_token_guide`, `set_github_token` for a form's GitHub token. An MCP client registers itself, the signed-in person allows it on `/oauth/authorize`, and everything the assistant does is recorded as `<person> via <client>`. The connections are listed under *Your settings* and can be revoked.
+- **MCP** at `/mcp` has seven tools: `list_forms`, `list_submissions`, `get_submission`, `add_note`, `decide` for the submissions, and `get_form`, `put_form` to read and write a form as the forms file has it. An MCP client registers itself, the signed-in person allows it on `/oauth/authorize`, and everything the assistant does is recorded as `<person> via <client>`. The connections are listed under *Your settings* and can be revoked.
 
 ## Deploying
 
@@ -38,7 +38,7 @@ services:
 | `NOTICEBOX_DB` | the SQLite file (default `data/noticebox.sqlite`; `/data/noticebox.sqlite` in the image) |
 | `NOTICEBOX_BASE_URL` | the public URL, for links in notifications and as the OAuth issuer |
 | `NOTICEBOX_USER_HEADER` | the header the login proxy sets (default `X-Authentik-Username`) |
-| `NOTICEBOX_SECRET` | signs the OAuth tokens and encrypts the forms' GitHub tokens; without it there is no MCP and no GitHub issues |
+| `NOTICEBOX_SECRET` | signs the OAuth tokens; without it there is no MCP |
 | `NOTICEBOX_RATE_LIMIT` | submissions per client and form in ten minutes (default 10, 0 for none) |
 | `NOTICEBOX_TRUST_PROXY` | `0` to ignore `X-Forwarded-For` |
 | `NOTICEBOX_SIGN_OUT_URL` | where *Sign out* goes (default the Authentik outpost's `/outpost.goauthentik.io/sign_out`) |

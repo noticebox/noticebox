@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { type AdminState, deleteForm, setFormToken, updateForm } from "../../../admin";
+import { type AdminState, deleteForm, updateForm } from "../../../admin";
 
 export type RawFieldRow = { name: string; type: string; label: string; required: boolean; max: string; options: string; personal: "default" | "yes" | "no"; help: string };
 export type RawTarget = { type: "ntfy" | "webhook"; url: string };
@@ -68,17 +68,14 @@ const small = "field py-1 text-sm";
 // React's, so a refused save keeps what was typed and shows why it was refused.
 const EMPTY_FIELD = (name = ""): RawFieldRow => ({ name, type: "text", label: "", required: false, max: "", options: "", personal: "default", help: "" });
 
-export type TokenView = { set_by: string; set_at: string; readable: boolean } | null;
-export type GuideView = { repo: string | null; url: string; permissions: string[]; steps: string[] };
 
-export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse, token, tokenWhen, guide }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[]; token: TokenView; tokenWhen: string; guide: GuideView }) {
+export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[] }) {
   const [s, set] = useState<Settings>(initial);
   const [saved, save, saving] = useActionState<AdminState, FormData>(async (prev, data) => {
     const r = await updateForm(prev, data);
     return r;
   }, {});
   const [removed, remove, removing] = useActionState<AdminState, FormData>(deleteForm, {});
-  const [tokenSaved, saveToken, savingToken] = useActionState<AdminState, FormData>(setFormToken, {});
   const patch = (p: Partial<Settings>) => set((x) => ({ ...x, ...p }));
   const field = (i: number, p: Partial<RawFieldRow>) => set((x) => ({ ...x, fields: x.fields.map((f, j) => (j === i ? { ...f, ...p } : f)) }));
   const target = (i: number, p: Partial<RawTarget>) => set((x) => ({ ...x, notify: x.notify.map((t, j) => (j === i ? { ...t, ...p } : t)) }));
@@ -338,7 +335,7 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
         <section>
           <h2 className="section-title">GitHub issues</h2>
           <p className="mb-3 text-muted">
-            A submission can be turned into an issue in this repository, from its page or over MCP, once the form has a token (below). The draft carries only the fields that are not personal.
+            Each submission gets <em>Open GitHub issue</em>: GitHub&apos;s new-issue page for this repository, filled in with everything the person sent except their email. You check it and submit it on GitHub; noticebox needs no token.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -374,59 +371,6 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
           </button>
         </div>
       </form>
-
-      <section>
-        <h2 className="section-title">GitHub token</h2>
-        <p className="mb-3 text-muted">
-          A fine-grained token for {guide.repo ? <code>{guide.repo}</code> : "this form's repository"} alone. It is kept encrypted and never shown again; replace it before it expires. It can also be set over MCP with <code>set_github_token</code>.
-        </p>
-        <details className="mb-4" open={!token}>
-          <summary className="cursor-pointer font-bold">How to make the token</summary>
-          <p className="mt-2">
-            <a href={guide.url} target="_blank" rel="noopener noreferrer" className="btn">
-              Create the token on GitHub
-              <span aria-hidden="true">↗</span>
-            </a>
-          </p>
-          <ol className="mt-3 grid list-decimal gap-1.5 pl-5">
-            {guide.steps.map((st) => (
-              <li key={st}>{st}</li>
-            ))}
-          </ol>
-          <p className="mt-3 text-[13px] text-muted">Permissions: {guide.permissions.join("; ")}.</p>
-        </details>
-        <p className="mb-3">
-          {token ? (
-            <>
-              Set by <span className="font-bold">{token.set_by}</span> on {tokenWhen}.{!token.readable && <span className="text-error"> It can no longer be read (the instance secret changed); set it again.</span>}
-            </>
-          ) : (
-            "No token: this form opens no issues."
-          )}
-        </p>
-        <form action={saveToken} className="flex flex-wrap items-end gap-2" key={`token-${tokenSaved.n ?? 0}`}>
-          <input type="hidden" name="name" value={name} />
-          <div className="min-w-64 flex-1">
-            <label htmlFor="s-github-token" className={label}>
-              {token ? "Replace the token" : "Token"}
-            </label>
-            <input id="s-github-token" name="token" type="password" autoComplete="off" spellCheck={false} className="field font-mono" placeholder="github_pat_…" />
-          </div>
-          <button type="submit" disabled={savingToken} className="btn-primary">
-            Save the token
-          </button>
-          {token && (
-            <button type="submit" name="remove" value="1" disabled={savingToken} className="btn text-error">
-              Remove the token
-            </button>
-          )}
-        </form>
-        {tokenSaved.error && (
-          <p role="alert" className="mt-2 text-error">
-            {tokenSaved.error}
-          </p>
-        )}
-      </section>
 
       <section>
         <h2 className="section-title">Remove</h2>

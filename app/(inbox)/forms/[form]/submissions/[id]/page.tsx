@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { gitHubToken, issueDraft, KINDS, linkFor, runtime, stateOf, submissionsPath } from "@/backend";
+import { headers } from "next/headers";
+import { issueUrl, KINDS, linkFor, publicUrl, runtime, stateOf, submissionsPath } from "@/backend";
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
-import { IssueButton } from "../../../../IssueButton";
 import { StateMenu } from "../../../../StateMenu";
 
 export const dynamic = "force-dynamic";
@@ -21,8 +21,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
   const shown = names.filter((n) => s.fields[n]);
   const events = rt.store.events(s.id);
   const link = linkFor(form, s);
-  const issue = rt.store.issue(s.id);
-  const draft = form.github && !issue && gitHubToken(rt, form.name)?.readable ? issueDraft(form, s) : null;
+  const issue = issueUrl(form, s, publicUrl(await headers(), rt));
   const badge = (state: string) => <span className={`badge ${stateTone(state, states)}`}>{stateLabel(state)}</span>;
 
   return (
@@ -41,12 +40,11 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
           </a>
         )}
         {issue && (
-          <a href={issue.url} target="_blank" rel="noopener noreferrer" className="btn">
-            {issue.repo}#{issue.number}
+          <a href={issue} target="_blank" rel="noopener noreferrer" className="btn">
+            Open GitHub issue
             <span aria-hidden="true">↗</span>
           </a>
         )}
-        {draft && form.github && <IssueButton id={s.id} repo={form.github.repo} title={draft.title} body={draft.body} />}
         <span className="text-muted">
           Received {when(s.received_at)}
           {s.origin && ` from ${s.origin}`}

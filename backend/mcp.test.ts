@@ -81,7 +81,7 @@ test("tools act in the name of the person who allowed the client, and the trail 
   const auth = { authorization: `Bearer ${access}` };
 
   const tools = (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string }[];
-  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "create_issue", "decide", "get_form", "get_submission", "github_token_guide", "list_forms", "list_submissions", "put_form", "set_github_token"]);
+  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "decide", "get_form", "get_submission", "list_forms", "list_submissions", "put_form"]);
 
   const forms = (await (await rpc(rt, "tools/call", { name: "list_forms", arguments: {} }, auth)).json()).result.structuredContent;
   expect(forms.forms.map((f: { name: string; states: { name: string; closed: boolean; reason: boolean }[] }) => [f.name, f.states.map((s) => s.name), f.states.filter((s) => s.reason).map((s) => s.name)])).toEqual([
@@ -199,41 +199,17 @@ test("an assistant reads a form, creates one and replaces it; an invalid form ch
   expect(rt.config.forms["Bad Name"]).toBeUndefined();
 });
 
-test("an assistant opens a GitHub issue from a report, once, recorded in its name", async () => {
+test("a submission whose form names a repository carries the link to a filled-in GitHub issue", async () => {
   const config = testConfig();
   config.forms.report!.github = { repo: "acme/site", labels: [] };
-  const sent: string[] = [];
-  const rt = testRuntime({
-    config,
-    fetch: (async (url: string, init: RequestInit) => {
-      sent.push(String(init.body));
-      return String(url).startsWith("https://api.github.com/") ? Response.json({ number: 3, html_url: "https://github.com/acme/site/issues/3" }, { status: 201 }) : new Response("ok");
-    }) as typeof fetch,
-  });
+  const rt = testRuntime({ config });
   const { access } = await connect(rt);
   const auth = { authorization: `Bearer ${access}` };
   const call = async (name: string, args: Record<string, unknown>) => (await (await rpc(rt, "tools/call", { name, arguments: args }, auth)).json()).result;
   const s = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date());
-  expect((await call("get_form", { name: "report" })).structuredContent.github_token).toBeNull();
-  expect((await call("create_issue", { id: s.id })).content[0].text).toContain("has no GitHub token");
-  const guide = (await call("github_token_guide", { form: "report" })).structuredContent;
-  expect(guide).toMatchObject({ repo: "acme/site", settings: `${BASE}/forms/report/settings`, token: null });
-  expect(new URL(guide.url).searchParams.get("target_name")).toBe("acme");
-  expect(new URL(guide.url).searchParams.get("issues")).toBe("write");
-  expect(guide.steps.join(" ")).toContain("Only select repositories, and pick acme/site alone");
-  expect((await call("set_github_token", { form: "report", token: "nonsense" })).isError).toBe(true);
-  const set = await call("set_github_token", { form: "report", token: "github_pat_" + "b".repeat(40) });
-  expect(JSON.stringify(set)).not.toContain("github_pat_");
-  const tokenInfo = (await call("get_form", { name: "report" })).structuredContent.github_token;
-  expect(tokenInfo).toMatchObject({ set_by: "marcel via Claude", readable: true });
-  expect(JSON.stringify(tokenInfo)).not.toContain("github_pat_");
-
-  expect((await call("get_submission", { id: s.id })).structuredContent.issue).toBeNull();
-  const made = (await call("create_issue", { id: s.id })).structuredContent;
-  expect(made.issue).toEqual({ repo: "acme/site", number: 3, url: "https://github.com/acme/site/issues/3" });
-  expect(made.events.at(-1)).toMatchObject({ actor: "marcel via Claude", to_state: null });
-  expect(sent.at(-1)).not.toContain("who@example.org");
-  const again = await call("create_issue", { id: s.id });
-  expect(again.isError).toBe(true);
-  expect(again.content[0].text).toContain("acme/site#3");
+  const contact = rt.store.receive(rt.config.forms.contact!, { name: "A", email: "a@example.org", message: "Hi" }, null, new Date());
+  const url = (await call("get_submission", { id: s.id })).structuredContent.github_issue_url as string;
+  expect(url.startsWith("https://github.com/acme/site/issues/new?")).toBe(true);
+  expect(url).not.toContain("who%40example.org");
+  expect((await call("get_submission", { id: contact.id })).structuredContent.github_issue_url).toBeNull();
 });
