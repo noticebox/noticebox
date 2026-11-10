@@ -24,4 +24,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 CMD wget 
 ENTRYPOINT ["docker-entrypoint.sh"]
 # --use-system-ca: ntfy and webhook calls trust the image's certificate store (plus any CA added at start, see
 # docker-entrypoint.sh), not only the list compiled into Node.
-CMD ["node", "--use-system-ca", "--no-warnings=ExperimentalWarning", "server.js"]
+CMD ["node", "--use-system-ca", "server.js"]

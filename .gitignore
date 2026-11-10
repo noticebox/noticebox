@@ -6,6 +6,7 @@ data/
 *.sqlite*
 .env*
 !.env.example
+!backend/fixtures/*.sqlite
 test-results/
 playwright-report/
 *.tsbuildinfo
