@@ -1,3 +1,4 @@
+// The migrations: a new database, one made before migrations existed, opening twice, a failure, and a newer database.
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -6,7 +7,6 @@ import { afterEach, expect, test } from "vitest";
 import { Store } from "./db";
 import { MIGRATIONS, migrate, type Migration } from "./migrations";
 import { REPORT, testConfig } from "./testutil";
-
 
 const dirs: string[] = [];
 function tempFile(): string {
@@ -34,10 +34,22 @@ test("a fresh database ends at the latest version with the expected tables", () 
 
 test("a database made by 0.10.0, before migrations, opens at the latest version and keeps its data", () => {
   const path = tempFile();
-  // What 0.10.0 ran at every start: the schema script, with no version recorded, plus a table it then dropped.
+  // What 0.9.0 left: its tables, written out here as that release created them (not taken from migration 1, which is
+  // what is being tested), with no version recorded, and the table 0.10.0 dropped.
   const old = new Database(path);
-  old.exec(MIGRATIONS[0]!.sql);
-  old.exec("create table form_tokens (form text primary key, token text)");
+  old.exec(`
+    create table submissions (id text primary key, form text not null, kind text not null, state text not null, fields text not null,
+      received_at text not null, closed_at text, purged_at text, origin text);
+    create index submissions_by_form on submissions (form, state, received_at);
+    create index submissions_by_time on submissions (received_at);
+    create table events (id integer primary key autoincrement, submission_id text not null references submissions (id), at text not null,
+      actor text not null, from_state text, to_state text, reason text not null default '');
+    create index events_by_submission on events (submission_id, id);
+    create table grants (id text primary key, actor text not null, client_hash text not null, client_name text not null,
+      created_at text not null, last_used_at text not null, revoked_at text);
+    create index grants_by_actor on grants (actor, created_at);
+    create table form_tokens (form text primary key, token text);
+  `);
   old.exec(`insert into submissions (id, form, kind, state, fields, received_at) values ('s1', 'report', 'report', 'open', '${JSON.stringify(REPORT)}', '2026-01-01T00:00:00.000Z')`);
   old.exec("insert into events (submission_id, at, actor, from_state, to_state) values ('s1', '2026-01-01T00:00:00.000Z', 'form', null, 'open')");
   old.close();
@@ -91,9 +103,11 @@ test("a failing migration rolls back and the store refuses to open", () => {
   db.close();
 });
 
-test("a database from a newer release is refused rather than used", () => {
-  const db = new Database(":memory:");
+test("a database from a newer release is refused, and the store does not open", () => {
+  const path = tempFile();
+  const db = new Database(path);
   db.exec(`pragma user_version = ${MIGRATIONS.length + 1}`);
   expect(() => migrate(db)).toThrow(/newer/);
   db.close();
+  expect(() => new Store(path)).toThrow(/newer than this release knows/);
 });
