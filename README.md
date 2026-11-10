@@ -86,4 +86,4 @@ Node 22.13 or newer: SQLite is Node's own module. `backend/` is framework-free a
 
 ## Licence
 
-AGPL-3.0-only.
+AGPL-3.0-only. Contributions are welcome under the [contributor licence agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).

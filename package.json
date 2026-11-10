@@ -1,6 +1,6 @@
 {
   "name": "noticebox",
-  "version": "0.10.0",
+  "version": "0.13.3",
   "description": "An inbox for the forms on static pages: one endpoint per form, SQLite, and a small app that walks each notice through its states with an audit trail. MCP for assisted reviews.",
   "license": "AGPL-3.0-only",
   "private": true,
@@ -17,11 +17,11 @@
     "test:e2e": "next build && playwright test"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.2.0",
-    "next": "16.3.7",
+    "@modelcontextprotocol/server": "2.4.0",
+    "next": "16.4.6",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
@@ -30,7 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.7",
+    "eslint-config-next": "16.4.6",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.11"
