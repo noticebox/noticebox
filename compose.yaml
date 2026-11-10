@@ -1,0 +1,17 @@
+# noticebox: one container, one SQLite file in ./data. Every setting is in .env (a filled-in copy of .env.example);
+# nothing is listed here, so a new setting never touches this file. The reverse proxy in front does the login for
+# everything except the public paths (see docs/self-hosting/login.md).
+#
+#   cp .env.example .env && chmod 600 .env   # then fill it in
+#   docker compose pull && docker compose up -d
+services:
+  noticebox:
+    # :main follows main once CI passed; pin a release (:X.Y) to upgrade on purpose instead.
+    image: ghcr.io/noticebox/noticebox:main
+    container_name: noticebox
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/data
+    ports:
+      - "127.0.0.1:3000:3000"
