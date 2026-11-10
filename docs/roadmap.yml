@@ -1,0 +1,120 @@
+# The roadmap, as data. docs_hooks/roadmap.py (from passageway) renders it as the timeline on the roadmap page.
+#
+# Open entries (status now, next or later) are shown first, in the order of this file, each with a `when` label and `details`.
+# Done entries are shown below them, newest date first (the order of this file breaks ties), each with a `date` and a link to its
+# pull request or release.
+#
+# To finish a step: set `status: done`, replace `when` with `date: YYYY-MM-DD`, add the link to its pull request, and move it to the
+# top of the done entries. `icon` is the name of a Material Design icon (https://pictogrammers.com/library/mdi/).
+# `details` is a small subset of markdown: paragraphs, "- " lists, **bold**, `code` and [links](https://...).
+
+items:
+  # ---- open ------------------------------------------------------------------------------------------------------------
+  - id: migrations-and-kysely
+    status: now
+    when: Now
+    icon: database-cog
+    title: Ordered migrations, then typed queries
+    summary: Every schema change becomes a numbered migration, and the store moves to better-sqlite3 and kysely.
+    links:
+      - { label: "#46", url: "https://github.com/noticebox/noticebox/issues/46" }
+      - { label: "#48", url: "https://github.com/noticebox/noticebox/issues/48" }
+      - { label: "ADR 0003", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0003-better-sqlite3-and-kysely.md" }
+      - { label: "V4", url: "https://noticebox.github.io/noticebox/values/#v4" }
+
+  - id: sign-in
+    status: next
+    when: Next
+    icon: account-key
+    title: Sign-in of its own
+    summary: Magic links and your OAuth providers through Better Auth, an email allowlist, and no login proxy needed in front.
+    links:
+      - { label: "#28", url: "https://github.com/noticebox/noticebox/issues/28" }
+      - { label: "ADR 0002", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0002-sign-in-with-better-auth.md" }
+      - { label: "V3", url: "https://noticebox.github.io/noticebox/values/#v3" }
+      - { label: "V4", url: "https://noticebox.github.io/noticebox/values/#v4" }
+    details: |
+      A forged header no longer opens the inbox, and every action has a signed-in person behind it. Existing MCP connections reconnect once.
+
+  - id: forms-in-the-database
+    status: next
+    when: Next
+    icon: form-select
+    title: Forms in the database
+    summary: Boxes and forms move from the JSON file into the database; an existing file is imported once.
+    links:
+      - { label: "#51", url: "https://github.com/noticebox/noticebox/issues/51" }
+      - { label: "ADR 0004", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0004-forms-live-in-the-database.md" }
+      - { label: "V8", url: "https://noticebox.github.io/noticebox/values/#v8" }
+
+  - id: mcp-covers-everything
+    status: next
+    when: Next
+    icon: robot-outline
+    title: MCP covers everything
+    summary: Every tool result says what to do next, and boxes, deleting forms, connections and the export get tools of their own.
+    links:
+      - { label: "#27", url: "https://github.com/noticebox/noticebox/issues/27" }
+      - { label: "V7", url: "https://noticebox.github.io/noticebox/values/#v7" }
+
+  - id: rest-api
+    status: later
+    when: Later
+    icon: api
+    title: A REST API with tokens
+    summary: The same actions under /api/v1, with an OpenAPI description and API tokens that work on REST only.
+    links:
+      - { label: "#47", url: "https://github.com/noticebox/noticebox/issues/47" }
+      - { label: "V7", url: "https://noticebox.github.io/noticebox/values/#v7" }
+
+  - id: delete-after
+    status: later
+    when: Later
+    icon: delete-clock
+    title: An end for the anonymised record
+    summary: An optional second retention step per form that deletes a closed case entirely, history included.
+    links:
+      - { label: "#11", url: "https://github.com/noticebox/noticebox/issues/11" }
+      - { label: "V2", url: "https://noticebox.github.io/noticebox/values/#v2" }
+
+  # ---- done ------------------------------------------------------------------------------------------------------------
+  - id: github-issue-links
+    status: done
+    date: 2026-11-06
+    icon: github
+    title: GitHub issues as filled-in links
+    summary: A submission opens a new issue page with everything filled in but the email address; a person checks and submits it.
+    links:
+      - { label: "0.10.0", url: "https://github.com/noticebox/noticebox/pull/26" }
+      - { label: "ADR 0001", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0001-github-issues-as-filled-in-links.md" }
+      - { label: "V1", url: "https://noticebox.github.io/noticebox/values/#v1" }
+
+  - id: mcp-forms
+    status: done
+    date: 2026-10-16
+    icon: robot-outline
+    title: Forms over MCP
+    summary: An assistant reads and writes forms, not only submissions.
+    links:
+      - { label: "0.7.0", url: "https://github.com/noticebox/noticebox/pull/14" }
+      - { label: "V7", url: "https://noticebox.github.io/noticebox/values/#v7" }
+
+  - id: forms-in-the-inbox
+    status: done
+    date: 2026-10-10
+    icon: tune-variant
+    title: Boxes and forms made in the inbox
+    summary: New boxes and forms, a settings tab per form, notification targets, and MCP connections you can revoke.
+    links:
+      - { label: "0.3.0", url: "https://github.com/noticebox/noticebox/tree/v0.3.0" }
+      - { label: "V8", url: "https://noticebox.github.io/noticebox/values/#v8" }
+
+  - id: first-release
+    status: done
+    date: 2026-10-10
+    icon: inbox-arrow-down
+    title: The first release
+    summary: An endpoint for static forms, an inbox with states and reasons, an append-only history, retention, and MCP.
+    links:
+      - { label: "0.1.0", url: "https://github.com/noticebox/noticebox/tree/v0.1.0" }
+      - { label: "V3", url: "https://noticebox.github.io/noticebox/values/#v3" }
