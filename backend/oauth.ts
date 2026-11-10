@@ -16,13 +16,21 @@ const noStore = { ...cors, "Cache-Control": "no-store" };
 const oauthError = (error: string, status = 400) => Response.json({ error }, { status, headers: noStore });
 
 const preflight = (method: string) => (rt: Runtime) =>
-  rt.secret ? new Response(null, { status: 204, headers: { ...cors, "Access-Control-Allow-Methods": method, "Access-Control-Allow-Headers": "content-type, mcp-protocol-version" } }) : notFound();
+  rt.secret
+    ? new Response(null, {
+        status: 204,
+        headers: { ...cors, "Access-Control-Allow-Methods": method, "Access-Control-Allow-Headers": "content-type, mcp-protocol-version" },
+      })
+    : notFound();
 export const metadataPreflight = preflight("GET");
 export const registerPreflight = preflight("POST");
 
 export function protectedResourceRoute(req: Request, rt: Runtime): Response {
   if (!rt.secret) return notFound();
-  return Response.json({ resource: mcpResource(req.headers, rt), authorization_servers: [publicUrl(req.headers, rt)], bearer_methods_supported: ["header"] }, { headers: cors });
+  return Response.json(
+    { resource: mcpResource(req.headers, rt), authorization_servers: [publicUrl(req.headers, rt)], bearer_methods_supported: ["header"] },
+    { headers: cors },
+  );
 }
 
 export function authServerRoute(req: Request, rt: Runtime): Response {
@@ -60,11 +68,16 @@ export async function registerRoute(req: Request, rt: Runtime): Promise<Response
   } catch {}
   if (!body || typeof body !== "object" || Array.isArray(body)) return oauthError("invalid_client_metadata");
   const { client_name, redirect_uris } = body;
-  if (!Array.isArray(redirect_uris) || redirect_uris.length < 1 || redirect_uris.length > 5 || !redirect_uris.every(redirectUriOk)) return oauthError("invalid_redirect_uri");
-  if (client_name !== undefined && (typeof client_name !== "string" || client_name.length > 100 || /[\p{Cc}\p{Cf}]/u.test(client_name))) return oauthError("invalid_client_metadata");
+  if (!Array.isArray(redirect_uris) || redirect_uris.length < 1 || redirect_uris.length > 5 || !redirect_uris.every(redirectUriOk))
+    return oauthError("invalid_redirect_uri");
+  if (client_name !== undefined && (typeof client_name !== "string" || client_name.length > 100 || /[\p{Cc}\p{Cf}]/u.test(client_name)))
+    return oauthError("invalid_client_metadata");
   const client = client_name === undefined ? { redirect_uris } : { client_name, redirect_uris };
   const client_id = sign(rt.secret, "client", client);
-  return Response.json({ client_id, ...client, token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"] }, { status: 201, headers: noStore });
+  return Response.json(
+    { client_id, ...client, token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"] },
+    { status: 201, headers: noStore },
+  );
 }
 
 export type Checked =
@@ -85,7 +98,8 @@ export function checkAuthorize(params: URLSearchParams, h: Headers, rt: Runtime)
   const client = verify(rt.secret, "client", clientId);
   if (!client) return { kind: "error", message: "Unknown client. Connect again from your MCP client." };
   const redirectUri = one("redirect_uri");
-  if (redirectUri === undefined || !client.redirect_uris.includes(redirectUri)) return { kind: "error", message: "The redirect URI isn't one this client registered." };
+  if (redirectUri === undefined || !client.redirect_uris.includes(redirectUri))
+    return { kind: "error", message: "The redirect URI isn't one this client registered." };
 
   const state = one("state");
   const fail = (error: string) => {
@@ -101,7 +115,13 @@ export function checkAuthorize(params: URLSearchParams, h: Headers, rt: Runtime)
   const resource = one("resource");
   if (params.has("resource") && resource !== mcpResource(h, rt)) return fail("invalid_target");
 
-  const fields: Record<string, string> = { response_type: "code", client_id: clientId, redirect_uri: redirectUri, code_challenge: challenge, code_challenge_method: "S256" };
+  const fields: Record<string, string> = {
+    response_type: "code",
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+  };
   if (state !== undefined) fields.state = state;
   if (resource !== undefined) fields.resource = resource;
   const redirectHost = new URL(redirectUri).host;
@@ -143,7 +163,12 @@ export async function authorizeRoute(req: Request, rt: Runtime): Promise<Respons
 
 function issue(secret: string, clientHash: string, cn: string, aud: string, sub: string, gid: string): Response {
   return Response.json(
-    { access_token: sign(secret, "access", { aud, sub, cn, gid }), token_type: "Bearer", expires_in: TTL.access, refresh_token: sign(secret, "refresh", { cid: clientHash, cn, aud, jti: newJti(), sub, gid }) },
+    {
+      access_token: sign(secret, "access", { aud, sub, cn, gid }),
+      token_type: "Bearer",
+      expires_in: TTL.access,
+      refresh_token: sign(secret, "refresh", { cid: clientHash, cn, aud, jti: newJti(), sub, gid }),
+    },
     { headers: noStore },
   );
 }

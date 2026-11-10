@@ -47,9 +47,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
             <Icon name="external" />
           </a>
         )}
-        <span className="text-muted">
-          {t.submission.received(when(s.received_at), s.origin)}
-        </span>
+        <span className="text-muted">{t.submission.received(when(s.received_at), s.origin)}</span>
       </div>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -90,7 +88,13 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
                     </>
                   )}
                 </div>
-                {e.reason && <blockquote className={`mt-1.5 border-l-2 pl-3 whitespace-pre-wrap [overflow-wrap:anywhere] ${e.to_state && stateOf(states, e.to_state)?.reason ? "border-accent text-[17px] leading-snug" : "border-rule text-muted"}`}>{e.reason}</blockquote>}
+                {e.reason && (
+                  <blockquote
+                    className={`mt-1.5 border-l-2 pl-3 whitespace-pre-wrap [overflow-wrap:anywhere] ${e.to_state && stateOf(states, e.to_state)?.reason ? "border-accent text-[17px] leading-snug" : "border-rule text-muted"}`}
+                  >
+                    {e.reason}
+                  </blockquote>
+                )}
               </li>
             ))}
           </ol>

@@ -18,7 +18,16 @@ export function BoxPicker({ boxes, defaultValue = "", label = t.boxPicker.label 
       <label htmlFor={id} className="mb-1 block font-bold">
         {label}
       </label>
-      <input id={id} list={`${id}-boxes`} value={value} onChange={(e) => setValue(e.target.value)} maxLength={40} autoComplete="off" className="field" placeholder={boxes.length ? t.boxPicker.choose : t.boxPicker.type} />
+      <input
+        id={id}
+        list={`${id}-boxes`}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        maxLength={40}
+        autoComplete="off"
+        className="field"
+        placeholder={boxes.length ? t.boxPicker.choose : t.boxPicker.type}
+      />
       <datalist id={`${id}-boxes`}>
         {boxes.map((b) => (
           <option key={b} value={b} />

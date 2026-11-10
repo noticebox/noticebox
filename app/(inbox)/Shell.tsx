@@ -33,7 +33,11 @@ function Menu({ label, children, align = "left" }: { label: React.ReactNode; chi
         {label}
       </button>
       {open && (
-        <ul role="menu" onClick={() => setOpen(false)} className={`sheet absolute top-full z-20 mt-1 min-w-44 py-1 text-[15px] shadow-lg ${align === "right" ? "right-0" : "left-0"}`}>
+        <ul
+          role="menu"
+          onClick={() => setOpen(false)}
+          className={`sheet absolute top-full z-20 mt-1 min-w-44 py-1 text-[15px] shadow-lg ${align === "right" ? "right-0" : "left-0"}`}
+        >
           {children}
         </ul>
       )}
@@ -91,7 +95,12 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
                   const active = pathname === f.path || pathname.startsWith(f.path + "/");
                   return (
                     <li key={f.name}>
-                      <Link href={f.path} onClick={close} aria-current={active ? "page" : undefined} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ${active ? "bg-accent-soft font-bold text-accent" : "hover:bg-soft"}`}>
+                      <Link
+                        href={f.path}
+                        onClick={close}
+                        aria-current={active ? "page" : undefined}
+                        className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ${active ? "bg-accent-soft font-bold text-accent" : "hover:bg-soft"}`}
+                      >
                         <span className="truncate">{f.title}</span>
                         <span className={`text-[13px] tabular-nums ${active ? "text-accent" : "text-muted"}`} aria-label={t.shell.openCount(f.open)}>
                           {f.open}
@@ -129,12 +138,15 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
             <Icon name="menu" />
           </button>
           <div className="ml-auto">
-            <Menu align="right" label={
+            <Menu
+              align="right"
+              label={
                 <span className="flex max-w-48 items-center gap-1 font-normal">
                   <span className="truncate">{actor}</span>
                   <Icon name="dropdown" className="size-3.5 shrink-0 opacity-70" />
                 </span>
-              }>
+              }
+            >
               <li role="none">
                 <Link role="menuitem" href="/settings" className={item}>
                   {t.shell.yourSettings}

@@ -34,7 +34,11 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
     if (r.ok) setTarget(null); // done: the dialog closes, the page has been refreshed by the action
     return r;
   }, {});
-  const hydrated = useSyncExternalStore(noop, () => true, () => false);
+  const hydrated = useSyncExternalStore(
+    noop,
+    () => true,
+    () => false,
+  );
   const attempt = result.n ?? 0;
 
   useEffect(() => {
@@ -63,7 +67,14 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
 
   return (
     <div ref={root} className="relative inline-flex items-center gap-2" data-hydrated={hydrated || undefined}>
-      <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={t.stateMenu.state(stateLabel(state))} onClick={() => setOpen((o) => !o)} className={`badge ${tone} ${big ? "px-3 py-1 text-[15px]" : ""} cursor-pointer`}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={t.stateMenu.state(stateLabel(state))}
+        onClick={() => setOpen((o) => !o)}
+        className={`badge ${tone} ${big ? "px-3 py-1 text-[15px]" : ""} cursor-pointer`}
+      >
         {stateLabel(state)}
         <Icon name="dropdown" className="size-3 shrink-0 opacity-70" />
       </button>
@@ -100,7 +111,16 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
             <label htmlFor={`reason-${id}`} className="mb-1 block font-bold">
               {chosen ? t.stateMenu.reason : t.stateMenu.note}
             </label>
-            <textarea key={`reason-${attempt}`} id={`reason-${id}`} name="reason" rows={4} autoFocus required={needs || !chosen} className="field" defaultValue={result.ok ? "" : (result.reason ?? "")} />
+            <textarea
+              key={`reason-${attempt}`}
+              id={`reason-${id}`}
+              name="reason"
+              rows={4}
+              autoFocus
+              required={needs || !chosen}
+              className="field"
+              defaultValue={result.ok ? "" : (result.reason ?? "")}
+            />
             <label htmlFor={`to-${id}`} className="mt-4 mb-1 block font-bold">
               {t.stateMenu.then}
             </label>

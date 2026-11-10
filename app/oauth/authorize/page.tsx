@@ -18,29 +18,29 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   return (
     <main className="mx-auto mt-[18vh] max-w-md px-4">
       <div className="card p-6">
-      <h1 className="mb-2 text-xl font-bold tracking-tight">noticebox</h1>
-      {checked.kind === "error" ? (
-        <p role="alert" className="text-error">
-          {checked.message}
-        </p>
-      ) : (
-        <form method="post" action="/api/oauth/authorize">
-          {Object.entries(checked.fields).map(([name, value]) => (
-            <input key={name} type="hidden" name={name} value={value} />
-          ))}
-          <p className="mb-1">
-            {t.authorize.wants[0]}
-            <strong>{checked.clientName}</strong>
-            {t.authorize.wants[1]}
-            <strong>{actor}</strong>
-            {t.authorize.wants[2]}
+        <h1 className="mb-2 text-xl font-bold tracking-tight">noticebox</h1>
+        {checked.kind === "error" ? (
+          <p role="alert" className="text-error">
+            {checked.message}
           </p>
-          <p className="mb-6 text-sm text-muted">{t.authorize.recorded(checked.redirectHost)}</p>
-          <button type="submit" className="btn-primary">
-            {t.authorize.allow}
-          </button>
-        </form>
-      )}
+        ) : (
+          <form method="post" action="/api/oauth/authorize">
+            {Object.entries(checked.fields).map(([name, value]) => (
+              <input key={name} type="hidden" name={name} value={value} />
+            ))}
+            <p className="mb-1">
+              {t.authorize.wants[0]}
+              <strong>{checked.clientName}</strong>
+              {t.authorize.wants[1]}
+              <strong>{actor}</strong>
+              {t.authorize.wants[2]}
+            </p>
+            <p className="mb-6 text-sm text-muted">{t.authorize.recorded(checked.redirectHost)}</p>
+            <button type="submit" className="btn-primary">
+              {t.authorize.allow}
+            </button>
+          </form>
+        )}
       </div>
     </main>
   );

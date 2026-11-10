@@ -33,17 +33,25 @@ test("a JSON submission gets its id back; what is missing or wrong is named", as
   expect(rt.store.get(id)?.fields).toEqual({ ...REPORT, text: "This is spam.\nSecond line.", extra: "kept", n: "5" });
   expect(rt.store.fieldsSeen("report")).toEqual(["email", "extra", "file", "n", "note_id", "read_id", "reason", "text"]);
   // A strict form refuses them by name.
-  const strict = await intakeRoute(jsonPost("/f/contact", { name: "Ann", email: "ann@example.org", message: "Hi", phone: "1" }, { origin: "https://example.org" }), "contact", rt);
+  const strict = await intakeRoute(
+    jsonPost("/f/contact", { name: "Ann", email: "ann@example.org", message: "Hi", phone: "1" }, { origin: "https://example.org" }),
+    "contact",
+    rt,
+  );
   expect(strict.status).toBe(400);
   expect(await strict.json()).toEqual({ errors: ["phone is not a field of this form"] });
 
   const bad = await intakeRoute(jsonPost("/f/report", { reason: "Nope", email: "not-an-email", text: "x".repeat(2001) }), "report", rt);
   expect(bad.status).toBe(400);
-  expect(await bad.json()).toEqual({ errors: ["Reason must be one of the given choices", "What is wrong is too long (at most 2000 characters)", "Your email is not an email address"] });
+  expect(await bad.json()).toEqual({
+    errors: ["Reason must be one of the given choices", "What is wrong is too long (at most 2000 characters)", "Your email is not an email address"],
+  });
 
   expect((await intakeRoute(jsonPost("/f/report", "["), "report", rt)).status).toBe(400);
   expect((await intakeRoute(jsonPost("/f/report", "[1]"), "report", rt)).status).toBe(400);
-  expect((await intakeRoute(new Request(`${BASE}/f/report`, { method: "POST", headers: { "content-type": "text/plain" }, body: "hi" }), "report", rt)).status).toBe(415);
+  expect(
+    (await intakeRoute(new Request(`${BASE}/f/report`, { method: "POST", headers: { "content-type": "text/plain" }, body: "hi" }), "report", rt)).status,
+  ).toBe(415);
   expect((await intakeRoute(jsonPost("/f/nope", REPORT), "nope", rt)).status).toBe(404);
   expect(rt.store.list()).toHaveLength(1);
 });
@@ -131,7 +139,11 @@ test("a page describes its own fields with hidden _ fields, learned once, and ma
   expect(learned.qty).toMatchObject({ label: "How many", required: true, personal: true });
   expect(learned.note).toBeUndefined(); // nothing was said about it
   // A later post cannot change what is described, and _next elsewhere is ignored.
-  const later = await intakeRoute(formPost("/f/contact-open", { item: "x", qty: "1", _public: "qty", _label_item: "Thing", _next: "https://evil.example/" }, page), "contact-open", rt);
+  const later = await intakeRoute(
+    formPost("/f/contact-open", { item: "x", qty: "1", _public: "qty", _label_item: "Thing", _next: "https://evil.example/" }, page),
+    "contact-open",
+    rt,
+  );
   expect(later.status).toBe(303);
   expect(later.headers.get("location")).toBe("/f/contact-open/thanks");
   expect(rt.forms.config.forms["contact-open"]!.fields.qty).toMatchObject({ personal: true });

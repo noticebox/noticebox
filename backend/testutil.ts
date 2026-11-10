@@ -66,11 +66,19 @@ export function testRuntime(o: Partial<Runtime> = {}): TestRuntime {
 export const REPORT = { read_id: "r1", note_id: "n1", file: "a.png", reason: "Spam", text: "This is spam.\r\nSecond line.", email: "who@example.org" };
 
 export function formPost(path: string, data: Record<string, string>, headers: Record<string, string> = {}): Request {
-  return new Request(`${BASE}${path}`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded", ...headers }, body: new URLSearchParams(data).toString() });
+  return new Request(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", ...headers },
+    body: new URLSearchParams(data).toString(),
+  });
 }
 
 export function jsonPost(path: string, data: unknown, headers: Record<string, string> = {}): Request {
-  return new Request(`${BASE}${path}`, { method: "POST", headers: { "content-type": "application/json", ...headers }, body: typeof data === "string" ? data : JSON.stringify(data) });
+  return new Request(`${BASE}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json", ...headers },
+    body: typeof data === "string" ? data : JSON.stringify(data),
+  });
 }
 
 export async function until(check: () => boolean, ms = 2000): Promise<void> {

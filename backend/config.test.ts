@@ -3,15 +3,31 @@ import { expect, test } from "vitest";
 import { expand, loadConfig, parseConfig } from "./config";
 
 test("defaults fill in what the file leaves out", () => {
-  const c = parseConfig({ forms: { contact: { kind: "message", fields: { email: { type: "email" }, message: { type: "textarea", required: true }, topic: { type: "select", options: ["a"] } } } } });
+  const c = parseConfig({
+    forms: {
+      contact: {
+        kind: "message",
+        fields: { email: { type: "email" }, message: { type: "textarea", required: true }, topic: { type: "select", options: ["a"] } },
+      },
+    },
+  });
   const f = c.forms.contact!;
   expect(f.title).toBe("contact");
   expect(f.box).toBe("forms");
   expect(f.strict).toBe(false);
-  expect(f.states).toEqual([{ name: "new", closed: false, reason: false }, { name: "answered", closed: true, reason: false }]);
-  const own = parseConfig({ forms: { x: { kind: "report", strict: true, states: ["open", { name: "lawyer" }, { name: "done", closed: true, reason: true }] } } }).forms.x!;
+  expect(f.states).toEqual([
+    { name: "new", closed: false, reason: false },
+    { name: "answered", closed: true, reason: false },
+  ]);
+  const own = parseConfig({
+    forms: { x: { kind: "report", strict: true, states: ["open", { name: "lawyer" }, { name: "done", closed: true, reason: true }] } },
+  }).forms.x!;
   expect(own.strict).toBe(true);
-  expect(own.states.map((s) => [s.name, s.closed, s.reason])).toEqual([["open", false, false], ["lawyer", false, false], ["done", true, true]]);
+  expect(own.states.map((s) => [s.name, s.closed, s.reason])).toEqual([
+    ["open", false, false],
+    ["lawyer", false, false],
+    ["done", true, true],
+  ]);
   expect(own.fields).toEqual({});
   expect(f.link).toBeNull();
   expect(f.retentionDays).toBe(180);
@@ -72,7 +88,5 @@ test("a form's link is a URL template over its own fields", () => {
 });
 
 test("a form name may start with a digit, like a domain", () => {
-  expect(Object.keys(parseConfig({ forms: { "3dbruckner-order": { kind: "message", fields: { a: {} } } } }).forms)).toEqual([
-    "3dbruckner-order",
-  ]);
+  expect(Object.keys(parseConfig({ forms: { "3dbruckner-order": { kind: "message", fields: { a: {} } } } }).forms)).toEqual(["3dbruckner-order"]);
 });

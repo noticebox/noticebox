@@ -35,11 +35,29 @@ export type Event = {
 export type ListFilter = { form?: string; state?: string; open?: boolean; limit?: number };
 export type Outcome = { ok: true } | { ok: false; error: string };
 
-export type Grant = { id: string; actor: string; client_hash: string; client_name: string; created_at: string; last_used_at: string; revoked_at: string | null };
+export type Grant = {
+  id: string;
+  actor: string;
+  client_hash: string;
+  client_name: string;
+  created_at: string;
+  last_used_at: string;
+  revoked_at: string | null;
+};
 
 /** The tables as the migrations leave them. */
 export type Tables = {
-  submissions: { id: string; form: string; kind: string; state: string; fields: string; received_at: string; closed_at: string | null; purged_at: string | null; origin: string | null };
+  submissions: {
+    id: string;
+    form: string;
+    kind: string;
+    state: string;
+    fields: string;
+    received_at: string;
+    closed_at: string | null;
+    purged_at: string | null;
+    origin: string | null;
+  };
   events: { id: Generated<number>; submission_id: string; at: string; actor: string; from_state: string | null; to_state: string | null; reason: string };
   grants: Grant;
 };
@@ -116,7 +134,10 @@ export class Store {
     if (filter.state) query = query.where("state", "=", filter.state);
     if (filter.open === true) query = query.where("closed_at", "is", null);
     if (filter.open === false) query = query.where("closed_at", "is not", null);
-    query = query.orderBy("received_at", "desc").orderBy("id").limit(Math.min(filter.limit ?? 200, 1000));
+    query = query
+      .orderBy("received_at", "desc")
+      .orderBy("id")
+      .limit(Math.min(filter.limit ?? 200, 1000));
     return this.all(query).map(toSubmission);
   }
 
@@ -132,7 +153,12 @@ export class Store {
 
   /** Counts per form and state, for the overview. */
   counts(): { form: string; state: string; n: number }[] {
-    return this.all(q.selectFrom("submissions").select(["form", "state", (eb) => eb.fn.countAll<number>().as("n")]).groupBy(["form", "state"]));
+    return this.all(
+      q
+        .selectFrom("submissions")
+        .select(["form", "state", (eb) => eb.fn.countAll<number>().as("n")])
+        .groupBy(["form", "state"]),
+    );
   }
 
   /** How many a form received per day (UTC) since `since`, for the overview's chart; days without any are absent. */
@@ -184,11 +210,24 @@ export class Store {
     let purged = 0;
     for (const form of Object.values(config.forms)) {
       const before = new Date(now.getTime() - form.retentionDays * 86400000).toISOString();
-      const due = this.all(q.selectFrom("submissions").select(["id", "fields"]).where("form", "=", form.name).where("closed_at", "is not", null).where("closed_at", "<", before).where("purged_at", "is", null));
+      const due = this.all(
+        q
+          .selectFrom("submissions")
+          .select(["id", "fields"])
+          .where("form", "=", form.name)
+          .where("closed_at", "is not", null)
+          .where("closed_at", "<", before)
+          .where("purged_at", "is", null),
+      );
       for (const row of due) {
         const fields = JSON.parse(row.fields) as Record<string, string>;
         const kept = Object.fromEntries(Object.entries(fields).filter(([name]) => form.fields[name] && !form.fields[name].personal));
-        this.run(q.updateTable("submissions").set({ fields: JSON.stringify(kept), purged_at: now.toISOString(), origin: null }).where("id", "=", row.id));
+        this.run(
+          q
+            .updateTable("submissions")
+            .set({ fields: JSON.stringify(kept), purged_at: now.toISOString(), origin: null })
+            .where("id", "=", row.id),
+        );
         purged++;
       }
     }
@@ -215,7 +254,15 @@ export class Store {
 
   /** An MCP client the person allowed: the grant every token of that connection names. */
   grant(actor: string, clientHash: string, clientName: string, now: Date): Grant {
-    const g: Grant = { id: newId(), actor, client_hash: clientHash, client_name: clientName, created_at: now.toISOString(), last_used_at: now.toISOString(), revoked_at: null };
+    const g: Grant = {
+      id: newId(),
+      actor,
+      client_hash: clientHash,
+      client_name: clientName,
+      created_at: now.toISOString(),
+      last_used_at: now.toISOString(),
+      revoked_at: null,
+    };
     this.run(q.insertInto("grants").values(g));
     return g;
   }
@@ -234,7 +281,9 @@ export class Store {
 
   /** Revokes one of the person's own grants: every token of that connection stops working at once. */
   revokeGrant(id: string, actor: string, now: Date = new Date()): Outcome {
-    const changed = this.run(q.updateTable("grants").set({ revoked_at: now.toISOString() }).where("id", "=", id).where("actor", "=", actor).where("revoked_at", "is", null));
+    const changed = this.run(
+      q.updateTable("grants").set({ revoked_at: now.toISOString() }).where("id", "=", id).where("actor", "=", actor).where("revoked_at", "is", null),
+    );
     return changed ? { ok: true } : { ok: false, error: "no such connection" };
   }
 

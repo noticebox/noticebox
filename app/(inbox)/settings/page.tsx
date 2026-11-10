@@ -40,9 +40,7 @@ export default async function SettingsPage() {
                 {grants.map((g) => (
                   <li key={g.id} className="flex flex-wrap items-center gap-x-4 gap-y-1">
                     <span className="font-bold">{g.client_name}</span>
-                    <span className="text-[13px] text-muted">
-                      {t.you.allowed(when(g.created_at), when(g.last_used_at))}
-                    </span>
+                    <span className="text-[13px] text-muted">{t.you.allowed(when(g.created_at), when(g.last_used_at))}</span>
                     <ActionForm action={revokeGrant} button={t.you.revoke} danger className="ml-auto [&>button]:mt-0">
                       <input type="hidden" name="id" value={g.id} />
                     </ActionForm>

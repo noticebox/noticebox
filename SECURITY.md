@@ -14,10 +14,10 @@ You get an answer within seven days. Once a fix is released, the advisory is pub
 
 Security fixes go into a new release, and only the newest release gets them. There are no backports to older versions.
 
-| Version | Security fixes |
-|---|---|
-| newest release (`:latest`, and the `:X.Y` tag that follows it) | yes |
-| anything older | no: upgrade to the newest release |
+| Version                                                        | Security fixes                    |
+| -------------------------------------------------------------- | --------------------------------- |
+| newest release (`:latest`, and the `:X.Y` tag that follows it) | yes                               |
+| anything older                                                 | no: upgrade to the newest release |
 
 How to upgrade: [Upgrading](https://noticebox.github.io/noticebox/self-hosting/upgrading/).
 

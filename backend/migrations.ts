@@ -66,7 +66,8 @@ export function migrate(db: Connection, migrations: Migration[] = MIGRATIONS): n
     const current = version();
     if (current >= migrations.length) {
       db.exec("rollback");
-      if (current > migrations.length) throw new Error(`the database is at schema version ${current}, newer than this release knows (${migrations.length}); a downgrade is not supported`);
+      if (current > migrations.length)
+        throw new Error(`the database is at schema version ${current}, newer than this release knows (${migrations.length}); a downgrade is not supported`);
       return ran;
     }
     const m = migrations[current]!;
