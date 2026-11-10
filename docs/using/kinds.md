@@ -22,6 +22,18 @@ A form's kind chooses its first states. They can be renamed, reordered, added to
 | `new` | | | Arrived, not answered |
 | `answered` | yes | | Answered, by whatever means |
 
+```mermaid
+stateDiagram-v2
+  [*] --> open: a page posts
+  open --> in_review: someone looks
+  in_review --> acted_on: done something<br/>(with the reason)
+  in_review --> rejected: done nothing<br/>(with the reason)
+  acted_on --> [*]: retention removes<br/>the personal fields
+  rejected --> [*]: retention removes<br/>the personal fields
+```
+
+A report's usual path, from left to right: the two closed states at the end need a reason and start the retention clock. The arrows are the usual moves, not the only ones: any state can be moved to any other, and moving a closed one back to `in_review` reopens it.
+
 ## What the flags do
 
 **Closed** means done: the submission leaves the *Open* list and the form's [retention](../self-hosting/retention.md) starts counting. Moving it to a state that is not closed reopens it, with the old history kept.

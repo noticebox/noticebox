@@ -18,6 +18,7 @@ export type Settings = {
   origins: string; // one per line
   redirect: string;
   retentionDays: string;
+  deleteAfterDays: string;
   linkUrl: string;
   linkLabel: string;
   notify: RawTarget[];
@@ -55,6 +56,7 @@ function toRaw(s: Settings): Record<string, unknown> {
   if (origins.length) raw.origins = origins;
   if (s.redirect.trim()) raw.redirect = s.redirect.trim();
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
+  if (s.deleteAfterDays.trim()) raw.deleteAfterDays = Number(s.deleteAfterDays);
   if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim() }));
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
   const labels = s.githubLabels.split(",").map((x) => x.trim()).filter(Boolean);
@@ -319,6 +321,16 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 <input id="s-retention" value={s.retentionDays} onChange={(e) => patch({ retentionDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder="180" />
                 <span>{t.settings.retentionUnit}</span>
               </div>
+            </div>
+            <div>
+              <label htmlFor="s-delete-after" className={label}>
+                {t.settings.deleteAfter}
+              </label>
+              <div className="flex items-center gap-2">
+                <input id="s-delete-after" value={s.deleteAfterDays} onChange={(e) => patch({ deleteAfterDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder={t.settings.deleteAfterPlaceholder} />
+                <span>{t.settings.deleteAfterUnit}</span>
+              </div>
+              <p className={hint}>{t.settings.deleteAfterHint}</p>
             </div>
             <div className="sm:col-span-2">
               <label htmlFor="s-link" className={label}>

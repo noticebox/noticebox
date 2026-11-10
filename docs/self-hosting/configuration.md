@@ -4,6 +4,8 @@ noticebox is configured by environment variables and one JSON file with the form
 
 ## Environment
 
+Every setting is an environment variable, and in a deployment they all live in one `.env` file next to `compose.yaml`, which reads it with `env_file: .env` and lists none of them itself. Start from the repository's [`.env.example`](https://github.com/noticebox/noticebox/blob/main/.env.example): it lists every variable with what it does, and an unchanged copy keeps the defaults. Keep the file to its owner (`chmod 600`).
+
 | Variable | Default | Meaning |
 |---|---|---|
 | `NOTICEBOX_CONFIG` | `noticebox.json` (`/app/noticebox.json` in the image) | The forms file |
@@ -16,8 +18,9 @@ noticebox is configured by environment variables and one JSON file with the form
 | `NOTICEBOX_DEV_USER` | none | A fixed name standing in for the login, for development. Never in production. |
 | `NOTICEBOX_SIGN_OUT_URL` | `/outpost.goauthentik.io/sign_out` | Where *Sign out* in the user menu goes; the Authentik outpost's sign-out by default. Hidden with `NOTICEBOX_DEV_USER`. |
 | `PORT` | `3000` | Where it listens |
+| `PUID`, `PGID` | the owner of the mounted `/data` (1000 if that is root) | Who the server runs as inside the container, so the database belongs to the host user |
 
-`${VAR}` inside a string in the forms file is replaced by the variable's value when the file is read, so topics and other secrets stay out of the file. An unset variable is an error at start.
+`${VAR}` inside a string in the forms file is replaced by the variable's value when the file is read, so topics and other secrets stay out of the file; put those variables in `.env` too. An unset variable is an error at start.
 
 ## The forms file
 
@@ -67,6 +70,7 @@ The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 cha
 | `origins` | none: posts from anywhere | Origins posts are accepted from, `https://example.org` each |
 | `redirect` | the thank-you page | Where the browser goes after a plain post |
 | `retentionDays` | `180` | Days after closing until the personal fields are removed |
+| `deleteAfterDays` | none: the anonymised record stays | Days after closing until the submission and its history are deleted entirely; at least `retentionDays`. See [Retention](retention.md) |
 | `notify` | none | A list of targets, `{ "type": "ntfy", "url": … }` or `{ "type": "webhook", "url": … }`, see [Notifications](notifications.md). The older `{ "ntfy": …, "webhook": … }` object is read too. |
 | `link` | none | A URL template over the fields, or `{ "url": …, "label": … }`; see below |
 | `github` | none | The repository issues are opened in, `"owner/name"` or `{ "repo": …, "labels": [ … ] }`; see [GitHub issues](../integrations/github.md) |

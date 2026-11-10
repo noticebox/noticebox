@@ -23,3 +23,14 @@ A JSON post:
 ```
 
 Any number of targets can be set on a form, on its *Settings* tab or in the file. A notification that fails is logged and never delays or fails the submission: the answer to the poster goes out first.
+
+## Certificates
+
+ntfy and webhook calls verify TLS against the image's certificate store, the operating system's, not only the list built into Node. A target whose certificate comes from your own CA (an internal ntfy behind a corporate root, say) works once that CA is in the store: mount its certificate, PEM-encoded with a `.crt` name, into `/usr/local/share/ca-certificates/`, and the container adds it at start.
+
+```yaml
+    volumes:
+      - ./my-root-ca.crt:/usr/local/share/ca-certificates/my-root-ca.crt:ro
+```
+
+Checking is never switched off.

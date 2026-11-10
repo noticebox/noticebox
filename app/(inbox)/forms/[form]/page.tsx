@@ -72,6 +72,8 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
           <dd className="mb-2 break-all sm:mb-0">{form.redirect ?? t.overview.thanksPage(form.name)}</dd>
           <dt className="text-muted">{t.overview.retention}</dt>
           <dd className="mb-2 sm:mb-0">{t.overview.retentionDays(form.retentionDays)}</dd>
+          <dt className="text-muted">{t.overview.deleted}</dt>
+          <dd className="mb-2 sm:mb-0">{form.deleteAfterDays === null ? t.overview.deletedNever : t.overview.deletedDays(form.deleteAfterDays)}</dd>
           <dt className="text-muted">{t.overview.announced}</dt>
           <dd className="mb-2 sm:mb-0">{form.notify.length ? form.notify.map((n) => (n.type === "ntfy" ? t.overview.onNtfy(new URL(n.url).host) : t.overview.toWebhook(new URL(n.url).host))).join(t.overview.and) : t.overview.nowhere}</dd>
           {form.link && (

@@ -29,6 +29,7 @@ export type Form = {
   origins: string[]; // where submissions may come from; empty means anywhere
   redirect: string | null; // where the browser goes after a submission; null means the hosted thanks page
   retentionDays: number;
+  deleteAfterDays: number | null; // days after closing until the submission and its history are deleted; null keeps the anonymised record
   notify: Target[]; // where a new submission is announced (title and link, never the content)
   link: { url: string; label: string } | null; // where the thing a submission is about can be looked at: a URL template with {field} placeholders
   github: GitHub | null; // where an issue can be opened from a submission
@@ -113,6 +114,9 @@ function parseForm(name: string, raw: unknown): Form {
   const redirect = f.redirect === undefined || f.redirect === null ? null : absoluteUrl(f.redirect, `${at}.redirect`);
   const retentionDays = f.retentionDays === undefined ? 180 : f.retentionDays;
   if (typeof retentionDays !== "number" || !Number.isInteger(retentionDays) || retentionDays < 1) throw new Error(`${at}.retentionDays: a whole number of days, at least 1`);
+  const deleteAfterDays = f.deleteAfterDays === undefined || f.deleteAfterDays === null ? null : f.deleteAfterDays;
+  if (deleteAfterDays !== null && (typeof deleteAfterDays !== "number" || !Number.isInteger(deleteAfterDays) || deleteAfterDays < retentionDays))
+    throw new Error(`${at}.deleteAfterDays: a whole number of days, at least retentionDays (${retentionDays})`);
   const notify = parseNotify(`${at}.notify`, f.notify);
   const box = str(f.box, `${at}.box`, "forms");
   const states = parseStates(`${at}.states`, f.states, f.kind);
@@ -133,6 +137,7 @@ function parseForm(name: string, raw: unknown): Form {
     origins,
     redirect,
     retentionDays,
+    deleteAfterDays,
     notify,
     link,
     github,
