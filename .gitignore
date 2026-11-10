@@ -4,8 +4,9 @@ out/
 next-env.d.ts
 data/
 *.sqlite*
+.env*
+!.env.example
 !backend/fixtures/*.sqlite
-.env
 test-results/
 playwright-report/
 *.tsbuildinfo

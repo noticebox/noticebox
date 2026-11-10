@@ -20,17 +20,7 @@ One container, no database server, no accounts of its own: the login is the reve
 
 ## Deploying
 
-```yaml
-# compose.yml, see compose.example.yml
-services:
-  noticebox:
-    image: ghcr.io/noticebox/noticebox:latest
-    environment:
-      NOTICEBOX_BASE_URL: https://inbox.example.org
-      NOTICEBOX_SECRET: ${NOTICEBOX_SECRET}   # 32+ random characters; signs the MCP tokens
-    volumes: ["./noticebox.json:/app/noticebox.json:ro", "./data:/data"]
-    ports: ["127.0.0.1:3000:3000"]
-```
+`compose.yaml` and `.env.example` in this repository are what a server needs: copy both, fill in `.env` (every variable is listed there, with its default), then `docker compose pull && docker compose up -d`.
 
 | Variable | Meaning |
 |---|---|
@@ -96,4 +86,4 @@ Node 22 or newer. The store is SQLite through `better-sqlite3` (prebuilt binarie
 
 ## Licence
 
-AGPL-3.0-only.
+AGPL-3.0-only. Contributions are welcome under the [contributor licence agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).

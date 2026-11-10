@@ -1,6 +1,4 @@
 import { writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { expect, test } from "vitest";
 import { expand, loadConfig, parseConfig } from "./config";
 
@@ -51,7 +49,7 @@ test("origins lose a trailing slash and the file may take values from the enviro
   expect(c.forms.x!.origins).toEqual(["https://example.org"]);
   expect(expand('{"a": "${TOPIC}"}', { TOPIC: 'quo"te' })).toBe('{"a": "quo\\"te"}');
   expect(() => expand("${MISSING}", {})).toThrow(/\$\{MISSING\} is not set/);
-  const path = join(tmpdir(), `noticebox-${process.pid}.json`);
+  const path = process.env.NOTICEBOX_CONFIG!; // the test's own temporary directory (vitest.setup.ts)
   writeFileSync(path, JSON.stringify({ forms: { x: { kind: "report", fields: { a: {} }, notify: { ntfy: "https://ntfy.sh/${TOPIC}" } } } }));
   expect(loadConfig(path, { TOPIC: "t1" }).forms.x!.notify).toEqual([{ type: "ntfy", url: "https://ntfy.sh/t1" }]);
   expect(() => loadConfig("/nonexistent.json")).toThrow(/cannot read/);

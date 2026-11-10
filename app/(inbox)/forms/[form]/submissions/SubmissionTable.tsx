@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { stateLabel, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../StateMenu";
+import { Icon } from "@/app/_lib/icons";
 
 export type Row = {
   id: string;
@@ -107,7 +108,7 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
                   <th key={c.key} aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined} className="py-2 pr-4 pl-4 font-bold whitespace-nowrap first:pl-5">
                     <button type="button" onClick={() => sortBy(c.key)} className="font-bold hover:text-ink">
                       {c.label}
-                      <span aria-hidden="true" className="ml-1">{sort.key === c.key ? (sort.dir === 1 ? "↑" : "↓") : ""}</span>
+                      {sort.key === c.key && <Icon name={sort.dir === 1 ? "sortAscending" : "sortDescending"} className="ml-1 inline size-3.5 align-[-2px]" />}
                     </button>
                   </th>
                 ))}
@@ -141,8 +142,8 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
                   {linkLabel && (
                     <td className="py-2.5 pr-4 text-right">
                       {r.link && (
-                        <a href={r.link.url} target="_blank" rel="noopener noreferrer" aria-label={r.link.label} title={r.link.label} className="text-muted hover:text-accent">
-                          ↗
+                        <a href={r.link.url} target="_blank" rel="noopener noreferrer" aria-label={r.link.label} title={r.link.label} className="inline-flex text-muted hover:text-accent">
+                          <Icon name="external" />
                         </a>
                       )}
                     </td>

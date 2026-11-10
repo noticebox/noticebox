@@ -1,6 +1,6 @@
 # Upgrading
 
-Images are `ghcr.io/noticebox/noticebox:<version>`; a `vX.Y.Z` tag of the repository is a release, and the release notes on GitHub say what changed. Pin the version in your compose file and change it on purpose.
+Images are `ghcr.io/noticebox/noticebox:<version>`: each release is pushed as `X.Y.Z`, as `X.Y` (the newest of that line) and as `latest`. A `vX.Y.Z` tag of the repository is a release, and its [release notes on GitHub](https://github.com/noticebox/noticebox/releases) list the pull requests that went into it. Pin the version in your compose file and change it on purpose.
 
 ```sh
 docker compose pull && docker compose up -d
