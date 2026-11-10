@@ -8,7 +8,7 @@ noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-con
 
 ```sh
 NOTICEBOX_CONFIG=noticebox.example.json NOTICEBOX_DEV_USER=dev NTFY_REPORTS_TOPIC=x NTFY_CONTACT_TOPIC=y npm run dev
-npm test                                  # vitest: backend/**/*.test.ts, app/**/*.test.ts (the palette check) and proxy.test.ts
+npm test                                  # vitest: backend/**/*.test.ts, app/**/*.test.ts (the palette check) and proxy.test.ts; each test gets its own temp NOTICEBOX_DB/CONFIG (vitest.setup.ts)
 npx vitest run backend/intake.test.ts -t "name"   # one file / one test
 npm run typecheck                         # next typegen && tsc --noEmit
 npm run lint
@@ -17,6 +17,8 @@ npx playwright test e2e/inbox.spec.ts     # after a build; reuses a running serv
 ```
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the image and smoke-tests `/health` and that `/` answers 401 before pushing.
+
+Release: `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z` on `main`, with `X.Y.Z` = `package.json`'s version (CI refuses another). CI pushes the image as `X.Y.Z`, `X.Y` and `latest`, then makes the GitHub release with notes generated from the merged PRs.
 
 ## Architecture
 
@@ -30,6 +32,8 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the
 
 ## Conventions
 
+- Changes are judged against `docs/values.md`; a review names the point it touches ("breaks V1").
+- The roadmap is `docs/roadmap.yml`; the PR that finishes or changes a step updates it.
 - Each feature PR bumps `version` in `package.json` (and `package-lock.json`) and updates README + the matching `docs/` page; commit titles look like `NOTICEBOX #<issue>: <what>; noticebox <version>`.
 - Architecturally significant decisions get an ADR in `docs/adr/`.
 - Comments explain why, in full sentences, at the top of each module; keep that style.
