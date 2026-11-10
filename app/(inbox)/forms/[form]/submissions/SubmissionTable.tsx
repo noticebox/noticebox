@@ -41,7 +41,14 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
   const [hidden, setHidden] = useState<Set<string>>(new Set(fields.map((f) => `f:${f.name}`)));
 
   const order = (state: string) => states.findIndex((s) => s.name === state);
-  const value = (r: Row, key: string): string => (key === "received" ? r.received_at : key === "state" ? String(order(r.state)).padStart(3, "0") : key === "summary" ? r.summary : (r.fields[key.slice(2)] ?? ""));
+  const value = (r: Row, key: string): string =>
+    key === "received"
+      ? r.received_at
+      : key === "state"
+        ? String(order(r.state)).padStart(3, "0")
+        : key === "summary"
+          ? r.summary
+          : (r.fields[key.slice(2)] ?? "");
 
   const shown = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -68,7 +75,14 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input type="search" aria-label="Filter submissions" placeholder="Filter…" value={query} onChange={(e) => setQuery(e.target.value)} className="field !mt-0 w-full sm:w-64" />
+        <input
+          type="search"
+          aria-label="Filter submissions"
+          placeholder="Filter…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="field !mt-0 w-full sm:w-64"
+        />
         <select aria-label="Filter by state" value={show} onChange={(e) => setShow(e.target.value)} className="field !mt-0 w-auto">
           <option value="all">All states</option>
           <option value="open">Open</option>
@@ -98,16 +112,24 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
       </div>
       <div className="sheet overflow-x-auto">
         {shown.length === 0 ? (
-          <p className="px-5 py-10 text-center text-muted">{rows.length === 0 ? "Nothing yet. New submissions appear here as they arrive." : "Nothing matches."}</p>
+          <p className="px-5 py-10 text-center text-muted">
+            {rows.length === 0 ? "Nothing yet. New submissions appear here as they arrive." : "Nothing matches."}
+          </p>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-rule text-left text-sm text-muted">
                 {visible.map((c) => (
-                  <th key={c.key} aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined} className="py-2 pr-4 pl-4 font-bold whitespace-nowrap first:pl-5">
+                  <th
+                    key={c.key}
+                    aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}
+                    className="py-2 pr-4 pl-4 font-bold whitespace-nowrap first:pl-5"
+                  >
                     <button type="button" onClick={() => sortBy(c.key)} className="font-bold hover:text-ink">
                       {c.label}
-                      <span aria-hidden="true" className="ml-1">{sort.key === c.key ? (sort.dir === 1 ? "↑" : "↓") : ""}</span>
+                      <span aria-hidden="true" className="ml-1">
+                        {sort.key === c.key ? (sort.dir === 1 ? "↑" : "↓") : ""}
+                      </span>
                     </button>
                   </th>
                 ))}
@@ -141,7 +163,14 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
                   {linkLabel && (
                     <td className="py-2.5 pr-4 text-right">
                       {r.link && (
-                        <a href={r.link.url} target="_blank" rel="noopener noreferrer" aria-label={r.link.label} title={r.link.label} className="text-muted hover:text-accent">
+                        <a
+                          href={r.link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={r.link.label}
+                          title={r.link.label}
+                          className="text-muted hover:text-accent"
+                        >
                           ↗
                         </a>
                       )}

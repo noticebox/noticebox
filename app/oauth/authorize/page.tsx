@@ -17,25 +17,27 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
   return (
     <main className="mx-auto mt-[18vh] max-w-md px-4">
       <div className="card p-6">
-      <h1 className="mb-2 text-xl font-bold tracking-tight">noticebox</h1>
-      {checked.kind === "error" ? (
-        <p role="alert" className="text-error">
-          {checked.message}
-        </p>
-      ) : (
-        <form method="post" action="/api/oauth/authorize">
-          {Object.entries(checked.fields).map(([name, value]) => (
-            <input key={name} type="hidden" name={name} value={value} />
-          ))}
-          <p className="mb-1">
-            <strong>{checked.clientName}</strong> wants to read and decide submissions as <strong>{actor}</strong>.
+        <h1 className="mb-2 text-xl font-bold tracking-tight">noticebox</h1>
+        {checked.kind === "error" ? (
+          <p role="alert" className="text-error">
+            {checked.message}
           </p>
-          <p className="mb-6 text-sm text-muted">Everything it does is recorded in your name, marked as done through it. Afterwards you are sent to {checked.redirectHost}.</p>
-          <button type="submit" className="btn-primary">
-            Allow
-          </button>
-        </form>
-      )}
+        ) : (
+          <form method="post" action="/api/oauth/authorize">
+            {Object.entries(checked.fields).map(([name, value]) => (
+              <input key={name} type="hidden" name={name} value={value} />
+            ))}
+            <p className="mb-1">
+              <strong>{checked.clientName}</strong> wants to read and decide submissions as <strong>{actor}</strong>.
+            </p>
+            <p className="mb-6 text-sm text-muted">
+              Everything it does is recorded in your name, marked as done through it. Afterwards you are sent to {checked.redirectHost}.
+            </p>
+            <button type="submit" className="btn-primary">
+              Allow
+            </button>
+          </form>
+        )}
       </div>
     </main>
   );

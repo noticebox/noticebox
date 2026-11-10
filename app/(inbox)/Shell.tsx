@@ -31,7 +31,11 @@ function Menu({ label, children, align = "left" }: { label: React.ReactNode; chi
         {label}
       </button>
       {open && (
-        <ul role="menu" onClick={() => setOpen(false)} className={`sheet absolute top-full z-20 mt-1 min-w-44 py-1 text-[15px] shadow-lg ${align === "right" ? "right-0" : "left-0"}`}>
+        <ul
+          role="menu"
+          onClick={() => setOpen(false)}
+          className={`sheet absolute top-full z-20 mt-1 min-w-44 py-1 text-[15px] shadow-lg ${align === "right" ? "right-0" : "left-0"}`}
+        >
           {children}
         </ul>
       )}
@@ -92,7 +96,12 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
                   const active = pathname === f.path || pathname.startsWith(f.path + "/");
                   return (
                     <li key={f.name}>
-                      <Link href={f.path} onClick={close} aria-current={active ? "page" : undefined} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ${active ? "bg-accent-soft font-bold text-accent" : "hover:bg-soft"}`}>
+                      <Link
+                        href={f.path}
+                        onClick={close}
+                        aria-current={active ? "page" : undefined}
+                        className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ${active ? "bg-accent-soft font-bold text-accent" : "hover:bg-soft"}`}
+                      >
                         <span className="truncate">{f.title}</span>
                         <span className={`text-[13px] tabular-nums ${active ? "text-accent" : "text-muted"}`} aria-label={`${f.open} open`}>
                           {f.open}

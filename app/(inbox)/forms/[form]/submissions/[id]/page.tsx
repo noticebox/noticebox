@@ -77,9 +77,23 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
                 <div className="text-[13px] text-muted">{when(e.at)}</div>
                 <div>
                   <span className="font-bold">{e.actor}</span>{" "}
-                  {e.to_state === null ? "noted" : e.from_state === null ? <>received it as {badge(e.to_state)}</> : <>moved it from {badge(e.from_state)} to {badge(e.to_state)}</>}
+                  {e.to_state === null ? (
+                    "noted"
+                  ) : e.from_state === null ? (
+                    <>received it as {badge(e.to_state)}</>
+                  ) : (
+                    <>
+                      moved it from {badge(e.from_state)} to {badge(e.to_state)}
+                    </>
+                  )}
                 </div>
-                {e.reason && <blockquote className={`mt-1.5 border-l-2 pl-3 whitespace-pre-wrap [overflow-wrap:anywhere] ${e.to_state && stateOf(states, e.to_state)?.reason ? "border-accent text-[17px] leading-snug" : "border-rule text-muted"}`}>{e.reason}</blockquote>}
+                {e.reason && (
+                  <blockquote
+                    className={`mt-1.5 border-l-2 pl-3 whitespace-pre-wrap [overflow-wrap:anywhere] ${e.to_state && stateOf(states, e.to_state)?.reason ? "border-accent text-[17px] leading-snug" : "border-rule text-muted"}`}
+                  >
+                    {e.reason}
+                  </blockquote>
+                )}
               </li>
             ))}
           </ol>

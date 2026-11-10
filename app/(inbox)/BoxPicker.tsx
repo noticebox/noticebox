@@ -17,7 +17,16 @@ export function BoxPicker({ boxes, defaultValue = "", label = "Box" }: { boxes: 
       <label htmlFor={id} className="mb-1 block font-bold">
         {label}
       </label>
-      <input id={id} list={`${id}-boxes`} value={value} onChange={(e) => setValue(e.target.value)} maxLength={40} autoComplete="off" className="field" placeholder={boxes.length ? "Choose or type a name" : "Type a name"} />
+      <input
+        id={id}
+        list={`${id}-boxes`}
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        maxLength={40}
+        autoComplete="off"
+        className="field"
+        placeholder={boxes.length ? "Choose or type a name" : "Type a name"}
+      />
       <datalist id={`${id}-boxes`}>
         {boxes.map((b) => (
           <option key={b} value={b} />
@@ -30,7 +39,11 @@ export function BoxPicker({ boxes, defaultValue = "", label = "Box" }: { boxes: 
         </button>
       )}
       {isNew && added === typed && <p className="mt-1 text-[13px] text-accent">“{typed}” will be made with the form.</p>}
-      {!isNew && <p className="mt-1 text-[13px] text-muted">{boxes.length ? "An existing box, or a new name." : "The first box; a box groups forms, a site, a project."}</p>}
+      {!isNew && (
+        <p className="mt-1 text-[13px] text-muted">
+          {boxes.length ? "An existing box, or a new name." : "The first box; a box groups forms, a site, a project."}
+        </p>
+      )}
     </div>
   );
 }

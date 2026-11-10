@@ -16,7 +16,10 @@ export default async function NewFormPage({ searchParams }: { searchParams: Prom
   return (
     <div className="mx-auto max-w-xl">
       <h1 className="mb-1 text-[28px] leading-tight font-bold tracking-tight">New form</h1>
-      <p className="mb-6 text-muted">A form is what a page posts to. Its name is the endpoint, /f/&lt;name&gt;. The fields come with the first submission, or a page describes them itself; the kind chooses the first states, which the settings page can change.</p>
+      <p className="mb-6 text-muted">
+        A form is what a page posts to. Its name is the endpoint, /f/&lt;name&gt;. The fields come with the first submission, or a page describes them itself;
+        the kind chooses the first states, which the settings page can change.
+      </p>
       <ActionForm action={createForm} button="Create the form" className="grid gap-5">
         <div>
           <label htmlFor="form-name" className="mb-1 block font-bold">
@@ -39,7 +42,9 @@ export default async function NewFormPage({ searchParams }: { searchParams: Prom
               <input type="radio" name="kind" value={k} defaultChecked={i === 0} className="mt-1" />
               <span>
                 <span className="font-bold">{k === "report" ? "Report" : "Message"}</span>{" "}
-                <span className="text-muted">{k === "report" ? "about content: open, in review, then acted on or rejected with a reason" : "a contact message: new until answered"}</span>
+                <span className="text-muted">
+                  {k === "report" ? "about content: open, in review, then acted on or rejected with a reason" : "a contact message: new until answered"}
+                </span>
               </span>
             </label>
           ))}

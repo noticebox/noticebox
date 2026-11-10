@@ -3,7 +3,16 @@
 import { useActionState, useState } from "react";
 import { type AdminState, deleteForm, updateForm } from "../../../admin";
 
-export type RawFieldRow = { name: string; type: string; label: string; required: boolean; max: string; options: string; personal: "default" | "yes" | "no"; help: string };
+export type RawFieldRow = {
+  name: string;
+  type: string;
+  label: string;
+  required: boolean;
+  max: string;
+  options: string;
+  personal: "default" | "yes" | "no";
+  help: string;
+};
 export type RawTarget = { type: "ntfy" | "webhook"; url: string };
 export type StateRow = { name: string; closed: boolean; reason: boolean };
 export type Settings = {
@@ -35,7 +44,11 @@ function toRaw(s: Settings): Record<string, unknown> {
     if (f.label.trim()) o.label = f.label.trim();
     if (f.required) o.required = true;
     if (f.max.trim()) o.max = Number(f.max);
-    if (f.type === "select") o.options = f.options.split(",").map((x) => x.trim()).filter(Boolean);
+    if (f.type === "select")
+      o.options = f.options
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
     if (f.personal !== "default") o.personal = f.personal === "yes";
     if (f.help.trim()) o.help = f.help.trim();
     fields[f.name.trim()] = o;
@@ -49,13 +62,19 @@ function toRaw(s: Settings): Record<string, unknown> {
     return o;
   });
   if (s.thanks.trim()) raw.thanks = s.thanks.trim();
-  const origins = s.origins.split("\n").map((x) => x.trim()).filter(Boolean);
+  const origins = s.origins
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
   if (origins.length) raw.origins = origins;
   if (s.redirect.trim()) raw.redirect = s.redirect.trim();
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
   if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim() }));
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
-  const labels = s.githubLabels.split(",").map((x) => x.trim()).filter(Boolean);
+  const labels = s.githubLabels
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
   if (s.githubRepo.trim()) raw.github = labels.length ? { repo: s.githubRepo.trim(), labels } : s.githubRepo.trim();
   return raw;
 }
@@ -68,8 +87,21 @@ const small = "field py-1 text-sm";
 // React's, so a refused save keeps what was typed and shows why it was refused.
 const EMPTY_FIELD = (name = ""): RawFieldRow => ({ name, type: "text", label: "", required: false, max: "", options: "", personal: "default", help: "" });
 
-
-export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[] }) {
+export function FormSettings({
+  name,
+  boxes,
+  initial,
+  hasSubmissions,
+  seen,
+  statesInUse,
+}: {
+  name: string;
+  boxes: string[];
+  initial: Settings;
+  hasSubmissions: boolean;
+  seen: string[];
+  statesInUse: string[];
+}) {
   const [s, set] = useState<Settings>(initial);
   const [saved, save, saving] = useActionState<AdminState, FormData>(async (prev, data) => {
     const r = await updateForm(prev, data);
@@ -141,7 +173,11 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
 
         <section>
           <h2 className="section-title">Fields</h2>
-          <p className="mb-3 text-muted">What the form knows about its fields: a label for the inbox, whether a field is personal (removed by retention once the submission is closed; yes unless said otherwise), whether it is required. A page may say this itself with hidden fields. Fields that arrive undescribed are taken as they come.</p>
+          <p className="mb-3 text-muted">
+            What the form knows about its fields: a label for the inbox, whether a field is personal (removed by retention once the submission is closed; yes
+            unless said otherwise), whether it is required. A page may say this itself with hidden fields. Fields that arrive undescribed are taken as they
+            come.
+          </p>
           <label className="mb-4 flex items-start gap-2">
             <input type="checkbox" checked={s.strict} onChange={(e) => patch({ strict: e.target.checked })} className="mt-1" />
             <span>
@@ -152,7 +188,12 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
             <div className="mb-4 rounded-md bg-soft px-3 py-2 text-sm">
               Seen in submissions, not described:{" "}
               {undescribed.map((n) => (
-                <button key={n} type="button" onClick={() => set((x) => ({ ...x, fields: [...x.fields, EMPTY_FIELD(n)] }))} className="mr-1 underline decoration-dotted hover:text-accent">
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => set((x) => ({ ...x, fields: [...x.fields, EMPTY_FIELD(n)] }))}
+                  className="mr-1 underline decoration-dotted hover:text-accent"
+                >
                   {n}
                 </button>
               ))}
@@ -164,7 +205,13 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
               <div key={i} className="sheet grid gap-2 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                 <div>
                   <label className="text-[13px] text-muted">Name</label>
-                  <input value={f.name} onChange={(e) => field(i, { name: e.target.value })} className={small} placeholder="email" aria-label={`Field ${i + 1} name`} />
+                  <input
+                    value={f.name}
+                    onChange={(e) => field(i, { name: e.target.value })}
+                    className={small}
+                    placeholder="email"
+                    aria-label={`Field ${i + 1} name`}
+                  />
                 </div>
                 <div>
                   <label className="text-[13px] text-muted">Type</label>
@@ -185,7 +232,12 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                   <button type="button" onClick={() => move(i, 1)} aria-label="Move down" className="btn px-2" disabled={i === s.fields.length - 1}>
                     ↓
                   </button>
-                  <button type="button" onClick={() => set((x) => ({ ...x, fields: x.fields.filter((_, j) => j !== i) }))} aria-label={`Remove field ${f.name || i + 1}`} className="btn px-2 text-error">
+                  <button
+                    type="button"
+                    onClick={() => set((x) => ({ ...x, fields: x.fields.filter((_, j) => j !== i) }))}
+                    aria-label={`Remove field ${f.name || i + 1}`}
+                    className="btn px-2 text-error"
+                  >
                     ✕
                   </button>
                 </div>
@@ -201,7 +253,11 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                   </label>
                   <label className="flex items-center gap-1.5">
                     personal
-                    <select value={f.personal} onChange={(e) => field(i, { personal: e.target.value as RawFieldRow["personal"] })} className="field w-auto py-0.5 text-sm">
+                    <select
+                      value={f.personal}
+                      onChange={(e) => field(i, { personal: e.target.value as RawFieldRow["personal"] })}
+                      className="field w-auto py-0.5 text-sm"
+                    >
                       <option value="default">by type</option>
                       <option value="yes">yes</option>
                       <option value="no">no</option>
@@ -209,7 +265,13 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                   </label>
                   <label className="flex items-center gap-1.5">
                     at most
-                    <input value={f.max} onChange={(e) => field(i, { max: e.target.value })} inputMode="numeric" className="field w-20 py-0.5 text-sm" placeholder="by type" />
+                    <input
+                      value={f.max}
+                      onChange={(e) => field(i, { max: e.target.value })}
+                      inputMode="numeric"
+                      className="field w-20 py-0.5 text-sm"
+                      placeholder="by type"
+                    />
                     characters
                   </label>
                   <label className="flex min-w-48 flex-1 items-center gap-1.5">
@@ -227,11 +289,20 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
 
         <section>
           <h2 className="section-title">States</h2>
-          <p className="mb-3 text-muted">A submission starts in the first state and can be moved to any other. A closed state counts as done and starts the retention clock; a state that needs a reason refuses to be entered without one. A state with submissions in it cannot be removed.</p>
+          <p className="mb-3 text-muted">
+            A submission starts in the first state and can be moved to any other. A closed state counts as done and starts the retention clock; a state that
+            needs a reason refuses to be entered without one. A state with submissions in it cannot be removed.
+          </p>
           <div className="grid gap-2">
             {s.states.map((st, i) => (
               <div key={i} className="sheet flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
-                <input value={st.name} onChange={(e) => state(i, { name: e.target.value })} className={`${small} w-40`} aria-label={`State ${i + 1} name`} placeholder="in_review" />
+                <input
+                  value={st.name}
+                  onChange={(e) => state(i, { name: e.target.value })}
+                  className={`${small} w-40`}
+                  aria-label={`State ${i + 1} name`}
+                  placeholder="in_review"
+                />
                 <label className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" checked={st.closed} onChange={(e) => state(i, { closed: e.target.checked })} /> closed
                 </label>
@@ -245,7 +316,14 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                   <button type="button" onClick={() => moveState(i, 1)} aria-label="Move state down" className="btn px-2" disabled={i === s.states.length - 1}>
                     ↓
                   </button>
-                  <button type="button" onClick={() => set((x) => ({ ...x, states: x.states.filter((_, j) => j !== i) }))} aria-label={`Remove state ${st.name || i + 1}`} className="btn px-2 text-error" disabled={statesInUse.includes(st.name) || s.states.length === 1} title={statesInUse.includes(st.name) ? "Submissions are in this state" : undefined}>
+                  <button
+                    type="button"
+                    onClick={() => set((x) => ({ ...x, states: x.states.filter((_, j) => j !== i) }))}
+                    aria-label={`Remove state ${st.name || i + 1}`}
+                    className="btn px-2 text-error"
+                    disabled={statesInUse.includes(st.name) || s.states.length === 1}
+                    title={statesInUse.includes(st.name) ? "Submissions are in this state" : undefined}
+                  >
                     ✕
                   </button>
                 </div>
@@ -264,36 +342,77 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
               <label htmlFor="s-origins" className={label}>
                 Takes posts from
               </label>
-              <textarea id="s-origins" value={s.origins} onChange={(e) => patch({ origins: e.target.value })} rows={2} className="field" placeholder={"https://example.org"} />
+              <textarea
+                id="s-origins"
+                value={s.origins}
+                onChange={(e) => patch({ origins: e.target.value })}
+                rows={2}
+                className="field"
+                placeholder={"https://example.org"}
+              />
               <p className={hint}>One origin per line. Empty: from anywhere.</p>
             </div>
             <div>
               <label htmlFor="s-redirect" className={label}>
                 Afterwards the browser goes to
               </label>
-              <input id="s-redirect" value={s.redirect} onChange={(e) => patch({ redirect: e.target.value })} className="field" placeholder={`Empty: the thank-you page at /f/${name}/thanks`} />
+              <input
+                id="s-redirect"
+                value={s.redirect}
+                onChange={(e) => patch({ redirect: e.target.value })}
+                className="field"
+                placeholder={`Empty: the thank-you page at /f/${name}/thanks`}
+              />
             </div>
             <div>
               <label htmlFor="s-thanks" className={label}>
                 Thank-you text
               </label>
-              <input id="s-thanks" value={s.thanks} onChange={(e) => patch({ thanks: e.target.value })} className="field" placeholder="Thank you. Your message has been received." />
+              <input
+                id="s-thanks"
+                value={s.thanks}
+                onChange={(e) => patch({ thanks: e.target.value })}
+                className="field"
+                placeholder="Thank you. Your message has been received."
+              />
             </div>
           </div>
         </section>
 
         <section>
           <h2 className="section-title">Notifications</h2>
-          <p className="mb-3 text-muted">Where a new submission is announced: a title and the link, never the content. A secret in the URL can be written as <code>${"{"}VAR{"}"}</code> and set in the environment.</p>
+          <p className="mb-3 text-muted">
+            Where a new submission is announced: a title and the link, never the content. A secret in the URL can be written as{" "}
+            <code>
+              ${"{"}VAR{"}"}
+            </code>{" "}
+            and set in the environment.
+          </p>
           <div className="grid gap-2">
             {s.notify.map((t, i) => (
               <div key={i} className="flex gap-2">
-                <select value={t.type} onChange={(e) => target(i, { type: e.target.value as RawTarget["type"] })} className="field w-32" aria-label={`Target ${i + 1} type`}>
+                <select
+                  value={t.type}
+                  onChange={(e) => target(i, { type: e.target.value as RawTarget["type"] })}
+                  className="field w-32"
+                  aria-label={`Target ${i + 1} type`}
+                >
                   <option value="ntfy">ntfy</option>
                   <option value="webhook">webhook</option>
                 </select>
-                <input value={t.url} onChange={(e) => target(i, { url: e.target.value })} className="field min-w-0 flex-1" placeholder={t.type === "ntfy" ? "https://ntfy.sh/your-topic" : "https://hooks.example.org/noticebox"} aria-label={`Target ${i + 1} URL`} />
-                <button type="button" onClick={() => set((x) => ({ ...x, notify: x.notify.filter((_, j) => j !== i) }))} aria-label={`Remove target ${i + 1}`} className="btn px-2 text-error">
+                <input
+                  value={t.url}
+                  onChange={(e) => target(i, { url: e.target.value })}
+                  className="field min-w-0 flex-1"
+                  placeholder={t.type === "ntfy" ? "https://ntfy.sh/your-topic" : "https://hooks.example.org/noticebox"}
+                  aria-label={`Target ${i + 1} URL`}
+                />
+                <button
+                  type="button"
+                  onClick={() => set((x) => ({ ...x, notify: x.notify.filter((_, j) => j !== i) }))}
+                  aria-label={`Remove target ${i + 1}`}
+                  className="btn px-2 text-error"
+                >
                   ✕
                 </button>
               </div>
@@ -312,7 +431,14 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 Personal fields are removed
               </label>
               <div className="flex items-center gap-2">
-                <input id="s-retention" value={s.retentionDays} onChange={(e) => patch({ retentionDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder="180" />
+                <input
+                  id="s-retention"
+                  value={s.retentionDays}
+                  onChange={(e) => patch({ retentionDays: e.target.value })}
+                  inputMode="numeric"
+                  className="field w-24"
+                  placeholder="180"
+                />
                 <span>days after a submission is closed</span>
               </div>
             </div>
@@ -320,7 +446,13 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
               <label htmlFor="s-link" className={label}>
                 Each submission links to
               </label>
-              <input id="s-link" value={s.linkUrl} onChange={(e) => patch({ linkUrl: e.target.value })} className="field" placeholder="https://example.org/items/{item_id}" />
+              <input
+                id="s-link"
+                value={s.linkUrl}
+                onChange={(e) => patch({ linkUrl: e.target.value })}
+                className="field"
+                placeholder="https://example.org/items/{item_id}"
+              />
               <p className={hint}>A URL with {"{field}"} placeholders, filled from the submission. Empty: no link.</p>
             </div>
             <div>
@@ -335,21 +467,34 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
         <section>
           <h2 className="section-title">GitHub issues</h2>
           <p className="mb-3 text-muted">
-            Each submission gets <em>Open GitHub issue</em>: GitHub&apos;s new-issue page for this repository, filled in with everything the person sent except their email. You check it and submit it on GitHub; noticebox needs no token.
+            Each submission gets <em>Open GitHub issue</em>: GitHub&apos;s new-issue page for this repository, filled in with everything the person sent except
+            their email. You check it and submit it on GitHub; noticebox needs no token.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="s-github-repo" className={label}>
                 Repository
               </label>
-              <input id="s-github-repo" value={s.githubRepo} onChange={(e) => patch({ githubRepo: e.target.value })} className="field" placeholder="owner/name" />
+              <input
+                id="s-github-repo"
+                value={s.githubRepo}
+                onChange={(e) => patch({ githubRepo: e.target.value })}
+                className="field"
+                placeholder="owner/name"
+              />
               <p className={hint}>Empty: no issues.</p>
             </div>
             <div>
               <label htmlFor="s-github-labels" className={label}>
                 Labels
               </label>
-              <input id="s-github-labels" value={s.githubLabels} onChange={(e) => patch({ githubLabels: e.target.value })} className="field" placeholder="report, triage" />
+              <input
+                id="s-github-labels"
+                value={s.githubLabels}
+                onChange={(e) => patch({ githubLabels: e.target.value })}
+                className="field"
+                placeholder="report, triage"
+              />
               <p className={hint}>Separated by commas.</p>
             </div>
           </div>
@@ -374,7 +519,11 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
 
       <section>
         <h2 className="section-title">Remove</h2>
-        <p className="text-muted">{hasSubmissions ? "A form with submissions cannot be removed. Download them first, or keep the form." : "The form and its endpoint go; nothing was posted to it yet."}</p>
+        <p className="text-muted">
+          {hasSubmissions
+            ? "A form with submissions cannot be removed. Download them first, or keep the form."
+            : "The form and its endpoint go; nothing was posted to it yet."}
+        </p>
         <form action={remove}>
           <input type="hidden" name="name" value={name} />
           {removed.error && (

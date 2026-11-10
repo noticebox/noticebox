@@ -18,7 +18,14 @@ function rpc(rt: TestRuntime, method: string, params: Record<string, unknown> = 
   return mcpRoute(
     new Request(`${BASE}/mcp`, {
       method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json, text/event-stream", "mcp-protocol-version": V, "mcp-method": method, ...name, ...headers },
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+        "mcp-protocol-version": V,
+        "mcp-method": method,
+        ...name,
+        ...headers,
+      },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: { ...params, _meta } }),
     }),
     rt,
@@ -32,7 +39,15 @@ async function connect(rt: TestRuntime, user = "marcel", clientName = "Claude"):
   const { client_id: clientId } = (await reg.json()) as { client_id: string };
   const verifier = randomBytes(32).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");
-  const fields = { response_type: "code", client_id: clientId, redirect_uri: "http://localhost:4567/cb", code_challenge: challenge, code_challenge_method: "S256", state: "s1", resource: `${rt.baseUrl}/mcp` };
+  const fields = {
+    response_type: "code",
+    client_id: clientId,
+    redirect_uri: "http://localhost:4567/cb",
+    code_challenge: challenge,
+    code_challenge_method: "S256",
+    state: "s1",
+    resource: `${rt.baseUrl}/mcp`,
+  };
   const page = checkAuthorize(new URLSearchParams(fields), new Headers(), rt);
   expect(page.kind).toBe("page");
   const allowed = await authorizeRoute(formPost("/api/oauth/authorize", fields, { "x-user": user, "sec-fetch-site": "same-origin" }), rt);
@@ -42,7 +57,16 @@ async function connect(rt: TestRuntime, user = "marcel", clientName = "Claude"):
   expect(back.searchParams.get("state")).toBe("s1");
   expect(back.searchParams.get("iss")).toBe(rt.baseUrl);
   const code = back.searchParams.get("code")!;
-  const tok = await tokenRoute(formPost("/oauth/token", { grant_type: "authorization_code", code, client_id: clientId, redirect_uri: "http://localhost:4567/cb", code_verifier: verifier }), rt);
+  const tok = await tokenRoute(
+    formPost("/oauth/token", {
+      grant_type: "authorization_code",
+      code,
+      client_id: clientId,
+      redirect_uri: "http://localhost:4567/cb",
+      code_verifier: verifier,
+    }),
+    rt,
+  );
   expect(tok.status).toBe(200);
   const t = (await tok.json()) as { access_token: string; refresh_token: string; token_type: string };
   expect(t.token_type).toBe("Bearer");
@@ -65,13 +89,31 @@ test("the metadata points a client at this instance; nothing is there without a 
 
 test("the authorize step needs the signed-in person, from our own page, for a registered client", async () => {
   const rt = testRuntime();
-  const reg = (await (await registerRoute(jsonPost("/oauth/register", { client_name: "Claude", redirect_uris: ["https://claude.ai/cb"] }), rt)).json()) as { client_id: string };
-  const fields = { response_type: "code", client_id: reg.client_id, redirect_uri: "https://claude.ai/cb", code_challenge: "a".repeat(43), code_challenge_method: "S256" };
+  const reg = (await (await registerRoute(jsonPost("/oauth/register", { client_name: "Claude", redirect_uris: ["https://claude.ai/cb"] }), rt)).json()) as {
+    client_id: string;
+  };
+  const fields = {
+    response_type: "code",
+    client_id: reg.client_id,
+    redirect_uri: "https://claude.ai/cb",
+    code_challenge: "a".repeat(43),
+    code_challenge_method: "S256",
+  };
   expect((await authorizeRoute(formPost("/api/oauth/authorize", fields, { "sec-fetch-site": "same-origin" }), rt)).status).toBe(401);
   expect((await authorizeRoute(formPost("/api/oauth/authorize", fields, { "x-user": "marcel", "sec-fetch-site": "cross-site" }), rt)).status).toBe(403);
-  expect((await authorizeRoute(formPost("/api/oauth/authorize", { ...fields, redirect_uri: "https://evil.example/cb" }, { "x-user": "marcel", "sec-fetch-site": "same-origin" }), rt)).status).toBe(400);
+  expect(
+    (
+      await authorizeRoute(
+        formPost("/api/oauth/authorize", { ...fields, redirect_uri: "https://evil.example/cb" }, { "x-user": "marcel", "sec-fetch-site": "same-origin" }),
+        rt,
+      )
+    ).status,
+  ).toBe(400);
   expect(checkAuthorize(new URLSearchParams({ ...fields, client_id: "forged" }), new Headers(), rt)).toMatchObject({ kind: "error" });
-  expect(checkAuthorize(new URLSearchParams({ ...fields, code_challenge_method: "plain" }), new Headers(), rt)).toMatchObject({ kind: "redirect", location: expect.stringContaining("error=invalid_request") });
+  expect(checkAuthorize(new URLSearchParams({ ...fields, code_challenge_method: "plain" }), new Headers(), rt)).toMatchObject({
+    kind: "redirect",
+    location: expect.stringContaining("error=invalid_request"),
+  });
   expect((await registerRoute(jsonPost("/oauth/register", { redirect_uris: ["http://evil.example/cb"] }), rt)).status).toBe(400);
 });
 
@@ -84,7 +126,13 @@ test("tools act in the name of the person who allowed the client, and the trail 
   expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "decide", "get_form", "get_submission", "list_forms", "list_submissions", "put_form"]);
 
   const forms = (await (await rpc(rt, "tools/call", { name: "list_forms", arguments: {} }, auth)).json()).result.structuredContent;
-  expect(forms.forms.map((f: { name: string; states: { name: string; closed: boolean; reason: boolean }[] }) => [f.name, f.states.map((s) => s.name), f.states.filter((s) => s.reason).map((s) => s.name)])).toEqual([
+  expect(
+    forms.forms.map((f: { name: string; states: { name: string; closed: boolean; reason: boolean }[] }) => [
+      f.name,
+      f.states.map((s) => s.name),
+      f.states.filter((s) => s.reason).map((s) => s.name),
+    ]),
+  ).toEqual([
     ["report", ["open", "in_review", "acted_on", "rejected"], ["acted_on", "rejected"]],
     ["contact-open", ["new", "answered"], []],
     ["contact", ["new", "answered"], []],
@@ -92,7 +140,19 @@ test("tools act in the name of the person who allowed the client, and the trail 
 
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date("2026-01-01T00:00:00Z")).id;
   const listed = (await (await rpc(rt, "tools/call", { name: "list_submissions", arguments: {} }, auth)).json()).result.structuredContent;
-  expect(listed.submissions).toEqual([{ id, form: "report", kind: "report", state: "open", received_at: "2026-01-01T00:00:00.000Z", closed_at: null, url: `${BASE}/forms/report/submissions/${id}`, link: "https://notes.test/r/r1/n1", summary: "This is spam. Second line." }]);
+  expect(listed.submissions).toEqual([
+    {
+      id,
+      form: "report",
+      kind: "report",
+      state: "open",
+      received_at: "2026-01-01T00:00:00.000Z",
+      closed_at: null,
+      url: `${BASE}/forms/report/submissions/${id}`,
+      link: "https://notes.test/r/r1/n1",
+      summary: "This is spam. Second line.",
+    },
+  ]);
 
   const noted = (await (await rpc(rt, "tools/call", { name: "add_note", arguments: { id, text: "Looks like a genuine complaint." } }, auth)).json()).result;
   expect(noted.structuredContent.events.at(-1)).toMatchObject({ actor: "marcel via Claude", to_state: null, reason: "Looks like a genuine complaint." });
@@ -101,7 +161,8 @@ test("tools act in the name of the person who allowed the client, and the trail 
   expect(refused.isError).toBe(true);
   expect(refused.content[0].text).toBe("acted_on needs a reason");
 
-  const decided = (await (await rpc(rt, "tools/call", { name: "decide", arguments: { id, to: "acted_on", reason: "Removed the note." } }, auth)).json()).result.structuredContent;
+  const decided = (await (await rpc(rt, "tools/call", { name: "decide", arguments: { id, to: "acted_on", reason: "Removed the note." } }, auth)).json()).result
+    .structuredContent;
   expect(decided.state).toBe("acted_on");
   expect(decided.events.at(-1)).toMatchObject({ actor: "marcel via Claude", from_state: "open", to_state: "acted_on", reason: "Removed the note." });
   expect(rt.store.get(id)!.closed_at).toBeTruthy();

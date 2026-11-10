@@ -48,7 +48,8 @@ export default async function SettingsPage() {
               </ul>
             )}
             <p className="mt-4 text-[13px] text-muted">
-              To connect Claude Code: <code>claude mcp add --transport http noticebox {base}/mcp</code>. What an assistant does is recorded as <em>{actor} via its name</em>.
+              To connect Claude Code: <code>claude mcp add --transport http noticebox {base}/mcp</code>. What an assistant does is recorded as{" "}
+              <em>{actor} via its name</em>.
             </p>
           </>
         )}

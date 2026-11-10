@@ -17,7 +17,11 @@ const MAX_UNDESCRIBED = 10000;
 /** What a page says about its own fields in hidden `_` fields, the way Formspree's `_next` works. */
 export type Hints = { required: string[]; personal: string[]; public: string[]; labels: Record<string, string>; next: string | null };
 
-const names = (v: string | undefined): string[] => (v ?? "").split(/[\s,]+/).map((x) => x.trim()).filter((x) => FIELD_NAME.test(x));
+const names = (v: string | undefined): string[] =>
+  (v ?? "")
+    .split(/[\s,]+/)
+    .map((x) => x.trim())
+    .filter((x) => FIELD_NAME.test(x));
 
 export function hintsOf(data: Record<string, string>): Hints {
   const labels: Record<string, string> = {};
@@ -82,7 +86,10 @@ export function intakePreflight(formName: string, h: Headers, rt: Runtime): Resp
   if (!form) return text(404, "no such form");
   const cors = corsFor(form, originOf(h));
   if (!cors.ok) return text(403, "");
-  return new Response(null, { status: 204, headers: { ...cors.headers, "access-control-allow-methods": "POST", "access-control-allow-headers": "content-type", "access-control-max-age": "600" } });
+  return new Response(null, {
+    status: 204,
+    headers: { ...cors.headers, "access-control-allow-methods": "POST", "access-control-allow-headers": "content-type", "access-control-max-age": "600" },
+  });
 }
 
 export async function intakeRoute(req: Request, formName: string, rt: Runtime): Promise<Response> {
@@ -108,7 +115,11 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
       return text(400, "the body is not JSON");
     }
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return text(400, "the body must be a JSON object");
-    data = Object.fromEntries(Object.entries(parsed).filter(([, v]) => ["string", "number", "boolean"].includes(typeof v)).map(([k, v]) => [k, String(v)]));
+    data = Object.fromEntries(
+      Object.entries(parsed)
+        .filter(([, v]) => ["string", "number", "boolean"].includes(typeof v))
+        .map(([k, v]) => [k, String(v)]),
+    );
     wantsJson = true;
   } else if (type === "application/x-www-form-urlencoded" || type === "multipart/form-data") {
     try {
@@ -126,9 +137,7 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
   // `_next`: where the page wants the browser afterwards, taken only when it is on an origin the form accepts.
   const next = hints.next && originAllowed(form, hints.next) ? hints.next : null;
   const accepted = (id: string) =>
-    wantsJson
-      ? Response.json({ id }, { status: 201, headers: cors.headers })
-      : seeOther(next ?? form.redirect ?? `/f/${form.name}/thanks`, cors.headers);
+    wantsJson ? Response.json({ id }, { status: 201, headers: cors.headers }) : seeOther(next ?? form.redirect ?? `/f/${form.name}/thanks`, cors.headers);
 
   if (data._gotcha) {
     rt.log(`honeypot ${form.name} from ${clientIp(h, rt)}`);

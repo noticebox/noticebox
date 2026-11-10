@@ -71,7 +71,15 @@ drop table if exists form_tokens;
 drop table if exists issues;
 `;
 
-export type Grant = { id: string; actor: string; client_hash: string; client_name: string; created_at: string; last_used_at: string; revoked_at: string | null };
+export type Grant = {
+  id: string;
+  actor: string;
+  client_hash: string;
+  client_name: string;
+  created_at: string;
+  last_used_at: string;
+  revoked_at: string | null;
+};
 
 type Row = Record<string, string | number | null>;
 
@@ -138,7 +146,11 @@ export class Store {
 
   /** The names of every field that ever arrived for a form, described or not, for the settings page. */
   fieldsSeen(form: string): string[] {
-    return (this.db.prepare("select distinct j.key as name from submissions, json_each(submissions.fields) as j where form = ? order by name").all(form) as { name: string }[]).map((r) => r.name);
+    return (
+      this.db.prepare("select distinct j.key as name from submissions, json_each(submissions.fields) as j where form = ? order by name").all(form) as {
+        name: string;
+      }[]
+    ).map((r) => r.name);
   }
 
   /** Counts per form and state, for the overview. */
@@ -158,7 +170,9 @@ export class Store {
     const s = this.get(id);
     if (!s) return { ok: false, error: "no such submission" };
     if (!reason.trim()) return { ok: false, error: "a note needs text" };
-    this.db.prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, ?, ?, null, ?)").run(id, now.toISOString(), actor, s.state, reason.trim());
+    this.db
+      .prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, ?, ?, null, ?)")
+      .run(id, now.toISOString(), actor, s.state, reason.trim());
     return { ok: true };
   }
 
@@ -176,7 +190,9 @@ export class Store {
     this.db.exec("begin");
     try {
       this.db.prepare("update submissions set state = ?, closed_at = ? where id = ?").run(to, closed, id);
-      this.db.prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, ?, ?, ?, ?)").run(id, at, actor, s.state, to, text);
+      this.db
+        .prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, ?, ?, ?, ?)")
+        .run(id, at, actor, s.state, to, text);
       this.db.exec("commit");
     } catch (e) {
       this.db.exec("rollback");
@@ -193,7 +209,9 @@ export class Store {
     let purged = 0;
     for (const form of Object.values(config.forms)) {
       const before = new Date(now.getTime() - form.retentionDays * 86400000).toISOString();
-      const due = this.db.prepare("select id, fields from submissions where form = ? and closed_at is not null and closed_at < ? and purged_at is null").all(form.name, before) as { id: string; fields: string }[];
+      const due = this.db
+        .prepare("select id, fields from submissions where form = ? and closed_at is not null and closed_at < ? and purged_at is null")
+        .all(form.name, before) as { id: string; fields: string }[];
       for (const row of due) {
         const fields = JSON.parse(row.fields) as Record<string, string>;
         const kept = Object.fromEntries(Object.entries(fields).filter(([name]) => form.fields[name] && !form.fields[name].personal));
@@ -206,8 +224,18 @@ export class Store {
 
   /** An MCP client the person allowed: the grant every token of that connection names. */
   grant(actor: string, clientHash: string, clientName: string, now: Date): Grant {
-    const g: Grant = { id: newId(), actor, client_hash: clientHash, client_name: clientName, created_at: now.toISOString(), last_used_at: now.toISOString(), revoked_at: null };
-    this.db.prepare("insert into grants (id, actor, client_hash, client_name, created_at, last_used_at) values (?, ?, ?, ?, ?, ?)").run(g.id, actor, clientHash, clientName, g.created_at, g.last_used_at);
+    const g: Grant = {
+      id: newId(),
+      actor,
+      client_hash: clientHash,
+      client_name: clientName,
+      created_at: now.toISOString(),
+      last_used_at: now.toISOString(),
+      revoked_at: null,
+    };
+    this.db
+      .prepare("insert into grants (id, actor, client_hash, client_name, created_at, last_used_at) values (?, ?, ?, ?, ?, ?)")
+      .run(g.id, actor, clientHash, clientName, g.created_at, g.last_used_at);
     return g;
   }
 

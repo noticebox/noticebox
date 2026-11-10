@@ -32,7 +32,11 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
     if (r.ok) setTarget(null); // done: the dialog closes, the page has been refreshed by the action
     return r;
   }, {});
-  const hydrated = useSyncExternalStore(noop, () => true, () => false);
+  const hydrated = useSyncExternalStore(
+    noop,
+    () => true,
+    () => false,
+  );
   const attempt = result.n ?? 0;
 
   useEffect(() => {
@@ -61,7 +65,14 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
 
   return (
     <div ref={root} className="relative inline-flex items-center gap-2" data-hydrated={hydrated || undefined}>
-      <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`State: ${stateLabel(state)}`} onClick={() => setOpen((o) => !o)} className={`badge ${tone} ${big ? "px-3 py-1 text-[15px]" : ""} cursor-pointer`}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`State: ${stateLabel(state)}`}
+        onClick={() => setOpen((o) => !o)}
+        className={`badge ${tone} ${big ? "px-3 py-1 text-[15px]" : ""} cursor-pointer`}
+      >
         {stateLabel(state)}
         <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className="opacity-70">
           <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
@@ -95,12 +106,25 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
             <h2 id={`dlg-${id}`} className="mb-1 text-[22px] leading-tight font-bold tracking-tight">
               {title}
             </h2>
-            <p className="mb-5 text-muted">{needs ? "The reason is the record of this decision; it stays with the submission." : "What you write stays in the history, with your name and the time."}</p>
+            <p className="mb-5 text-muted">
+              {needs
+                ? "The reason is the record of this decision; it stays with the submission."
+                : "What you write stays in the history, with your name and the time."}
+            </p>
             <input type="hidden" name="id" value={id} />
             <label htmlFor={`reason-${id}`} className="mb-1 block font-bold">
               {chosen ? "Reason" : "Note"}
             </label>
-            <textarea key={`reason-${attempt}`} id={`reason-${id}`} name="reason" rows={4} autoFocus required={needs || !chosen} className="field" defaultValue={result.ok ? "" : (result.reason ?? "")} />
+            <textarea
+              key={`reason-${attempt}`}
+              id={`reason-${id}`}
+              name="reason"
+              rows={4}
+              autoFocus
+              required={needs || !chosen}
+              className="field"
+              defaultValue={result.ok ? "" : (result.reason ?? "")}
+            />
             <label htmlFor={`to-${id}`} className="mt-4 mb-1 block font-bold">
               Then
             </label>

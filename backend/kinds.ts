@@ -46,7 +46,11 @@ export function parseStates(at: string, raw: unknown, kind: KindName): State[] {
     const { name, closed, reason } = o as Record<string, unknown>;
     if (typeof name !== "string" || !STATE_NAME.test(name)) throw new Error(`${at}[${i}].name: lowercase letters, digits and _, up to 32 characters`);
     if (out.some((s) => s.name === name)) throw new Error(`${at}: the state "${name}" is listed twice`);
-    for (const [k, v] of [["closed", closed], ["reason", reason]] as const) if (v !== undefined && typeof v !== "boolean") throw new Error(`${at}[${i}].${k}: true or false`);
+    for (const [k, v] of [
+      ["closed", closed],
+      ["reason", reason],
+    ] as const)
+      if (v !== undefined && typeof v !== "boolean") throw new Error(`${at}[${i}].${k}: true or false`);
     out.push({ name, closed: closed === true, reason: reason === true });
   }
   return out;

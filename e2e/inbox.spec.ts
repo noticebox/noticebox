@@ -36,7 +36,11 @@ test("without the login header the inbox is closed; the public side is open", as
 
 test("a report goes from a page's form through the inbox to a recorded decision", async ({ page, request }) => {
   // The page that posted it is where a refused post goes back to, with what was typed and what is wrong.
-  const refused = await request.post("/f/report", { form: { read_id: "r1", file: "a.png", text: REPORT.text }, headers: { referer: "https://notes.test/report?read_id=r1" }, maxRedirects: 0 });
+  const refused = await request.post("/f/report", {
+    form: { read_id: "r1", file: "a.png", text: REPORT.text },
+    headers: { referer: "https://notes.test/report?read_id=r1" },
+    maxRedirects: 0,
+  });
   expect(refused.status()).toBe(303);
   const back = new URL(refused.headers()["location"]!);
   expect(back.origin + back.pathname).toBe("https://notes.test/report");
