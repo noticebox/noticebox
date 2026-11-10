@@ -18,6 +18,8 @@ npx playwright test e2e/inbox.spec.ts     # after a build; reuses a running serv
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the image and smoke-tests `/health` and that `/` answers 401 before pushing.
 
+Release: `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z` on `main`, with `X.Y.Z` = `package.json`'s version (CI refuses another). CI pushes the image as `X.Y.Z`, `X.Y` and `latest`, then makes the GitHub release with notes generated from the merged PRs.
+
 ## Architecture
 
 - **The boundary is lint-enforced** (`eslint.config.mjs`): `app/` and `proxy.ts` import the backend only through `@/backend` (`backend/index.ts`, the one door; export new things there). `backend/` never imports next/react or the frontend, and uses relative imports internally.
