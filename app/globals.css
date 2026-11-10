@@ -13,8 +13,10 @@
   --soft: #eef0ee;
   --amber: #8a5a0b;
   --amber-soft: #f8ecd2;
-  --ok: #176b5c;
-  --ok-soft: #e2efeb;
+  /* The done badge's green is darker and its fill deeper than the accent's, so it stays apart from the grey badge
+     with red-green colour blindness (app/palette.test.ts). */
+  --ok: #125348;
+  --ok-soft: #c6e1d8;
   color-scheme: light;
 }
 
@@ -32,8 +34,8 @@
     --soft: #23282c;
     --amber: #e8b85a;
     --amber-soft: #3a2f16;
-    --ok: #7fcdb6;
-    --ok-soft: #1f3530;
+    --ok: #9fe0cc;
+    --ok-soft: #244a41;
     color-scheme: dark;
   }
 }

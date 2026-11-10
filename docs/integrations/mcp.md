@@ -39,4 +39,24 @@ Every result carries `next`: short instructions built from what the call did, su
 
 ## How the OAuth works
 
+```mermaid
+sequenceDiagram
+  participant C as MCP client
+  participant NB as noticebox
+  actor P as you, signed in at the proxy
+  C->>NB: POST /mcp without a token
+  NB-->>C: 401, pointing at /.well-known/oauth-protected-resource/mcp
+  C->>NB: read the metadata, POST /oauth/register
+  NB-->>C: a client id
+  C->>P: open /oauth/authorize in the browser (PKCE challenge)
+  P->>NB: Allow (behind the login proxy)
+  NB-->>C: redirect with a code
+  C->>NB: POST /oauth/token with the code and the PKCE verifier
+  NB-->>C: access token (1 hour) and refresh token (30 days)
+  C->>NB: POST /mcp with the access token
+  Note over NB: each call checks the token's audience and that its connection is not revoked
+```
+
+Only the *Allow* step needs the login proxy; everything else is public and checks the client for itself.
+
 noticebox is its own authorization server: RFC 8414 and RFC 9728 metadata under `/.well-known/`, dynamic client registration at `/oauth/register`, the code flow with PKCE at `/oauth/authorize` and `/oauth/token`, rotating refresh tokens. Access tokens last an hour, refresh tokens thirty days, every token is bound to this instance's `/mcp` as its audience, and every token names the connection it belongs to, which is checked on each call. The authorize page is the only step that needs the login proxy; the rest checks for itself and must be public, see [The login in front](../self-hosting/login.md).

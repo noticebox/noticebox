@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Icon, Mark } from "@/app/_lib/icons";
 
 export type Box = { name: string; forms: { name: string; title: string; path: string; open: number }[] };
 
@@ -52,14 +53,11 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
     <nav aria-label="Forms" className="flex h-full flex-col">
       <div className="flex h-14 items-center gap-2 px-5">
         <Link href="/" onClick={close} className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
-          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" className="text-accent">
-            <path d="M3 7.5 10 3l7 4.5V16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-            <path d="M3 7.5h14M10 7.5V17" fill="none" stroke="currentColor" strokeWidth="1.8" />
-          </svg>
+          <Mark className="text-accent" />
           noticebox
         </Link>
         <button type="button" onClick={close} aria-label="Close the menu" className="ml-auto rounded-md px-2 py-1 text-muted hover:bg-soft md:hidden">
-          ✕
+          <Icon name="close" />
         </button>
       </div>
       <div className="px-3 pb-2">
@@ -127,10 +125,15 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex h-14 items-center gap-3 px-4 md:px-10">
           <button type="button" onClick={() => setDrawer(true)} aria-label="Open the menu" className="btn px-2 md:hidden">
-            ☰
+            <Icon name="menu" />
           </button>
           <div className="ml-auto">
-            <Menu align="right" label={<span className="max-w-48 truncate font-normal">{actor} ▾</span>}>
+            <Menu align="right" label={
+                <span className="flex max-w-48 items-center gap-1 font-normal">
+                  <span className="truncate">{actor}</span>
+                  <Icon name="dropdown" className="size-3.5 shrink-0 opacity-70" />
+                </span>
+              }>
               <li role="none">
                 <Link role="menuitem" href="/settings" className={item}>
                   Your settings

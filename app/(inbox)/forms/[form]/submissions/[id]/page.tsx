@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { issueUrl, KINDS, linkFor, publicUrl, runtime, stateOf, submissionsPath } from "@/backend";
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../../StateMenu";
+import { Icon } from "@/app/_lib/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -36,13 +37,13 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
         {link && (
           <a href={link.url} target="_blank" rel="noopener noreferrer" className="btn">
             {link.label}
-            <span aria-hidden="true">↗</span>
+            <Icon name="external" />
           </a>
         )}
         {issue && (
           <a href={issue} target="_blank" rel="noopener noreferrer" className="btn">
             Open GitHub issue
-            <span aria-hidden="true">↗</span>
+            <Icon name="external" />
           </a>
         )}
         <span className="text-muted">
