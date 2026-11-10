@@ -21,6 +21,9 @@ updates:
       # @types/node follows the Node major the app runs on (the Dockerfile, engines), by hand.
       - dependency-name: "@types/node"
         update-types: [version-update:semver-major]
+      # TypeScript 7 (the Go port) does not work with Next.js yet; lift this once Next.js supports it.
+      - dependency-name: typescript
+        versions: [">=7"]
     groups:
       # Next.js and its ESLint config move together.
       nextjs:
