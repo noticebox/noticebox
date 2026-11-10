@@ -18,6 +18,8 @@ npx playwright test e2e/inbox.spec.ts     # after a build; reuses a running serv
 
 CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the image and smoke-tests `/health` and that `/` answers 401 before pushing.
 
+Dependabot (`.github/dependabot.yml`) opens weekly grouped bumps; patch and minor ones merge by themselves once `check` is green (`dependabot-automerge.yml`, the one exception to merging only when the maintainer says so). `main` requires `check` through a ruleset; majors wait for review.
+
 ## Architecture
 
 - **The boundary is lint-enforced** (`eslint.config.mjs`): `app/` and `proxy.ts` import the backend only through `@/backend` (`backend/index.ts`, the one door; export new things there). `backend/` never imports next/react or the frontend, and uses relative imports internally.
