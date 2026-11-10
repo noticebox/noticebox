@@ -1,10 +1,12 @@
 // The store: one SQLite file with submissions and their append-only events. Nothing is ever updated in `events`; a
-// submission's state is the result of its events and is kept on the row only to list and filter quickly.
+// submission's state is the result of its events and is kept on the row only to list and filter quickly. The schema
+// is the migrations' (migrations.ts), applied when the store opens.
 // SQLite is Node's own module, taken straight from the runtime so no bundler has to know it.
 import { randomBytes } from "node:crypto";
 import type { DatabaseSync as Database } from "node:sqlite";
 import type { Config, Form } from "./config";
 import { stateOf, type KindName } from "./kinds";
+import { migrate } from "./migrations";
 
 const { DatabaseSync } = process.getBuiltinModule("node:sqlite") as typeof import("node:sqlite");
 
@@ -33,44 +35,6 @@ export type Event = {
 export type ListFilter = { form?: string; state?: string; open?: boolean; limit?: number };
 export type Outcome = { ok: true } | { ok: false; error: string };
 
-const SCHEMA = `
-create table if not exists submissions (
-  id text primary key,
-  form text not null,
-  kind text not null,
-  state text not null,
-  fields text not null,
-  received_at text not null,
-  closed_at text,
-  purged_at text,
-  origin text
-);
-create index if not exists submissions_by_form on submissions (form, state, received_at);
-create index if not exists submissions_by_time on submissions (received_at);
-create table if not exists events (
-  id integer primary key autoincrement,
-  submission_id text not null references submissions (id),
-  at text not null,
-  actor text not null,
-  from_state text,
-  to_state text,
-  reason text not null default ''
-);
-create index if not exists events_by_submission on events (submission_id, id);
-create table if not exists grants (
-  id text primary key,
-  actor text not null,
-  client_hash text not null,
-  client_name text not null,
-  created_at text not null,
-  last_used_at text not null,
-  revoked_at text
-);
-create index if not exists grants_by_actor on grants (actor, created_at);
-drop table if exists form_tokens;
-drop table if exists issues;
-`;
-
 export type Grant = { id: string; actor: string; client_hash: string; client_name: string; created_at: string; last_used_at: string; revoked_at: string | null };
 
 type Row = Record<string, string | number | null>;
@@ -81,7 +45,12 @@ export class Store {
   constructor(path: string) {
     this.db = new DatabaseSync(path);
     this.db.exec("pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 5000;");
-    this.db.exec(SCHEMA);
+    try {
+      migrate(this.db);
+    } catch (e) {
+      this.db.close();
+      throw e;
+    }
   }
 
   /** Throws unless the database can be read and written (a write lock is taken and released, nothing is stored). */
