@@ -195,6 +195,24 @@ export class Store {
     return purged;
   }
 
+  /**
+   * The optional second step: a submission closed longer ago than its form's `deleteAfterDays` is deleted with its
+   * events. Forms without it keep the anonymised record. A reopened submission has no `closed_at` and is never due.
+   */
+  expire(config: Config, now: Date): number {
+    let deleted = 0;
+    for (const form of Object.values(config.forms)) {
+      if (form.deleteAfterDays === null) continue;
+      const before = new Date(now.getTime() - form.deleteAfterDays * 86400000).toISOString();
+      const due = q.selectFrom("submissions").select("id").where("form", "=", form.name).where("closed_at", "is not", null).where("closed_at", "<", before);
+      this.db.transaction(() => {
+        this.run(q.deleteFrom("events").where("submission_id", "in", due));
+        deleted += this.run(q.deleteFrom("submissions").where("id", "in", due));
+      })();
+    }
+    return deleted;
+  }
+
   /** An MCP client the person allowed: the grant every token of that connection names. */
   grant(actor: string, clientHash: string, clientName: string, now: Date): Grant {
     const g: Grant = { id: newId(), actor, client_hash: clientHash, client_name: clientName, created_at: now.toISOString(), last_used_at: now.toISOString(), revoked_at: null };

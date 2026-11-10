@@ -15,6 +15,8 @@ test("defaults fill in what the file leaves out", () => {
   expect(own.fields).toEqual({});
   expect(f.link).toBeNull();
   expect(f.retentionDays).toBe(180);
+  expect(f.deleteAfterDays).toBeNull();
+  expect(parseConfig({ forms: { x: { kind: "report", retentionDays: 90, deleteAfterDays: 90 } } }).forms.x!.deleteAfterDays).toBe(90);
   expect(f.origins).toEqual([]);
   expect(f.redirect).toBeNull();
   expect(f.notify).toEqual([]);
@@ -40,6 +42,9 @@ test("mistakes are named with their place", () => {
   bad({ forms: { x: { kind: "report", fields: { a: {} }, origins: ["example.org"] } } }, /origins: "example.org" is not a URL/);
   bad({ forms: { x: { kind: "report", fields: { a: {} }, origins: ["https://example.org/path"] } } }, /must be an origin/);
   bad({ forms: { x: { kind: "report", fields: { a: {} }, retentionDays: 0 } } }, /retentionDays/);
+  bad({ forms: { x: { kind: "report", deleteAfterDays: 1.5 } } }, /deleteAfterDays: a whole number of days, at least retentionDays \(180\)/);
+  bad({ forms: { x: { kind: "report", deleteAfterDays: 0 } } }, /deleteAfterDays: a whole number/);
+  bad({ forms: { x: { kind: "report", retentionDays: 90, deleteAfterDays: 30 } } }, /x.deleteAfterDays: a whole number of days, at least retentionDays \(90\)/);
   bad({ forms: { x: { kind: "report", fields: { a: {} }, notify: { ntfy: "ntfy.sh/topic" } } } }, /notify.ntfy/);
   bad({ forms: { x: { kind: "report", fields: { a: {} }, redirect: "ftp://x" } } }, /redirect: must be http/);
 });

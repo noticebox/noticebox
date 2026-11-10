@@ -17,6 +17,7 @@ export type Settings = {
   origins: string; // one per line
   redirect: string;
   retentionDays: string;
+  deleteAfterDays: string;
   linkUrl: string;
   linkLabel: string;
   notify: RawTarget[];
@@ -54,6 +55,7 @@ function toRaw(s: Settings): Record<string, unknown> {
   if (origins.length) raw.origins = origins;
   if (s.redirect.trim()) raw.redirect = s.redirect.trim();
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
+  if (s.deleteAfterDays.trim()) raw.deleteAfterDays = Number(s.deleteAfterDays);
   if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim() }));
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
   const labels = s.githubLabels.split(",").map((x) => x.trim()).filter(Boolean);
@@ -316,6 +318,16 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 <input id="s-retention" value={s.retentionDays} onChange={(e) => patch({ retentionDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder="180" />
                 <span>days after a submission is closed</span>
               </div>
+            </div>
+            <div>
+              <label htmlFor="s-delete-after" className={label}>
+                The whole submission is deleted
+              </label>
+              <div className="flex items-center gap-2">
+                <input id="s-delete-after" value={s.deleteAfterDays} onChange={(e) => patch({ deleteAfterDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder="never" />
+                <span>days after it is closed</span>
+              </div>
+              <p className={hint}>With its history. Empty: the record without personal fields is kept.</p>
             </div>
             <div className="sm:col-span-2">
               <label htmlFor="s-link" className={label}>

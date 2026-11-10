@@ -174,12 +174,16 @@ test("an assistant reads a form, creates one and replaces it; an invalid form ch
     strict: true,
     origins: ["https://shop.test"],
     retentionDays: 30,
+    deleteAfterDays: 365,
     notify: [{ type: "ntfy", url: "https://ntfy.sh/orders-topic" }],
   };
   const created = await call("put_form", { name: "order", form: order });
   expect(created.structuredContent).toMatchObject({ name: "order", created: true });
   expect(created.structuredContent.form.notify).toEqual([{ type: "ntfy", url: "https://ntfy.sh/orders-topic" }]);
-  expect(rt.config.forms.order).toMatchObject({ box: "shop.test", kind: "message", strict: true, retentionDays: 30 });
+  expect(rt.config.forms.order).toMatchObject({ box: "shop.test", kind: "message", strict: true, retentionDays: 30, deleteAfterDays: 365 });
+  expect((await call("get_form", { name: "order" })).structuredContent.form.deleteAfterDays).toBe(365);
+  const listed = (await call("list_forms", {})).structuredContent.forms.find((f: { name: string }) => f.name === "order");
+  expect(listed).toMatchObject({ retention_days: 30, delete_after_days: 365 });
   expect(rt.config.forms.order!.fields.material!.personal).toBe(false);
 
   const replaced = await call("put_form", { name: "order", form: { ...order, title: "Order requests" } });

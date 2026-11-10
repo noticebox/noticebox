@@ -6,7 +6,15 @@ A submission is closed when it reaches a closed state: `acted_on` or `rejected` 
 
 The sweep runs at start and every six hours. A report reopened before the sweep keeps its fields until it is closed again and the days have passed again.
 
-Nothing is deleted entirely. The anonymised record is the proof that submissions were handled; if your privacy page promises deletion after a period, say instead that the record without personal data is kept, or remove rows from the database yourself.
+By default nothing is deleted entirely: the anonymised record is the proof that submissions were handled.
+
+## Deleting the record too
+
+A form may set `deleteAfterDays`, a whole number of days counted from closing like `retentionDays`, and at least as long. Once that has passed, the sweep deletes the submission together with its history; the log says how many. Set it when your privacy page promises deletion after a period (a year is common for an audit trail). The form's overview and its *Settings* tab show it beside the retention; MCP's `get_form` and `put_form` carry it as `deleteAfterDays`, and `list_forms` as `delete_after_days`.
+
+A submission that is reopened is not deleted; its clock starts again when it is closed again. A deleted submission also leaves the overview's chart of the last 30 days, which matters only if `deleteAfterDays` is shorter than that.
+
+If you need a copy beyond that period, keep one with the [export](#export) before it runs out.
 
 ## Export
 

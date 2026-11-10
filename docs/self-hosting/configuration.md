@@ -70,6 +70,7 @@ The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 cha
 | `origins` | none: posts from anywhere | Origins posts are accepted from, `https://example.org` each |
 | `redirect` | the thank-you page | Where the browser goes after a plain post |
 | `retentionDays` | `180` | Days after closing until the personal fields are removed |
+| `deleteAfterDays` | none: the anonymised record stays | Days after closing until the submission and its history are deleted entirely; at least `retentionDays`. See [Retention](retention.md) |
 | `notify` | none | A list of targets, `{ "type": "ntfy", "url": … }` or `{ "type": "webhook", "url": … }`, see [Notifications](notifications.md). The older `{ "ntfy": …, "webhook": … }` object is read too. |
 | `link` | none | A URL template over the fields, or `{ "url": …, "label": … }`; see below |
 | `github` | none | The repository issues are opened in, `"owner/name"` or `{ "repo": …, "labels": [ … ] }`; see [GitHub issues](../integrations/github.md) |
