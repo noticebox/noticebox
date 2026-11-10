@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { formPath, runtime } from "@/backend";
+import { t } from "@/app/_lib/copy";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +11,10 @@ export default function InboxPage() {
   if (first) redirect(formPath(first));
   return (
     <div className="mx-auto max-w-xl py-16 text-center">
-      <h1 className="text-[22px] font-bold">Nothing here yet</h1>
-      <p className="mt-2 text-muted">A form is what a page posts to. Make one, and its endpoint is ready.</p>
+      <h1 className="text-[22px] font-bold">{t.home.title}</h1>
+      <p className="mt-2 text-muted">{t.home.text}</p>
       <Link href="/forms/new" className="btn-primary mt-6">
-        New form
+        {t.shell.newForm}
       </Link>
     </div>
   );

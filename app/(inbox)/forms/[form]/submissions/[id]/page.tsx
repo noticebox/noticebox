@@ -5,6 +5,7 @@ import { issueUrl, KINDS, linkFor, publicUrl, runtime, stateOf, submissionsPath 
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../../StateMenu";
 import { Icon } from "@/app/_lib/icons";
+import { t } from "@/app/_lib/copy";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
     <div>
       <p className="mb-4 text-sm">
         <Link href={submissionsPath(form.name)} className="text-muted hover:text-ink hover:underline">
-          All submissions
+          {t.submission.all}
         </Link>
       </p>
       <div className="mb-8 flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -42,21 +43,20 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
         )}
         {issue && (
           <a href={issue} target="_blank" rel="noopener noreferrer" className="btn">
-            Open GitHub issue
+            {t.submission.openIssue}
             <Icon name="external" />
           </a>
         )}
         <span className="text-muted">
-          Received {when(s.received_at)}
-          {s.origin && ` from ${s.origin}`}
+          {t.submission.received(when(s.received_at), s.origin)}
         </span>
       </div>
 
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section>
-          <h2 className="section-title">{kind.label === "report" ? "The report" : "The message"}</h2>
+          <h2 className="section-title">{kind.label === "report" ? t.submission.theReport : t.submission.theMessage}</h2>
           {shown.length === 0 ? (
-            <p className="text-muted">The fields were removed after the retention period; the decision below stands.</p>
+            <p className="text-muted">{t.submission.purgedFields}</p>
           ) : (
             <dl className="grid gap-5">
               {shown.map((n) => (
@@ -67,24 +67,34 @@ export default async function SubmissionPage({ params }: { params: Promise<{ for
               ))}
             </dl>
           )}
-          {s.purged_at && <p className="mt-4 text-[13px] text-muted">Personal fields removed {when(s.purged_at)}.</p>}
+          {s.purged_at && <p className="mt-4 text-[13px] text-muted">{t.submission.purgedAt(when(s.purged_at))}</p>}
         </section>
 
         <aside>
-          <h2 className="section-title">History</h2>
+          <h2 className="section-title">{t.submission.history}</h2>
           <ol className="grid gap-5">
             {events.map((e) => (
               <li key={e.id}>
                 <div className="text-[13px] text-muted">{when(e.at)}</div>
                 <div>
                   <span className="font-bold">{e.actor}</span>{" "}
-                  {e.to_state === null ? "noted" : e.from_state === null ? <>received it as {badge(e.to_state)}</> : <>moved it from {badge(e.from_state)} to {badge(e.to_state)}</>}
+                  {e.to_state === null ? (
+                    t.submission.noted
+                  ) : e.from_state === null ? (
+                    <>
+                      {t.submission.receivedAs} {badge(e.to_state)}
+                    </>
+                  ) : (
+                    <>
+                      {t.submission.movedFrom} {badge(e.from_state)} {t.submission.to} {badge(e.to_state)}
+                    </>
+                  )}
                 </div>
                 {e.reason && <blockquote className={`mt-1.5 border-l-2 pl-3 whitespace-pre-wrap [overflow-wrap:anywhere] ${e.to_state && stateOf(states, e.to_state)?.reason ? "border-accent text-[17px] leading-snug" : "border-rule text-muted"}`}>{e.reason}</blockquote>}
               </li>
             ))}
           </ol>
-          <p className="mt-6 text-[13px] text-muted">Submission {s.id}</p>
+          <p className="mt-6 text-[13px] text-muted">{t.submission.id(s.id)}</p>
         </aside>
       </div>
     </div>

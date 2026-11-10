@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon, Mark } from "@/app/_lib/icons";
+import { t } from "@/app/_lib/copy";
 
 export type Box = { name: string; forms: { name: string; title: string; path: string; open: number }[] };
 
@@ -50,32 +51,32 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
   const close = () => setDrawer(false);
 
   const nav = (
-    <nav aria-label="Forms" className="flex h-full flex-col">
+    <nav aria-label={t.shell.nav} className="flex h-full flex-col">
       <div className="flex h-14 items-center gap-2 px-5">
         <Link href="/" onClick={close} className="flex items-center gap-2 text-[17px] font-bold tracking-tight">
           <Mark className="text-accent" />
           noticebox
         </Link>
-        <button type="button" onClick={close} aria-label="Close the menu" className="ml-auto rounded-md px-2 py-1 text-muted hover:bg-soft md:hidden">
+        <button type="button" onClick={close} aria-label={t.shell.closeMenu} className="ml-auto rounded-md px-2 py-1 text-muted hover:bg-soft md:hidden">
           <Icon name="close" />
         </button>
       </div>
       <div className="px-3 pb-2">
-        <Menu label={<>Add new</>}>
+        <Menu label={<>{t.shell.addNew}</>}>
           <li role="none">
             <Link role="menuitem" href="/forms/new" onClick={close} className={item}>
-              New form
+              {t.shell.newForm}
             </Link>
           </li>
           <li role="none">
             <Link role="menuitem" href="/boxes/new" onClick={close} className={item}>
-              New box
+              {t.shell.newBox}
             </Link>
           </li>
         </Menu>
       </div>
       <div className="flex-1 overflow-y-auto px-3 pt-2 pb-4">
-        {boxes.length === 0 && <p className="px-2 text-[13px] text-muted">No forms yet. Add a form, or a box to put forms in.</p>}
+        {boxes.length === 0 && <p className="px-2 text-[13px] text-muted">{t.shell.noForms}</p>}
         {boxes.map((b) => {
           const boxPath = `/boxes/${encodeURIComponent(b.name)}`;
           return (
@@ -92,14 +93,14 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
                     <li key={f.name}>
                       <Link href={f.path} onClick={close} aria-current={active ? "page" : undefined} className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 ${active ? "bg-accent-soft font-bold text-accent" : "hover:bg-soft"}`}>
                         <span className="truncate">{f.title}</span>
-                        <span className={`text-[13px] tabular-nums ${active ? "text-accent" : "text-muted"}`} aria-label={`${f.open} open`}>
+                        <span className={`text-[13px] tabular-nums ${active ? "text-accent" : "text-muted"}`} aria-label={t.shell.openCount(f.open)}>
                           {f.open}
                         </span>
                       </Link>
                     </li>
                   );
                 })}
-                {b.forms.length === 0 && <li className="px-2 text-[13px] text-muted">No forms in this box yet.</li>}
+                {b.forms.length === 0 && <li className="px-2 text-[13px] text-muted">{t.shell.noFormsInBox}</li>}
               </ul>
             </div>
           );
@@ -107,7 +108,7 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
       </div>
       <div className="px-5 py-4 text-[13px] text-muted">
         <a href="/export.json" className="hover:text-ink hover:underline">
-          Download everything as JSON
+          {t.shell.download}
         </a>
       </div>
     </nav>
@@ -124,7 +125,7 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex h-14 items-center gap-3 px-4 md:px-10">
-          <button type="button" onClick={() => setDrawer(true)} aria-label="Open the menu" className="btn px-2 md:hidden">
+          <button type="button" onClick={() => setDrawer(true)} aria-label={t.shell.openMenu} className="btn px-2 md:hidden">
             <Icon name="menu" />
           </button>
           <div className="ml-auto">
@@ -136,13 +137,13 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
               }>
               <li role="none">
                 <Link role="menuitem" href="/settings" className={item}>
-                  Your settings
+                  {t.shell.yourSettings}
                 </Link>
               </li>
               {signOutUrl && (
                 <li role="none">
                   <a role="menuitem" href={signOutUrl} className={item}>
-                    Sign out
+                    {t.shell.signOut}
                   </a>
                 </li>
               )}

@@ -1,3 +1,5 @@
+import { t } from "@/app/_lib/copy";
+
 // Received per day, as bars on the page: one per day of the window, the last day at the right.
 export function Chart({ days, counts }: { days: string[]; counts: Map<string, number> }) {
   const w = 720;
@@ -8,7 +10,7 @@ export function Chart({ days, counts }: { days: string[]; counts: Map<string, nu
   const y = (n: number) => pad.t + (h - pad.t - pad.b) * (1 - n / max);
   const ticks = max <= 4 ? Array.from({ length: max + 1 }, (_, i) => i) : [0, Math.round(max / 2), max];
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Received per day, last ${days.length} days`} className="h-40 w-full">
+    <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={t.overview.chart(days.length)} className="h-40 w-full">
       {ticks.map((t) => (
         <g key={t}>
           <line x1={pad.l} x2={w - pad.r} y1={y(t)} y2={y(t)} className="stroke-rule" strokeWidth="1" />
