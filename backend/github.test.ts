@@ -35,7 +35,12 @@ test("the draft has every field the person sent but the email, the link and wher
 test("an undescribed field holding an email address is left out too; a title field becomes the title", () => {
   const c = parseConfig({ forms: { g: { kind: "message", github: "acme/game", fields: { title: { label: "Title" }, text: { type: "textarea" } } } } });
   const rt = testRuntime({ config: c });
-  const s = rt.store.receive(rt.config.forms.g!, { title: "Crash on start", text: "It crashes.", contact: "me@example.org", platform: "Linux" }, null, new Date());
+  const s = rt.store.receive(
+    rt.config.forms.g!,
+    { title: "Crash on start", text: "It crashes.", contact: "me@example.org", platform: "Linux" },
+    null,
+    new Date(),
+  );
   const d = issueDraft(rt.config.forms.g!, s, BASE);
   expect(d.title).toBe("Crash on start");
   expect(d.body).toContain("**platform:** Linux");

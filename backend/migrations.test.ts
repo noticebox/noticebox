@@ -21,7 +21,9 @@ afterEach(() => {
 const version = (path: string) => {
   const db = new Database(path);
   const v = (db.prepare("pragma user_version").get() as { user_version: number }).user_version;
-  const tables = (db.prepare("select name from sqlite_master where type = 'table' and name not like 'sqlite_%' order by name").all() as { name: string }[]).map((t) => t.name);
+  const tables = (db.prepare("select name from sqlite_master where type = 'table' and name not like 'sqlite_%' order by name").all() as { name: string }[]).map(
+    (t) => t.name,
+  );
   db.close();
   return { v, tables };
 };
@@ -50,7 +52,9 @@ test("a database made by 0.10.0, before migrations, opens at the latest version 
     create index grants_by_actor on grants (actor, created_at);
     create table form_tokens (form text primary key, token text);
   `);
-  old.exec(`insert into submissions (id, form, kind, state, fields, received_at) values ('s1', 'report', 'report', 'open', '${JSON.stringify(REPORT)}', '2026-01-01T00:00:00.000Z')`);
+  old.exec(
+    `insert into submissions (id, form, kind, state, fields, received_at) values ('s1', 'report', 'report', 'open', '${JSON.stringify(REPORT)}', '2026-01-01T00:00:00.000Z')`,
+  );
   old.exec("insert into events (submission_id, at, actor, from_state, to_state) values ('s1', '2026-01-01T00:00:00.000Z', 'form', null, 'open')");
   old.close();
 
@@ -65,7 +69,12 @@ test("a database written by 0.11.1 (node:sqlite) opens and keeps its data", () =
   const path = tempFile();
   copyFileSync(new URL("./fixtures/0.11.1.sqlite", import.meta.url), path);
   const store = new Store(path);
-  expect(store.list().map((s) => [s.form, s.state]).sort()).toEqual([
+  expect(
+    store
+      .list()
+      .map((s) => [s.form, s.state])
+      .sort(),
+  ).toEqual([
     ["contact", "new"],
     ["report", "rejected"],
   ]);

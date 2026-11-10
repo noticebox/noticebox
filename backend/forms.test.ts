@@ -2,7 +2,17 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { Forms } from "./forms";
 
-const FILE = { boxes: ["empty"], forms: { report: { box: "notes", kind: "report", fields: { text: { type: "textarea", required: true } }, notify: [{ type: "ntfy", url: "https://ntfy.sh/${TOPIC}" }] } } };
+const FILE = {
+  boxes: ["empty"],
+  forms: {
+    report: {
+      box: "notes",
+      kind: "report",
+      fields: { text: { type: "textarea", required: true } },
+      notify: [{ type: "ntfy", url: "https://ntfy.sh/${TOPIC}" }],
+    },
+  },
+};
 
 function fresh(): { path: string; forms: Forms } {
   const path = process.env.NOTICEBOX_CONFIG!; // the test's own temporary directory (vitest.setup.ts)
@@ -22,9 +32,14 @@ test("boxes and forms are created, changed and removed through the file, which k
   expect(forms.config.boxes).toEqual(["empty", "notes", "site"]);
   expect(forms.createForm("Bad Name", "site", "message", "")).toMatchObject({ ok: false });
 
-  expect(forms.updateForm("contact", { ...forms.rawForm("contact")!, title: "Write to us", retentionDays: 0 })).toEqual({ ok: false, error: "form contact.retentionDays: a whole number of days, at least 1" });
+  expect(forms.updateForm("contact", { ...forms.rawForm("contact")!, title: "Write to us", retentionDays: 0 })).toEqual({
+    ok: false,
+    error: "form contact.retentionDays: a whole number of days, at least 1",
+  });
   expect(forms.config.forms.contact!.title).toBe("Contact"); // untouched after a refused edit
-  expect(forms.updateForm("contact", { ...forms.rawForm("contact")!, title: "Write to us", notify: [{ type: "webhook", url: "https://hooks.test/x" }] })).toEqual({ ok: true });
+  expect(
+    forms.updateForm("contact", { ...forms.rawForm("contact")!, title: "Write to us", notify: [{ type: "webhook", url: "https://hooks.test/x" }] }),
+  ).toEqual({ ok: true });
   expect(forms.config.forms.contact!.notify).toEqual([{ type: "webhook", url: "https://hooks.test/x" }]);
 
   expect(forms.renameBox("site", "notes")).toMatchObject({ ok: false });

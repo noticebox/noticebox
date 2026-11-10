@@ -113,7 +113,8 @@ function parseForm(name: string, raw: unknown): Form {
   });
   const redirect = f.redirect === undefined || f.redirect === null ? null : absoluteUrl(f.redirect, `${at}.redirect`);
   const retentionDays = f.retentionDays === undefined ? 180 : f.retentionDays;
-  if (typeof retentionDays !== "number" || !Number.isInteger(retentionDays) || retentionDays < 1) throw new Error(`${at}.retentionDays: a whole number of days, at least 1`);
+  if (typeof retentionDays !== "number" || !Number.isInteger(retentionDays) || retentionDays < 1)
+    throw new Error(`${at}.retentionDays: a whole number of days, at least 1`);
   const deleteAfterDays = f.deleteAfterDays === undefined || f.deleteAfterDays === null ? null : f.deleteAfterDays;
   if (deleteAfterDays !== null && (typeof deleteAfterDays !== "number" || !Number.isInteger(deleteAfterDays) || deleteAfterDays < retentionDays))
     throw new Error(`${at}.deleteAfterDays: a whole number of days, at least retentionDays (${retentionDays})`);
@@ -150,7 +151,9 @@ function parseGitHub(at: string, raw: unknown): GitHub | null {
   const o = typeof raw === "string" ? { repo: raw } : record(raw, at);
   const repo = str(o.repo, `${at}.repo`, "");
   if (!REPO.test(repo)) throw new Error(`${at}.repo: "owner/name" of a GitHub repository`);
-  const labels = stringList(o.labels, `${at}.labels`).map((l) => l.trim()).filter(Boolean);
+  const labels = stringList(o.labels, `${at}.labels`)
+    .map((l) => l.trim())
+    .filter(Boolean);
   return { repo, labels };
 }
 

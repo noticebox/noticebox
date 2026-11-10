@@ -5,7 +5,16 @@ import { type AdminState, deleteForm, updateForm } from "../../../admin";
 import { Icon } from "@/app/_lib/icons";
 import { t } from "@/app/_lib/copy";
 
-export type RawFieldRow = { name: string; type: string; label: string; required: boolean; max: string; options: string; personal: "default" | "yes" | "no"; help: string };
+export type RawFieldRow = {
+  name: string;
+  type: string;
+  label: string;
+  required: boolean;
+  max: string;
+  options: string;
+  personal: "default" | "yes" | "no";
+  help: string;
+};
 export type RawTarget = { type: "ntfy" | "webhook"; url: string };
 export type StateRow = { name: string; closed: boolean; reason: boolean };
 export type Settings = {
@@ -38,7 +47,11 @@ function toRaw(s: Settings): Record<string, unknown> {
     if (f.label.trim()) o.label = f.label.trim();
     if (f.required) o.required = true;
     if (f.max.trim()) o.max = Number(f.max);
-    if (f.type === "select") o.options = f.options.split(",").map((x) => x.trim()).filter(Boolean);
+    if (f.type === "select")
+      o.options = f.options
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
     if (f.personal !== "default") o.personal = f.personal === "yes";
     if (f.help.trim()) o.help = f.help.trim();
     fields[f.name.trim()] = o;
@@ -52,14 +65,20 @@ function toRaw(s: Settings): Record<string, unknown> {
     return o;
   });
   if (s.thanks.trim()) raw.thanks = s.thanks.trim();
-  const origins = s.origins.split("\n").map((x) => x.trim()).filter(Boolean);
+  const origins = s.origins
+    .split("\n")
+    .map((x) => x.trim())
+    .filter(Boolean);
   if (origins.length) raw.origins = origins;
   if (s.redirect.trim()) raw.redirect = s.redirect.trim();
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
   if (s.deleteAfterDays.trim()) raw.deleteAfterDays = Number(s.deleteAfterDays);
   if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim() }));
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
-  const labels = s.githubLabels.split(",").map((x) => x.trim()).filter(Boolean);
+  const labels = s.githubLabels
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean);
   if (s.githubRepo.trim()) raw.github = labels.length ? { repo: s.githubRepo.trim(), labels } : s.githubRepo.trim();
   return raw;
 }
@@ -72,8 +91,21 @@ const small = "field py-1 text-sm";
 // React's, so a refused save keeps what was typed and shows why it was refused.
 const EMPTY_FIELD = (name = ""): RawFieldRow => ({ name, type: "text", label: "", required: false, max: "", options: "", personal: "default", help: "" });
 
-
-export function FormSettings({ name, boxes, initial, hasSubmissions, seen, statesInUse }: { name: string; boxes: string[]; initial: Settings; hasSubmissions: boolean; seen: string[]; statesInUse: string[] }) {
+export function FormSettings({
+  name,
+  boxes,
+  initial,
+  hasSubmissions,
+  seen,
+  statesInUse,
+}: {
+  name: string;
+  boxes: string[];
+  initial: Settings;
+  hasSubmissions: boolean;
+  seen: string[];
+  statesInUse: string[];
+}) {
   const [s, set] = useState<Settings>(initial);
   const [saved, save, saving] = useActionState<AdminState, FormData>(async (prev, data) => {
     const r = await updateForm(prev, data);
@@ -156,7 +188,12 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
             <div className="mb-4 rounded-md bg-soft px-3 py-2 text-sm">
               {t.settings.seen}{" "}
               {undescribed.map((n) => (
-                <button key={n} type="button" onClick={() => set((x) => ({ ...x, fields: [...x.fields, EMPTY_FIELD(n)] }))} className="mr-1 underline decoration-dotted hover:text-accent">
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => set((x) => ({ ...x, fields: [...x.fields, EMPTY_FIELD(n)] }))}
+                  className="mr-1 underline decoration-dotted hover:text-accent"
+                >
                   {n}
                 </button>
               ))}
@@ -168,7 +205,13 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
               <div key={i} className="sheet grid gap-2 p-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
                 <div>
                   <label className="text-[13px] text-muted">{t.settings.fieldName}</label>
-                  <input value={f.name} onChange={(e) => field(i, { name: e.target.value })} className={small} placeholder="email" aria-label={t.settings.fieldN(i + 1, "name")} />
+                  <input
+                    value={f.name}
+                    onChange={(e) => field(i, { name: e.target.value })}
+                    className={small}
+                    placeholder="email"
+                    aria-label={t.settings.fieldN(i + 1, "name")}
+                  />
                 </div>
                 <div>
                   <label className="text-[13px] text-muted">{t.settings.fieldType}</label>
@@ -180,7 +223,12 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 </div>
                 <div>
                   <label className="text-[13px] text-muted">{t.settings.fieldLabel}</label>
-                  <input value={f.label} onChange={(e) => field(i, { label: e.target.value })} className={small} aria-label={t.settings.fieldN(i + 1, "label")} />
+                  <input
+                    value={f.label}
+                    onChange={(e) => field(i, { label: e.target.value })}
+                    className={small}
+                    aria-label={t.settings.fieldN(i + 1, "label")}
+                  />
                 </div>
                 <div className="flex items-end gap-1">
                   <button type="button" onClick={() => move(i, -1)} aria-label={t.settings.moveUp} className="btn px-2" disabled={i === 0}>
@@ -189,14 +237,24 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                   <button type="button" onClick={() => move(i, 1)} aria-label={t.settings.moveDown} className="btn px-2" disabled={i === s.fields.length - 1}>
                     <Icon name="moveDown" />
                   </button>
-                  <button type="button" onClick={() => set((x) => ({ ...x, fields: x.fields.filter((_, j) => j !== i) }))} aria-label={t.settings.removeField(f.name || String(i + 1))} className="btn px-2 text-error">
+                  <button
+                    type="button"
+                    onClick={() => set((x) => ({ ...x, fields: x.fields.filter((_, j) => j !== i) }))}
+                    aria-label={t.settings.removeField(f.name || String(i + 1))}
+                    className="btn px-2 text-error"
+                  >
                     <Icon name="remove" />
                   </button>
                 </div>
                 {f.type === "select" && (
                   <div className="sm:col-span-4">
                     <label className="text-[13px] text-muted">{t.settings.options}</label>
-                    <input value={f.options} onChange={(e) => field(i, { options: e.target.value })} className={small} aria-label={t.settings.fieldN(i + 1, "options")} />
+                    <input
+                      value={f.options}
+                      onChange={(e) => field(i, { options: e.target.value })}
+                      className={small}
+                      aria-label={t.settings.fieldN(i + 1, "options")}
+                    />
                   </div>
                 )}
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm sm:col-span-4">
@@ -205,7 +263,11 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                   </label>
                   <label className="flex items-center gap-1.5">
                     {t.settings.personal}
-                    <select value={f.personal} onChange={(e) => field(i, { personal: e.target.value as RawFieldRow["personal"] })} className="field w-auto py-0.5 text-sm">
+                    <select
+                      value={f.personal}
+                      onChange={(e) => field(i, { personal: e.target.value as RawFieldRow["personal"] })}
+                      className="field w-auto py-0.5 text-sm"
+                    >
                       <option value="default">{t.settings.byType}</option>
                       <option value="yes">{t.common.yes}</option>
                       <option value="no">{t.common.no}</option>
@@ -213,7 +275,13 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                   </label>
                   <label className="flex items-center gap-1.5">
                     {t.settings.atMost}
-                    <input value={f.max} onChange={(e) => field(i, { max: e.target.value })} inputMode="numeric" className="field w-20 py-0.5 text-sm" placeholder={t.settings.byType} />
+                    <input
+                      value={f.max}
+                      onChange={(e) => field(i, { max: e.target.value })}
+                      inputMode="numeric"
+                      className="field w-20 py-0.5 text-sm"
+                      placeholder={t.settings.byType}
+                    />
                     {t.settings.characters}
                   </label>
                   <label className="flex min-w-48 flex-1 items-center gap-1.5">
@@ -235,7 +303,13 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
           <div className="grid gap-2">
             {s.states.map((st, i) => (
               <div key={i} className="sheet flex flex-wrap items-center gap-x-4 gap-y-2 p-3">
-                <input value={st.name} onChange={(e) => state(i, { name: e.target.value })} className={`${small} w-40`} aria-label={t.settings.stateN(i + 1)} placeholder="in_review" />
+                <input
+                  value={st.name}
+                  onChange={(e) => state(i, { name: e.target.value })}
+                  className={`${small} w-40`}
+                  aria-label={t.settings.stateN(i + 1)}
+                  placeholder="in_review"
+                />
                 <label className="flex items-center gap-1.5 text-sm">
                   <input type="checkbox" checked={st.closed} onChange={(e) => state(i, { closed: e.target.checked })} /> {t.settings.closed}
                 </label>
@@ -246,10 +320,23 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                   <button type="button" onClick={() => moveState(i, -1)} aria-label={t.settings.moveStateUp} className="btn px-2" disabled={i === 0}>
                     <Icon name="moveUp" />
                   </button>
-                  <button type="button" onClick={() => moveState(i, 1)} aria-label={t.settings.moveStateDown} className="btn px-2" disabled={i === s.states.length - 1}>
+                  <button
+                    type="button"
+                    onClick={() => moveState(i, 1)}
+                    aria-label={t.settings.moveStateDown}
+                    className="btn px-2"
+                    disabled={i === s.states.length - 1}
+                  >
                     <Icon name="moveDown" />
                   </button>
-                  <button type="button" onClick={() => set((x) => ({ ...x, states: x.states.filter((_, j) => j !== i) }))} aria-label={t.settings.removeState(st.name || String(i + 1))} className="btn px-2 text-error" disabled={statesInUse.includes(st.name) || s.states.length === 1} title={statesInUse.includes(st.name) ? t.settings.stateInUse : undefined}>
+                  <button
+                    type="button"
+                    onClick={() => set((x) => ({ ...x, states: x.states.filter((_, j) => j !== i) }))}
+                    aria-label={t.settings.removeState(st.name || String(i + 1))}
+                    className="btn px-2 text-error"
+                    disabled={statesInUse.includes(st.name) || s.states.length === 1}
+                    title={statesInUse.includes(st.name) ? t.settings.stateInUse : undefined}
+                  >
                     <Icon name="remove" />
                   </button>
                 </div>
@@ -268,20 +355,39 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
               <label htmlFor="s-origins" className={label}>
                 {t.settings.origins}
               </label>
-              <textarea id="s-origins" value={s.origins} onChange={(e) => patch({ origins: e.target.value })} rows={2} className="field" placeholder={"https://example.org"} />
+              <textarea
+                id="s-origins"
+                value={s.origins}
+                onChange={(e) => patch({ origins: e.target.value })}
+                rows={2}
+                className="field"
+                placeholder={"https://example.org"}
+              />
               <p className={hint}>{t.settings.originsHint}</p>
             </div>
             <div>
               <label htmlFor="s-redirect" className={label}>
                 {t.settings.redirect}
               </label>
-              <input id="s-redirect" value={s.redirect} onChange={(e) => patch({ redirect: e.target.value })} className="field" placeholder={t.settings.redirectPlaceholder(name)} />
+              <input
+                id="s-redirect"
+                value={s.redirect}
+                onChange={(e) => patch({ redirect: e.target.value })}
+                className="field"
+                placeholder={t.settings.redirectPlaceholder(name)}
+              />
             </div>
             <div>
               <label htmlFor="s-thanks" className={label}>
                 {t.settings.thanks}
               </label>
-              <input id="s-thanks" value={s.thanks} onChange={(e) => patch({ thanks: e.target.value })} className="field" placeholder={t.settings.thanksPlaceholder} />
+              <input
+                id="s-thanks"
+                value={s.thanks}
+                onChange={(e) => patch({ thanks: e.target.value })}
+                className="field"
+                placeholder={t.settings.thanksPlaceholder}
+              />
             </div>
           </div>
         </section>
@@ -289,17 +395,37 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
         <section>
           <h2 className="section-title">{t.settings.notifications}</h2>
           <p className="mb-3 text-muted">
-            {t.settings.notificationsIntro} <code>${"{"}VAR{"}"}</code> {t.settings.notificationsVar}
+            {t.settings.notificationsIntro}{" "}
+            <code>
+              ${"{"}VAR{"}"}
+            </code>{" "}
+            {t.settings.notificationsVar}
           </p>
           <div className="grid gap-2">
             {s.notify.map((tg, i) => (
               <div key={i} className="flex gap-2">
-                <select value={tg.type} onChange={(e) => target(i, { type: e.target.value as RawTarget["type"] })} className="field w-32" aria-label={t.settings.targetN(i + 1, "type")}>
+                <select
+                  value={tg.type}
+                  onChange={(e) => target(i, { type: e.target.value as RawTarget["type"] })}
+                  className="field w-32"
+                  aria-label={t.settings.targetN(i + 1, "type")}
+                >
                   <option value="ntfy">ntfy</option>
                   <option value="webhook">webhook</option>
                 </select>
-                <input value={tg.url} onChange={(e) => target(i, { url: e.target.value })} className="field min-w-0 flex-1" placeholder={tg.type === "ntfy" ? "https://ntfy.sh/your-topic" : "https://hooks.example.org/noticebox"} aria-label={t.settings.targetN(i + 1, "URL")} />
-                <button type="button" onClick={() => set((x) => ({ ...x, notify: x.notify.filter((_, j) => j !== i) }))} aria-label={t.settings.removeTarget(i + 1)} className="btn px-2 text-error">
+                <input
+                  value={tg.url}
+                  onChange={(e) => target(i, { url: e.target.value })}
+                  className="field min-w-0 flex-1"
+                  placeholder={tg.type === "ntfy" ? "https://ntfy.sh/your-topic" : "https://hooks.example.org/noticebox"}
+                  aria-label={t.settings.targetN(i + 1, "URL")}
+                />
+                <button
+                  type="button"
+                  onClick={() => set((x) => ({ ...x, notify: x.notify.filter((_, j) => j !== i) }))}
+                  aria-label={t.settings.removeTarget(i + 1)}
+                  className="btn px-2 text-error"
+                >
                   <Icon name="remove" />
                 </button>
               </div>
@@ -318,7 +444,14 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 {t.settings.retention}
               </label>
               <div className="flex items-center gap-2">
-                <input id="s-retention" value={s.retentionDays} onChange={(e) => patch({ retentionDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder="180" />
+                <input
+                  id="s-retention"
+                  value={s.retentionDays}
+                  onChange={(e) => patch({ retentionDays: e.target.value })}
+                  inputMode="numeric"
+                  className="field w-24"
+                  placeholder="180"
+                />
                 <span>{t.settings.retentionUnit}</span>
               </div>
             </div>
@@ -327,7 +460,14 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 {t.settings.deleteAfter}
               </label>
               <div className="flex items-center gap-2">
-                <input id="s-delete-after" value={s.deleteAfterDays} onChange={(e) => patch({ deleteAfterDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder={t.settings.deleteAfterPlaceholder} />
+                <input
+                  id="s-delete-after"
+                  value={s.deleteAfterDays}
+                  onChange={(e) => patch({ deleteAfterDays: e.target.value })}
+                  inputMode="numeric"
+                  className="field w-24"
+                  placeholder={t.settings.deleteAfterPlaceholder}
+                />
                 <span>{t.settings.deleteAfterUnit}</span>
               </div>
               <p className={hint}>{t.settings.deleteAfterHint}</p>
@@ -336,14 +476,26 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
               <label htmlFor="s-link" className={label}>
                 {t.settings.link}
               </label>
-              <input id="s-link" value={s.linkUrl} onChange={(e) => patch({ linkUrl: e.target.value })} className="field" placeholder="https://example.org/items/{item_id}" />
+              <input
+                id="s-link"
+                value={s.linkUrl}
+                onChange={(e) => patch({ linkUrl: e.target.value })}
+                className="field"
+                placeholder="https://example.org/items/{item_id}"
+              />
               <p className={hint}>{t.settings.linkHint}</p>
             </div>
             <div>
               <label htmlFor="s-link-label" className={label}>
                 {t.settings.linkLabel}
               </label>
-              <input id="s-link-label" value={s.linkLabel} onChange={(e) => patch({ linkLabel: e.target.value })} className="field" placeholder={t.settings.linkLabelPlaceholder} />
+              <input
+                id="s-link-label"
+                value={s.linkLabel}
+                onChange={(e) => patch({ linkLabel: e.target.value })}
+                className="field"
+                placeholder={t.settings.linkLabelPlaceholder}
+              />
             </div>
           </div>
         </section>
@@ -360,14 +512,26 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
               <label htmlFor="s-github-repo" className={label}>
                 {t.settings.repository}
               </label>
-              <input id="s-github-repo" value={s.githubRepo} onChange={(e) => patch({ githubRepo: e.target.value })} className="field" placeholder="owner/name" />
+              <input
+                id="s-github-repo"
+                value={s.githubRepo}
+                onChange={(e) => patch({ githubRepo: e.target.value })}
+                className="field"
+                placeholder="owner/name"
+              />
               <p className={hint}>{t.settings.repositoryHint}</p>
             </div>
             <div>
               <label htmlFor="s-github-labels" className={label}>
                 {t.settings.labels}
               </label>
-              <input id="s-github-labels" value={s.githubLabels} onChange={(e) => patch({ githubLabels: e.target.value })} className="field" placeholder="report, triage" />
+              <input
+                id="s-github-labels"
+                value={s.githubLabels}
+                onChange={(e) => patch({ githubLabels: e.target.value })}
+                className="field"
+                placeholder="report, triage"
+              />
               <p className={hint}>{t.settings.labelsHint}</p>
             </div>
           </div>

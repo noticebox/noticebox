@@ -5,7 +5,19 @@ import type { AdminState } from "./admin";
 
 // A small form around one admin action: the fields are the children, the error is shown, the button waits. React
 // empties a form's fields after an action, so after a refused one what was typed is put back.
-export function ActionForm({ action, button, danger = false, className, children }: { action: (prev: AdminState, data: FormData) => Promise<AdminState>; button: string; danger?: boolean; className?: string; children?: React.ReactNode }) {
+export function ActionForm({
+  action,
+  button,
+  danger = false,
+  className,
+  children,
+}: {
+  action: (prev: AdminState, data: FormData) => Promise<AdminState>;
+  button: string;
+  danger?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+}) {
   const form = useRef<HTMLFormElement>(null);
   const [state, act, pending] = useActionState<AdminState, FormData>(async (prev, data) => {
     const typed = [...data.entries()].filter((e): e is [string, string] => typeof e[1] === "string");

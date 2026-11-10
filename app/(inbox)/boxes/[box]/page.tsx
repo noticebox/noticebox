@@ -29,9 +29,7 @@ export default async function BoxPage({ params }: { params: Promise<{ box: strin
                 <Link href={formPath(f.name)} className="font-bold hover:underline">
                   {f.title}
                 </Link>
-                <span className="text-[13px] text-muted">
-                  {t.box.kindAndEndpoint(KINDS[f.kind].label, f.name)}
-                </span>
+                <span className="text-[13px] text-muted">{t.box.kindAndEndpoint(KINDS[f.kind].label, f.name)}</span>
               </li>
             ))}
           </ul>

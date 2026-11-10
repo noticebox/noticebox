@@ -43,7 +43,14 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
   const [hidden, setHidden] = useState<Set<string>>(new Set(fields.map((f) => `f:${f.name}`)));
 
   const order = (state: string) => states.findIndex((s) => s.name === state);
-  const value = (r: Row, key: string): string => (key === "received" ? r.received_at : key === "state" ? String(order(r.state)).padStart(3, "0") : key === "summary" ? r.summary : (r.fields[key.slice(2)] ?? ""));
+  const value = (r: Row, key: string): string =>
+    key === "received"
+      ? r.received_at
+      : key === "state"
+        ? String(order(r.state)).padStart(3, "0")
+        : key === "summary"
+          ? r.summary
+          : (r.fields[key.slice(2)] ?? "");
 
   const shown = useMemo(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
@@ -70,7 +77,14 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input type="search" aria-label={t.table.filter} placeholder={t.table.filterPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} className="field !mt-0 w-full sm:w-64" />
+        <input
+          type="search"
+          aria-label={t.table.filter}
+          placeholder={t.table.filterPlaceholder}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="field !mt-0 w-full sm:w-64"
+        />
         <select aria-label={t.table.byState} value={show} onChange={(e) => setShow(e.target.value)} className="field !mt-0 w-auto">
           <option value="all">{t.table.all}</option>
           <option value="open">{t.table.open}</option>
@@ -106,7 +120,11 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
             <thead>
               <tr className="border-b border-rule text-left text-sm text-muted">
                 {visible.map((c) => (
-                  <th key={c.key} aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined} className="py-2 pr-4 pl-4 font-bold whitespace-nowrap first:pl-5">
+                  <th
+                    key={c.key}
+                    aria-sort={sort.key === c.key ? (sort.dir === 1 ? "ascending" : "descending") : undefined}
+                    className="py-2 pr-4 pl-4 font-bold whitespace-nowrap first:pl-5"
+                  >
                     <button type="button" onClick={() => sortBy(c.key)} className="font-bold hover:text-ink">
                       {c.label}
                       {sort.key === c.key && <Icon name={sort.dir === 1 ? "sortAscending" : "sortDescending"} className="ml-1 inline size-3.5 align-[-2px]" />}
@@ -143,7 +161,14 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
                   {linkLabel && (
                     <td className="py-2.5 pr-4 text-right">
                       {r.link && (
-                        <a href={r.link.url} target="_blank" rel="noopener noreferrer" aria-label={r.link.label} title={r.link.label} className="inline-flex text-muted hover:text-accent">
+                        <a
+                          href={r.link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label={r.link.label}
+                          title={r.link.label}
+                          className="inline-flex text-muted hover:text-accent"
+                        >
                           <Icon name="external" />
                         </a>
                       )}

@@ -32,7 +32,8 @@ sizes.forEach((s, i) => {
 writeFileSync(new URL("favicon.ico", app), Buffer.concat([head, ...pngs]));
 
 // The share image: the product's own table, in its own colors and type.
-const font = (file, weight) => `@font-face{font-family:A;font-weight:${weight};src:url(data:font/woff2;base64,${readFileSync(new URL(`fonts/${file}`, app)).toString("base64")})}`;
+const font = (file, weight) =>
+  `@font-face{font-family:A;font-weight:${weight};src:url(data:font/woff2;base64,${readFileSync(new URL(`fonts/${file}`, app)).toString("base64")})}`;
 const rows = [
   ["Broken link on the pricing page", "report", "open", "Open", "#fff", "#1b2229", "#1b2229"],
   ["Wrong date in the footer", "report", "review", "In review", "#f8ecd2", "#8a5a0b", "#8a5a0b66"],

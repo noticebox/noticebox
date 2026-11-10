@@ -18,7 +18,11 @@ export function proxy(req: NextRequest) {
 
   const header = (process.env.NOTICEBOX_USER_HEADER ?? "x-authentik-username").toLowerCase();
   const user = req.headers.get(header)?.trim() || process.env.NOTICEBOX_DEV_USER;
-  if (!user) return new NextResponse("Sign in first: the inbox is reached through the login in front of it.", { status: 401, headers: { "content-type": "text/plain; charset=utf-8" } });
+  if (!user)
+    return new NextResponse("Sign in first: the inbox is reached through the login in front of it.", {
+      status: 401,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
   const res = NextResponse.next();
   res.headers.set("cache-control", "no-store");
   return res;

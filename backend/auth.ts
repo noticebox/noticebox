@@ -51,4 +51,4 @@ export function sameSite(h: Headers, rt: Runtime): boolean {
   }
 }
 
-export const bearerOf = (authorization: string | null): string => (authorization?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? "");
+export const bearerOf = (authorization: string | null): string => authorization?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? "";

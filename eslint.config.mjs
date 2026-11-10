@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import prettier from "eslint-config-prettier/flat";
 
 // The frontend/backend boundary, as in notefeed: the frontend imports the backend only through @/backend, and
 // backend/ is framework-free.
@@ -21,5 +22,7 @@ export default defineConfig([
   ...nextTs,
   { files: ["app/**", "proxy.ts"], ignores: ["**/*.test.ts"], rules: { "no-restricted-imports": ["error", FRONTEND_IMPORTS] } },
   { files: ["backend/**"], rules: { "no-restricted-imports": ["error", BACKEND_IMPORTS] } },
+  // Last, so no ESLint rule argues with Prettier's layout.
+  prettier,
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "playwright-report/**", "test-results/**", ".venv-docs/**", "site/**", ".e2e/**"]),
 ]);

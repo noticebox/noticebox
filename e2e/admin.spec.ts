@@ -26,7 +26,9 @@ test("a box and a form are made in the inbox, the form's settings are saved to t
 
   // The form starts without fields: the first post brings them, and the settings page lists what it saw.
   await expect(page.getByText("Seen in submissions")).toHaveCount(0);
-  expect((await request.post("/f/orders", { data: { name: "Ann", email: "ann@example.org", message: "Two", quantity: "2", _public: "quantity" } })).status()).toBe(201);
+  expect(
+    (await request.post("/f/orders", { data: { name: "Ann", email: "ann@example.org", message: "Two", quantity: "2", _public: "quantity" } })).status(),
+  ).toBe(201);
   await page.reload();
   await expect(page.getByText("Seen in submissions")).toContainText("name");
   await expect(page.getByLabel("Field 1 name")).toHaveValue("quantity"); // described by the page's hint
@@ -40,8 +42,16 @@ test("a box and a form are made in the inbox, the form's settings are saved to t
   await page.getByLabel("Takes posts from").fill("https://example.org");
   await page.getByRole("button", { name: "Save the settings" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
-  const file = JSON.parse(readFileSync(".e2e/noticebox.json", "utf8")) as { boxes?: string[]; forms: Record<string, { box: string; fields: Record<string, unknown>; notify: unknown; origins: string[] }> };
-  expect(file.forms.orders).toMatchObject({ box: "example.org", origins: ["https://example.org"], notify: [{ type: "webhook", url: "https://hooks.test/orders" }], states: [{ name: "new" }, { name: "answered", closed: true }, { name: "forwarded" }] });
+  const file = JSON.parse(readFileSync(".e2e/noticebox.json", "utf8")) as {
+    boxes?: string[];
+    forms: Record<string, { box: string; fields: Record<string, unknown>; notify: unknown; origins: string[] }>;
+  };
+  expect(file.forms.orders).toMatchObject({
+    box: "example.org",
+    origins: ["https://example.org"],
+    notify: [{ type: "webhook", url: "https://hooks.test/orders" }],
+    states: [{ name: "new" }, { name: "answered", closed: true }, { name: "forwarded" }],
+  });
   expect(Object.keys(file.forms.orders!.fields)).toEqual(["quantity", "message"]);
   expect(file.forms.report!.notify).toEqual({ ntfy: "${NTFY_URL}" }); // the other form's secret stays a reference
   expect(file.boxes ?? []).not.toContain("example.org"); // the box has a form now
@@ -54,7 +64,14 @@ test("a box and a form are made in the inbox, the form's settings are saved to t
 
   // The new form now takes posts from its origin only, like any other, and the new state can be used.
   expect((await request.post("/f/orders", { data: { name: "Ann", email: "ann@example.org", message: "Two", quantity: "2" } })).status()).toBe(403);
-  expect((await request.post("/f/orders", { data: { name: "Ann", email: "ann@example.org", message: "Two", quantity: "2" }, headers: { origin: "https://example.org" } })).status()).toBe(201);
+  expect(
+    (
+      await request.post("/f/orders", {
+        data: { name: "Ann", email: "ann@example.org", message: "Two", quantity: "2" },
+        headers: { origin: "https://example.org" },
+      })
+    ).status(),
+  ).toBe(201);
   await page.reload();
   await expect(page.getByRole("button", { name: "Remove the form" })).toBeDisabled();
   await page.goto("/forms/orders/submissions");
