@@ -1,0 +1,82 @@
+# Dependency bumps as pull requests with CI run (convention "Dependabot with auto-merge"): patch and minor bumps merge by themselves once
+# check is green (dependabot-automerge.yml), majors wait for review. Security updates (switched on in the repository's settings) come at
+# once and skip the cooldown; everything else waits two weeks after a release and comes grouped on Monday mornings.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Berlin
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: Dependencies
+    labels: [dependencies]
+    ignore:
+      # @types/node follows the Node major the app runs on (the Dockerfile, engines), by hand.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+    groups:
+      # Next.js and its ESLint config move together.
+      nextjs:
+        patterns: [next, eslint-config-next, "@next/*"]
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Berlin
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: Dependencies
+    labels: [dependencies]
+    ignore:
+      # The Node major follows the Dockerfile and engines together, by hand.
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Berlin
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: Dependencies
+    labels: [dependencies]
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Berlin
+    cooldown:
+      default-days: 14
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: Dependencies
+    labels: [dependencies]
+    groups:
+      # The docs site's MkDocs and its plugins (requirements-docs.txt).
+      docs:
+        patterns: ["*"]
