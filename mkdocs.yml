@@ -37,11 +37,15 @@ theme:
 plugins:
   - search
 
+hooks:
+  - docs_hooks/roadmap.py
+
 extra_css:
   - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
+  - attr_list
   - tables
   - toc:
       permalink: true
@@ -57,6 +61,8 @@ validation:
 
 nav:
   - Home: index.md
+  - What noticebox stands for: values.md
+  - Where noticebox is going: roadmap.md
   - Get started:
       - Quick start: get-started/quick-start.md
       - Concepts: get-started/concepts.md

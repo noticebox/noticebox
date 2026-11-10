@@ -30,6 +30,8 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the
 
 ## Conventions
 
+- Changes are judged against `docs/values.md`; a review names the point it touches ("breaks V1").
+- The roadmap is `docs/roadmap.yml`; the PR that finishes or changes a step updates it.
 - Each feature PR bumps `version` in `package.json` (and `package-lock.json`) and updates README + the matching `docs/` page; commit titles look like `NOTICEBOX #<issue>: <what>; noticebox <version>`.
 - Architecturally significant decisions get an ADR in `docs/adr/`.
 - Comments explain why, in full sentences, at the top of each module; keep that style.
