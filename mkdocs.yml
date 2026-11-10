@@ -40,13 +40,22 @@ plugins:
 extra_css:
   - stylesheets/extra.css
 
+# Mermaid pinned, so a new release can't change the diagrams' look; mermaid.js adds the palette rules it lacks.
+extra_javascript:
+  - https://unpkg.com/mermaid@11.17.2/dist/mermaid.min.js
+  - javascripts/mermaid.js
+
 markdown_extensions:
   - admonition
   - tables
   - toc:
       permalink: true
   - pymdownx.highlight
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.tabbed:
       alternate_style: true
   - pymdownx.details
