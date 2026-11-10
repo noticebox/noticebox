@@ -1,5 +1,8 @@
 /* noticebox's green, as the app sets it, so the docs and the app look related. Made by palette.py (docs plugin). */
 [data-md-color-scheme="default"] {
+  --nb-accent: #176b5c;
+  --nb-mist: #e3f1ed;
+  --nb-ink: #1d2327;
   --md-primary-fg-color: #176b5c;
   --md-primary-fg-color--light: #418679;
   --md-primary-fg-color--dark: #125348;
@@ -7,11 +10,44 @@
 }
 
 [data-md-color-scheme="slate"] {
+  --nb-accent: #7fcdb6;
+  --nb-mist: #1f2d2a;
+  --nb-ink: #e4e8ea;
   --md-primary-fg-color: #7fcdb6;
   --md-primary-fg-color--light: #96d6c3;
   --md-primary-fg-color--dark: #63a08e;
   --md-primary-bg-color: #15181b;
   --md-accent-fg-color: #7fcdb6;
+}
+
+/* Diagrams in the same green, light and dark (conventions: Diagrams); javascripts/mermaid.js adds what these miss. */
+:root > * {
+  --md-mermaid-font-family: var(--md-text-font-family), sans-serif;
+  --md-mermaid-edge-color: var(--nb-accent);
+  --md-mermaid-node-bg-color: var(--nb-mist);
+  --md-mermaid-node-fg-color: var(--nb-ink);
+  --md-mermaid-label-bg-color: var(--md-default-bg-color);
+  --md-mermaid-label-fg-color: var(--nb-ink);
+  --md-mermaid-sequence-actor-bg-color: var(--nb-mist);
+  --md-mermaid-sequence-actor-fg-color: var(--nb-ink);
+  --md-mermaid-sequence-actor-border-color: var(--nb-accent);
+  --md-mermaid-sequence-actor-line-color: var(--md-default-fg-color--lighter);
+  --md-mermaid-sequence-actorman-bg-color: var(--nb-mist);
+  --md-mermaid-sequence-actorman-line-color: var(--nb-accent);
+  --md-mermaid-sequence-box-bg-color: var(--md-default-bg-color);
+  --md-mermaid-sequence-box-fg-color: var(--nb-ink);
+  --md-mermaid-sequence-label-bg-color: var(--nb-mist);
+  --md-mermaid-sequence-label-fg-color: var(--nb-ink);
+  --md-mermaid-sequence-loop-bg-color: var(--md-default-bg-color);
+  --md-mermaid-sequence-loop-fg-color: var(--nb-ink);
+  --md-mermaid-sequence-loop-border-color: var(--nb-accent);
+  --md-mermaid-sequence-message-fg-color: var(--nb-ink);
+  --md-mermaid-sequence-message-line-color: var(--nb-accent);
+  --md-mermaid-sequence-note-bg-color: var(--nb-mist);
+  --md-mermaid-sequence-note-fg-color: var(--nb-ink);
+  --md-mermaid-sequence-note-border-color: var(--nb-accent);
+  --md-mermaid-sequence-number-bg-color: var(--nb-accent);
+  --md-mermaid-sequence-number-fg-color: var(--md-default-bg-color);
 }
 
 /* Screenshots of the app: framed like a window instead of a flat box. No display/margin on the img itself: that would
