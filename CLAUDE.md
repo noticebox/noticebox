@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-conventions; the rules here win where they differ. Next.js 16 app + a framework-free TypeScript backend, one SQLite file (Node's built-in `node:sqlite`, Node ≥ 22.13), an MCP endpoint behind OAuth 2.1. User docs: `docs/` (MkDocs, `mkdocs build --strict`); README has the deployment and env-var reference.
+noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-conventions; the rules here win where they differ. Next.js 16 app + a framework-free TypeScript backend, one SQLite file (Node's built-in `node:sqlite`, Node ≥ 22.13), an MCP endpoint behind OAuth 2.1. User docs: `docs/` (MkDocs, `mkdocs build --strict`) are the one place for usage, deployment and settings; README only says what noticebox is, installs it in a few lines and links there.
 
 ## Commands
 
@@ -30,7 +30,7 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the
 
 ## Conventions
 
-- Each feature PR bumps `version` in `package.json` (and `package-lock.json`) and updates README + the matching `docs/` page; commit titles look like `NOTICEBOX #<issue>: <what>; noticebox <version>`.
+- Each feature PR bumps `version` in `package.json` (and `package-lock.json`) and updates the matching `docs/` page (README only when what noticebox is or how it installs changes); commit titles look like `NOTICEBOX #<issue>: <what>; noticebox <version>`.
 - Architecturally significant decisions get an ADR in `docs/adr/`.
 - Comments explain why, in full sentences, at the top of each module; keep that style.
 
