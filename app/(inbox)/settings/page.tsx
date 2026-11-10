@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import { actorOf, publicUrl, runtime } from "@/backend";
+import { actorOf, connections, publicUrl, runtime } from "@/backend";
 import { when } from "@/app/_lib/format";
 import { ActionForm } from "../ActionForm";
 import { revokeGrant } from "../admin";
@@ -11,7 +11,7 @@ export default async function SettingsPage() {
   const rt = runtime();
   const h = await headers();
   const actor = actorOf(h, rt) ?? "";
-  const grants = rt.store.grants(actor);
+  const grants = connections(rt, actor);
   const base = publicUrl(h, rt);
   return (
     <div className="mx-auto max-w-3xl">

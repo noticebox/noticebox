@@ -16,19 +16,26 @@ Each *Allow* is a connection, listed under *Your settings* with the client's nam
 
 ## Tools
 
+MCP is noticebox's main interface: everything the inbox can do, an assistant can do here.
+
 | Tool | What it does |
 |---|---|
-| `list_forms` | The forms with their kinds and states |
+| `list_forms` | The boxes and forms, each form with its kind, states and retention |
 | `list_submissions` | Submissions, filtered by form, state or open/closed; each with its summary, its URL in the inbox and its link |
 | `get_submission` | One submission with its fields and history, and `github_issue_url` when its form names a [repository](github.md) |
 | `add_note` | A note on a submission |
 | `decide` | A move to another state, with the reason; refused like in the UI when the reason is missing or the move is not allowed |
 | `get_form` | One form as the forms file has it, `${VAR}` references unexpanded |
-| `put_form` | Creates a form or replaces it as a whole; the file is validated before it is written, so an invalid form, or a `${VAR}` the environment does not have, changes nothing |
+| `put_form` | Creates a form or replaces it as a whole; the file is validated before it is written, so an invalid form, a `${VAR}` the environment does not have, or dropping a state that submissions are in changes nothing |
+| `delete_form` | Deletes a form without submissions (destructive) |
+| `create_box`, `rename_box`, `delete_box` | A box: made, renamed with its forms, deleted once empty (destructive) |
+| `list_connections` | Your connected assistants, the current one marked |
+| `revoke_connection` | Ends one of your connections at once (destructive) |
+| `export` | Every submission with its history, or one form's or state's, up to 1000: the same as `/export.json` |
 
-`put_form` does what *Add new* and the *Settings* tab do, through the same validation; secrets such as an ntfy topic go in as `${VAR}` references that the container's environment must provide.
+The tools call the same functions as the inbox's pages, through the same validation; secrets such as an ntfy topic go in as `${VAR}` references that the container's environment must provide.
 
-A summary carries `link`, the form's link template filled in, so an assistant can look at what a report is about before suggesting a decision.
+Every result carries `next`: short instructions built from what the call did, such as when retention will remove a closed submission's personal fields or where a new form takes its posts. Every box, form and submission in a result carries its `url` in the inbox, and a summary carries `link`, the form's link template filled in, so an assistant can look at what a report is about before suggesting a decision.
 
 ## How the OAuth works
 

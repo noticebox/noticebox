@@ -81,7 +81,22 @@ test("tools act in the name of the person who allowed the client, and the trail 
   const auth = { authorization: `Bearer ${access}` };
 
   const tools = (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string }[];
-  expect(tools.map((t) => t.name).sort()).toEqual(["add_note", "decide", "get_form", "get_submission", "list_forms", "list_submissions", "put_form"]);
+  expect(tools.map((t) => t.name).sort()).toEqual([
+    "add_note",
+    "create_box",
+    "decide",
+    "delete_box",
+    "delete_form",
+    "export",
+    "get_form",
+    "get_submission",
+    "list_connections",
+    "list_forms",
+    "list_submissions",
+    "put_form",
+    "rename_box",
+    "revoke_connection",
+  ]);
 
   const forms = (await (await rpc(rt, "tools/call", { name: "list_forms", arguments: {} }, auth)).json()).result.structuredContent;
   expect(forms.forms.map((f: { name: string; states: { name: string; closed: boolean; reason: boolean }[] }) => [f.name, f.states.map((s) => s.name), f.states.filter((s) => s.reason).map((s) => s.name)])).toEqual([
@@ -216,4 +231,140 @@ test("a submission whose form names a repository carries the link to a filled-in
   expect(url.startsWith("https://github.com/acme/site/issues/new?")).toBe(true);
   expect(url).not.toContain("who%40example.org");
   expect((await call("get_submission", { id: contact.id })).structuredContent.github_issue_url).toBeNull();
+});
+
+/** A connected client's tool call: the result as the client sees it. */
+async function caller(rt: TestRuntime, user = "marcel", client = "Claude") {
+  const { access } = await connect(rt, user, client);
+  const auth = { authorization: `Bearer ${access}` };
+  return {
+    access,
+    call: async (name: string, args: Record<string, unknown> = {}) => (await (await rpc(rt, "tools/call", { name, arguments: args }, auth)).json()).result,
+    tools: async () => ((await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string; annotations?: Record<string, boolean>; description: string }[]),
+  };
+}
+
+test("every tool's result says what to do next", async () => {
+  const rt = testRuntime();
+  const { call, tools } = await caller(rt);
+  const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
+  const other = await connect(rt, "marcel", "Other");
+  void other;
+  const grant = rt.store.grants("marcel").find((g) => g.client_name === "Other")!.id;
+  // One valid call per tool, in an order where each finds what it needs.
+  const calls: [string, Record<string, unknown>][] = [
+    ["list_forms", {}],
+    ["get_form", { name: "report" }],
+    ["put_form", { name: "spare", form: { kind: "message" } }],
+    ["list_submissions", {}],
+    ["get_submission", { id }],
+    ["add_note", { id, text: "Checked." }],
+    ["decide", { id, to: "rejected", reason: "Fine." }],
+    ["create_box", { name: "shop" }],
+    ["rename_box", { from: "shop", to: "store" }],
+    ["delete_box", { name: "store" }],
+    ["delete_form", { name: "spare" }],
+    ["list_connections", {}],
+    ["revoke_connection", { id: grant }],
+    ["export", {}],
+  ];
+  expect(calls.map(([n]) => n).sort()).toEqual((await tools()).map((t) => t.name).sort());
+  for (const [name, args] of calls) {
+    const r = await call(name, args);
+    expect(r.isError, `${name}: ${r.content?.[0]?.text}`).toBeFalsy();
+    expect(r.structuredContent.next.length, name).toBeGreaterThan(0);
+    for (const line of r.structuredContent.next) expect(typeof line).toBe("string");
+  }
+});
+
+test("next is built from what the call did", async () => {
+  const rt = testRuntime({ now: () => new Date("2026-01-02T00:00:00Z") });
+  const { call } = await caller(rt);
+  const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date("2026-01-01T00:00:00Z")).id;
+  const decided = await call("decide", { id, to: "rejected", reason: "Not spam." });
+  expect(decided.structuredContent.next.join(" ")).toContain("2026-04-02"); // closed on 2 January: retention (90 days) blanks it then
+  const reopened = await call("decide", { id, to: "in_review", reason: "" });
+  expect(reopened.structuredContent.next.join(" ")).not.toContain("retention");
+  const created = await call("put_form", { name: "orders", form: { kind: "message" } });
+  expect(created.structuredContent.next.join(" ")).toContain(`${BASE}/f/orders`);
+  expect(created.structuredContent.url).toBe(`${BASE}/forms/orders`);
+  const forms = (await call("list_forms")).structuredContent.forms;
+  expect(forms.find((f: { name: string }) => f.name === "orders").url).toBe(`${BASE}/forms/orders`);
+});
+
+test("boxes are created, renamed and deleted over MCP; a box with forms stays", async () => {
+  const rt = testRuntime();
+  const { call, tools } = await caller(rt);
+  const made = await call("create_box", { name: "shop.test" });
+  expect(made.structuredContent).toMatchObject({ name: "shop.test", url: `${BASE}/boxes/shop.test` });
+  expect(rt.config.boxes).toContain("shop.test");
+  expect((await call("create_box", { name: "shop.test" })).content[0].text).toBe('there is already a box called "shop.test"');
+  expect((await call("create_box", { name: "!" })).isError).toBe(true);
+  await call("put_form", { name: "orders", form: { kind: "message", box: "shop.test" } });
+  const renamed = await call("rename_box", { from: "shop.test", to: "shop" });
+  expect(renamed.structuredContent).toMatchObject({ name: "shop", forms: ["orders"] });
+  expect(rt.config.forms.orders!.box).toBe("shop");
+  expect((await call("delete_box", { name: "shop" })).content[0].text).toBe('the box "shop" still has forms');
+  await call("delete_form", { name: "orders" });
+  expect((await call("delete_box", { name: "shop" })).isError).toBeFalsy();
+  expect(rt.config.boxes).not.toContain("shop");
+  const destructive = (await tools()).filter((t) => t.annotations?.destructiveHint).map((t) => t.name);
+  expect(destructive).toEqual(expect.arrayContaining(["delete_box", "delete_form", "revoke_connection"]));
+});
+
+test("a form with submissions is not deleted over MCP; an empty one is", async () => {
+  const rt = testRuntime();
+  const { call } = await caller(rt);
+  rt.store.receive(rt.config.forms.report!, REPORT, null, new Date());
+  expect((await call("delete_form", { name: "report" })).content[0].text).toBe("a form with submissions cannot be deleted; download them first");
+  expect(rt.config.forms.report).toBeDefined();
+  expect((await call("delete_form", { name: "contact-open" })).structuredContent).toMatchObject({ name: "contact-open", deleted: true });
+  expect(rt.config.forms["contact-open"]).toBeUndefined();
+  expect((await call("delete_form", { name: "nope" })).isError).toBe(true);
+});
+
+test("put_form keeps the states that submissions are in, as the settings page does", async () => {
+  const rt = testRuntime();
+  const { call } = await caller(rt);
+  const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
+  rt.store.transition(rt.config.forms.report!, id, "marcel", "in_review", "", new Date());
+  const form = (await call("get_form", { name: "report" })).structuredContent.form;
+  const r = await call("put_form", { name: "report", form: { ...form, states: ["open", { name: "done", closed: true }] } });
+  expect(r.content[0].text).toBe('Submissions are in the state "in_review"; it cannot be removed.');
+});
+
+test("connections are the person's own: listed, and revoked at once, this one included", async () => {
+  const rt = testRuntime();
+  const me = await caller(rt, "marcel", "Claude");
+  const other = await caller(rt, "marcel", "Desktop");
+  await caller(rt, "anna", "Claude");
+  const listed = (await me.call("list_connections")).structuredContent.connections as { id: string; client_name: string; current: boolean }[];
+  expect(listed.map((c) => [c.client_name, c.current]).sort()).toEqual([
+    ["Claude", true],
+    ["Desktop", false],
+  ]);
+  const desktop = listed.find((c) => c.client_name === "Desktop")!;
+  const anna = rt.store.grants("anna")[0]!;
+  expect((await me.call("revoke_connection", { id: anna.id })).content[0].text).toBe("no such connection");
+  expect((await me.call("revoke_connection", { id: desktop.id })).structuredContent).toMatchObject({ id: desktop.id, revoked: true });
+  expect((await other.call("list_forms")) ?? null).toBeNull(); // its token stopped working: the request got a 401, no result
+  expect(rt.store.grants("anna")).toHaveLength(1);
+});
+
+test("export gives the submissions with their histories, by form and state", async () => {
+  const rt = testRuntime();
+  const { call } = await caller(rt);
+  const a = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date("2026-01-01T00:00:00Z"));
+  rt.store.receive(rt.config.forms.contact!, { name: "Ann", email: "a@b.co", message: "Hi" }, null, new Date("2026-01-02T00:00:00Z"));
+  await call("decide", { id: a.id, to: "rejected", reason: "No." });
+  const all = (await call("export")).structuredContent;
+  expect(all.submissions).toHaveLength(2);
+  const one = (await call("export", { form: "report" })).structuredContent.submissions;
+  expect(one).toHaveLength(1);
+  expect(one[0]).toMatchObject({ id: a.id, fields: REPORT, url: `${BASE}/forms/report/submissions/${a.id}` });
+  expect(one[0].events.map((e: { actor: string; to_state: string }) => [e.actor, e.to_state])).toEqual([
+    ["form", "open"],
+    ["marcel via Claude", "rejected"],
+  ]);
+  expect((await call("export", { state: "new" })).structuredContent.submissions).toHaveLength(1);
 });

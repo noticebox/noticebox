@@ -1,4 +1,4 @@
-import { actorOf, runtime } from "@/backend";
+import { actorOf, exportSubmissions, runtime } from "@/backend";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +9,6 @@ export function GET(req: Request): Response {
   const url = new URL(req.url);
   const form = url.searchParams.get("form") ?? undefined;
   const state = url.searchParams.get("state") ?? undefined;
-  const rows = rt.store.list({ form, state, limit: 1000 }).map((s) => ({ ...s, events: rt.store.events(s.id) }));
+  const rows = exportSubmissions(rt, { form, state });
   return Response.json(rows, { headers: { "cache-control": "no-store" } });
 }
