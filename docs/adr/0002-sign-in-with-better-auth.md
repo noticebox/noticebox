@@ -17,7 +17,7 @@ Up to 0.10.0, the reverse proxy (Authentik forward-auth) signs people in and tel
 
 Option 3.
 
-- **Providers** come from env vars, one set per provider: `NOTICEBOX_OAUTH_<NAME>_CLIENT_ID`, `_CLIENT_SECRET`, `_ISSUER` for a generic OIDC provider, and an optional `_LABEL`. `GITHUB` and `GOOGLE` use Better Auth's built-in providers.
+- **Providers** come from env vars, one set per provider: `NOTICEBOX_OIDC_<NAME>_CLIENT_ID`, `_CLIENT_SECRET`, `_ISSUER` for a generic OIDC provider, and an optional `_LABEL`, as the Better Auth convention names them. `GITHUB` and `GOOGLE` use Better Auth's built-in providers and need no issuer.
 - **Who may sign in** is `NOTICEBOX_ALLOWED_EMAILS`, a list of addresses and `@domain` entries. An empty list lets nobody in. A provider like GitHub lets anyone finish a sign-in, so the provider can't decide this.
 - **A person is one account with one username.** The first sign-in's claim sets the username, so Authentik's `marcel` stays `marcel` and the history recorded before the change still matches. A further provider joins an account only with the same verified email. Events keep recording the username as text, and history is never rewritten. `form` is reserved for intake.
 - **Forward-auth is no longer needed.** `proxy.ts` checks for a Better Auth session and still fails closed. `NOTICEBOX_USER_HEADER` and `NOTICEBOX_SIGN_OUT_URL` go away.
