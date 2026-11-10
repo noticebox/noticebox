@@ -89,7 +89,7 @@ export class Store {
 
   /** Throws unless the database can be read and written (a write lock is taken and released, nothing is stored). */
   ping(): void {
-    this.first(q.selectFrom("submissions").select(sql<number>`1`.as("one")).limit(1));
+    this.first(q.selectFrom("submissions").select(sql.lit(1).as("one")).limit(1)); // a constant, not a column: kysely's literal
     this.db.exec("begin immediate; rollback"); // taking the write lock is not a query kysely builds
   }
 
@@ -140,6 +140,7 @@ export class Store {
     return this.all(
       q
         .selectFrom("submissions")
+        // The UTC day is the first ten characters of the ISO time; substr's positions are literals, not parameters.
         .select([(eb) => eb.fn<string>("substr", ["received_at", sql.lit(1), sql.lit(10)]).as("day"), (eb) => eb.fn.countAll<number>().as("n")])
         .where("form", "=", form)
         .where("received_at", ">=", since.toISOString())
@@ -224,8 +225,19 @@ export class Store {
   }
 }
 
+/** Named column by column, so a column a later migration adds never reaches the pages or MCP unasked. */
 function toSubmission(row: Row): Submission {
-  return { ...row, kind: row.kind as KindName, fields: JSON.parse(row.fields) as Record<string, string> };
+  return {
+    id: row.id,
+    form: row.form,
+    kind: row.kind as KindName,
+    state: row.state,
+    fields: JSON.parse(row.fields) as Record<string, string>,
+    received_at: row.received_at,
+    closed_at: row.closed_at,
+    purged_at: row.purged_at,
+    origin: row.origin,
+  };
 }
 
 function newId(): string {
