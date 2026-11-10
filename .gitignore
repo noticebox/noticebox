@@ -4,6 +4,7 @@ out/
 next-env.d.ts
 data/
 *.sqlite*
+!backend/fixtures/*.sqlite
 .env
 test-results/
 playwright-report/

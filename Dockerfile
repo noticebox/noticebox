@@ -19,4 +19,4 @@ VOLUME /data
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 CMD wget -qO- http://127.0.0.1:3000/health || exit 1
 ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["node", "--no-warnings=ExperimentalWarning", "server.js"]
+CMD ["node", "server.js"]

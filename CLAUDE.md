@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-conventions; the rules here win where they differ. Next.js 16 app + a framework-free TypeScript backend, one SQLite file (Node's built-in `node:sqlite`, Node ≥ 22.13), an MCP endpoint behind OAuth 2.1. User docs: `docs/` (MkDocs, `mkdocs build --strict`); README has the deployment and env-var reference.
+noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-conventions; the rules here win where they differ. Next.js 16 app + a framework-free TypeScript backend, one SQLite file (`better-sqlite3` with typed `kysely` queries, Node ≥ 22), an MCP endpoint behind OAuth 2.1. User docs: `docs/` (MkDocs, `mkdocs build --strict`); README has the deployment and env-var reference.
 
 ## Commands
 
@@ -24,7 +24,7 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the
 - **Runtime** (`backend/runtime.ts`): one `Runtime` per process on `globalThis` (forms, store, rate limiter, env settings, injectable `now`/`fetch`/`log`). Route handlers and server actions call `runtime()`; tests build their own with `makeRuntime` / helpers in `backend/testutil.ts`. Backend route handlers (`intakeRoute`, `mcpRoute`, OAuth routes) take the runtime and are thin re-exports in `app/**/route.ts`.
 - **Auth is the reverse proxy's**: `proxy.ts` lets the public paths through (`/f/…`, `/api/f/…`, `/health`, `/mcp`, `/oauth/token|register`, `/.well-known/…`) and answers 401 on everything else without the user header; fail closed. It also rewrites non-GET `/f/<form>` to `/api/f/<form>`. Actions are attributed via `actorOf`; MCP actions as `<person> via <client>`.
 - **The forms file is the configuration and is editable** (`backend/forms.ts`): every change mutates a copy of the raw JSON, parses it whole (`backend/config.ts`), then writes it. `${VAR}` references stay unexpanded in the file — never write the expanded config back.
-- **Store** (`backend/db.ts`): `submissions` + append-only `events`; a submission's state is derived from its events and only cached on the row. The schema is ordered migrations (`backend/migrations.ts`, recorded in `PRAGMA user_version`) applied at open; a shipped migration is never edited, a change is a new one. Kinds (`backend/kinds.ts`) are presets of states (`closed`, `reason` flags); any state may move to any other.
+- **Store** (`backend/db.ts`): `submissions` + append-only `events`; a submission's state is derived from its events and only cached on the row. The schema is ordered migrations (`backend/migrations.ts`, recorded in `PRAGMA user_version`) applied at open; a shipped migration is never edited, a change is a new one. Queries are `kysely` builders typed by `Tables`, only compiled by kysely and run synchronously on `better-sqlite3`, so the store stays synchronous. Kinds (`backend/kinds.ts`) are presets of states (`closed`, `reason` flags); any state may move to any other.
 - **Retention** runs at start and every 6 h (`instrumentation.ts` → `sweepNow`): closed submissions past `retentionDays` lose personal fields; ids, states and events stay.
 - **Privacy rules**: notifications carry only that something arrived and a link, never content; GitHub issues are prefilled new-issue links without the email, no token or API call (see `docs/adr/0001-…`).
 

@@ -1,14 +1,14 @@
 // The store: one SQLite file with submissions and their append-only events. Nothing is ever updated in `events`; a
 // submission's state is the result of its events and is kept on the row only to list and filter quickly. The schema
 // is the migrations' (migrations.ts), applied when the store opens.
-// SQLite is Node's own module, taken straight from the runtime so no bundler has to know it.
+// Queries are built with kysely, typed by the tables below, and run synchronously on better-sqlite3: kysely only
+// compiles them, so the store keeps its synchronous interface and a transaction is one plain function call.
 import { randomBytes } from "node:crypto";
-import type { DatabaseSync as Database } from "node:sqlite";
+import BetterSqlite3 from "better-sqlite3";
+import { DummyDriver, Kysely, sql, SqliteAdapter, SqliteIntrospector, SqliteQueryCompiler, type Compilable, type Generated } from "kysely";
 import type { Config, Form } from "./config";
 import { stateOf, type KindName } from "./kinds";
 import { migrate } from "./migrations";
-
-const { DatabaseSync } = process.getBuiltinModule("node:sqlite") as typeof import("node:sqlite");
 
 export type Submission = {
   id: string;
@@ -37,15 +37,33 @@ export type Outcome = { ok: true } | { ok: false; error: string };
 
 export type Grant = { id: string; actor: string; client_hash: string; client_name: string; created_at: string; last_used_at: string; revoked_at: string | null };
 
-type Row = Record<string, string | number | null>;
+/** The tables as the migrations leave them. */
+export type Tables = {
+  submissions: { id: string; form: string; kind: string; state: string; fields: string; received_at: string; closed_at: string | null; purged_at: string | null; origin: string | null };
+  events: { id: Generated<number>; submission_id: string; at: string; actor: string; from_state: string | null; to_state: string | null; reason: string };
+  grants: Grant;
+};
+
+type Row = Tables["submissions"];
+
+/** Builds queries and compiles them to SQL; it never connects to anything. */
+const q = new Kysely<Tables>({
+  dialect: {
+    createAdapter: () => new SqliteAdapter(),
+    createDriver: () => new DummyDriver(),
+    createIntrospector: (db) => new SqliteIntrospector(db),
+    createQueryCompiler: () => new SqliteQueryCompiler(),
+  },
+});
 
 export class Store {
-  readonly db: Database;
+  readonly db: BetterSqlite3.Database;
 
   constructor(path: string) {
-    this.db = new DatabaseSync(path);
-    this.db.exec("pragma journal_mode = wal; pragma foreign_keys = on; pragma busy_timeout = 5000;");
+    this.db = new BetterSqlite3(path, { timeout: 5000 });
     try {
+      this.db.pragma("journal_mode = wal");
+      this.db.pragma("foreign_keys = on");
       migrate(this.db);
     } catch (e) {
       this.db.close();
@@ -53,10 +71,26 @@ export class Store {
     }
   }
 
+  private all<O>(query: Compilable<O>): O[] {
+    const c = query.compile();
+    return this.db.prepare(c.sql).all(...c.parameters) as O[];
+  }
+
+  private first<O>(query: Compilable<O>): O | undefined {
+    const c = query.compile();
+    return this.db.prepare(c.sql).get(...c.parameters) as O | undefined;
+  }
+
+  /** Runs a write and returns how many rows it changed. */
+  private run(query: Compilable<unknown>): number {
+    const c = query.compile();
+    return this.db.prepare(c.sql).run(...c.parameters).changes;
+  }
+
   /** Throws unless the database can be read and written (a write lock is taken and released, nothing is stored). */
   ping(): void {
-    this.db.prepare("select 1 from submissions limit 1").get();
-    this.db.exec("begin immediate; rollback");
+    this.first(q.selectFrom("submissions").select(sql<number>`1`.as("one")).limit(1));
+    this.db.exec("begin immediate; rollback"); // taking the write lock is not a query kysely builds
   }
 
   /** Stores a new submission in its kind's first state, with the `received` event. */
@@ -64,62 +98,54 @@ export class Store {
     const id = newId();
     const at = now.toISOString();
     const state = form.states[0]!.name;
-    this.db.exec("begin");
-    try {
-      this.db
-        .prepare("insert into submissions (id, form, kind, state, fields, received_at, origin) values (?, ?, ?, ?, ?, ?, ?)")
-        .run(id, form.name, form.kind, state, JSON.stringify(fields), at, origin);
-      this.db.prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, 'form', null, ?, '')").run(id, at, state);
-      this.db.exec("commit");
-    } catch (e) {
-      this.db.exec("rollback");
-      throw e;
-    }
+    this.db.transaction(() => {
+      this.run(q.insertInto("submissions").values({ id, form: form.name, kind: form.kind, state, fields: JSON.stringify(fields), received_at: at, origin }));
+      this.run(q.insertInto("events").values({ submission_id: id, at, actor: "form", from_state: null, to_state: state, reason: "" }));
+    })();
     return { id, form: form.name, kind: form.kind, state, fields, received_at: at, closed_at: null, purged_at: null, origin };
   }
 
   get(id: string): Submission | undefined {
-    const row = this.db.prepare("select * from submissions where id = ?").get(id) as Row | undefined;
+    const row = this.first(q.selectFrom("submissions").selectAll().where("id", "=", id));
     return row ? toSubmission(row) : undefined;
   }
 
   list(filter: ListFilter = {}): Submission[] {
-    const where: string[] = [];
-    const params: (string | number)[] = [];
-    if (filter.form) {
-      where.push("form = ?");
-      params.push(filter.form);
-    }
-    if (filter.state) {
-      where.push("state = ?");
-      params.push(filter.state);
-    }
-    if (filter.open === true) where.push("closed_at is null");
-    if (filter.open === false) where.push("closed_at is not null");
-    const sql = `select * from submissions ${where.length ? "where " + where.join(" and ") : ""} order by received_at desc, id limit ?`;
-    params.push(Math.min(filter.limit ?? 200, 1000));
-    return (this.db.prepare(sql).all(...params) as Row[]).map(toSubmission);
+    let query = q.selectFrom("submissions").selectAll();
+    if (filter.form) query = query.where("form", "=", filter.form);
+    if (filter.state) query = query.where("state", "=", filter.state);
+    if (filter.open === true) query = query.where("closed_at", "is", null);
+    if (filter.open === false) query = query.where("closed_at", "is not", null);
+    query = query.orderBy("received_at", "desc").orderBy("id").limit(Math.min(filter.limit ?? 200, 1000));
+    return this.all(query).map(toSubmission);
   }
 
   events(id: string): Event[] {
-    return this.db.prepare("select * from events where submission_id = ? order by id").all(id) as Event[];
+    return this.all(q.selectFrom("events").selectAll().where("submission_id", "=", id).orderBy("id"));
   }
 
   /** The names of every field that ever arrived for a form, described or not, for the settings page. */
   fieldsSeen(form: string): string[] {
-    return (this.db.prepare("select distinct j.key as name from submissions, json_each(submissions.fields) as j where form = ? order by name").all(form) as { name: string }[]).map((r) => r.name);
+    const each = sql<{ key: string }>`json_each(submissions.fields)`.as("j"); // a table-valued function, written by hand
+    return this.all(q.selectFrom(["submissions", each]).select("j.key as name").distinct().where("form", "=", form).orderBy("name")).map((r) => r.name);
   }
 
   /** Counts per form and state, for the overview. */
   counts(): { form: string; state: string; n: number }[] {
-    return this.db.prepare("select form, state, count(*) as n from submissions group by form, state").all() as { form: string; state: string; n: number }[];
+    return this.all(q.selectFrom("submissions").select(["form", "state", (eb) => eb.fn.countAll<number>().as("n")]).groupBy(["form", "state"]));
   }
 
   /** How many a form received per day (UTC) since `since`, for the overview's chart; days without any are absent. */
   daily(form: string, since: Date): { day: string; n: number }[] {
-    return this.db
-      .prepare("select substr(received_at, 1, 10) as day, count(*) as n from submissions where form = ? and received_at >= ? group by day order by day")
-      .all(form, since.toISOString()) as { day: string; n: number }[];
+    return this.all(
+      q
+        .selectFrom("submissions")
+        .select([(eb) => eb.fn<string>("substr", ["received_at", sql.lit(1), sql.lit(10)]).as("day"), (eb) => eb.fn.countAll<number>().as("n")])
+        .where("form", "=", form)
+        .where("received_at", ">=", since.toISOString())
+        .groupBy("day")
+        .orderBy("day"),
+    );
   }
 
   /** Adds a note: an event that changes no state. */
@@ -127,7 +153,7 @@ export class Store {
     const s = this.get(id);
     if (!s) return { ok: false, error: "no such submission" };
     if (!reason.trim()) return { ok: false, error: "a note needs text" };
-    this.db.prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, ?, ?, null, ?)").run(id, now.toISOString(), actor, s.state, reason.trim());
+    this.run(q.insertInto("events").values({ submission_id: id, at: now.toISOString(), actor, from_state: s.state, to_state: null, reason: reason.trim() }));
     return { ok: true };
   }
 
@@ -142,15 +168,10 @@ export class Store {
     if (target.reason && !text) return { ok: false, error: `${to} needs a reason` };
     const at = now.toISOString();
     const closed = target.closed ? at : null;
-    this.db.exec("begin");
-    try {
-      this.db.prepare("update submissions set state = ?, closed_at = ? where id = ?").run(to, closed, id);
-      this.db.prepare("insert into events (submission_id, at, actor, from_state, to_state, reason) values (?, ?, ?, ?, ?, ?)").run(id, at, actor, s.state, to, text);
-      this.db.exec("commit");
-    } catch (e) {
-      this.db.exec("rollback");
-      throw e;
-    }
+    this.db.transaction(() => {
+      this.run(q.updateTable("submissions").set({ state: to, closed_at: closed }).where("id", "=", id));
+      this.run(q.insertInto("events").values({ submission_id: id, at, actor, from_state: s.state, to_state: to, reason: text }));
+    })();
     return { ok: true };
   }
 
@@ -162,11 +183,11 @@ export class Store {
     let purged = 0;
     for (const form of Object.values(config.forms)) {
       const before = new Date(now.getTime() - form.retentionDays * 86400000).toISOString();
-      const due = this.db.prepare("select id, fields from submissions where form = ? and closed_at is not null and closed_at < ? and purged_at is null").all(form.name, before) as { id: string; fields: string }[];
+      const due = this.all(q.selectFrom("submissions").select(["id", "fields"]).where("form", "=", form.name).where("closed_at", "is not", null).where("closed_at", "<", before).where("purged_at", "is", null));
       for (const row of due) {
         const fields = JSON.parse(row.fields) as Record<string, string>;
         const kept = Object.fromEntries(Object.entries(fields).filter(([name]) => form.fields[name] && !form.fields[name].personal));
-        this.db.prepare("update submissions set fields = ?, purged_at = ?, origin = null where id = ?").run(JSON.stringify(kept), now.toISOString(), row.id);
+        this.run(q.updateTable("submissions").set({ fields: JSON.stringify(kept), purged_at: now.toISOString(), origin: null }).where("id", "=", row.id));
         purged++;
       }
     }
@@ -176,26 +197,26 @@ export class Store {
   /** An MCP client the person allowed: the grant every token of that connection names. */
   grant(actor: string, clientHash: string, clientName: string, now: Date): Grant {
     const g: Grant = { id: newId(), actor, client_hash: clientHash, client_name: clientName, created_at: now.toISOString(), last_used_at: now.toISOString(), revoked_at: null };
-    this.db.prepare("insert into grants (id, actor, client_hash, client_name, created_at, last_used_at) values (?, ?, ?, ?, ?, ?)").run(g.id, actor, clientHash, clientName, g.created_at, g.last_used_at);
+    this.run(q.insertInto("grants").values(g));
     return g;
   }
 
   /** The grant behind a token, if it still stands; `touch` records the use. */
   grantOk(id: string, touch: Date | null = null): boolean {
-    const g = this.db.prepare("select revoked_at from grants where id = ?").get(id) as { revoked_at: string | null } | undefined;
+    const g = this.first(q.selectFrom("grants").select("revoked_at").where("id", "=", id));
     if (!g || g.revoked_at !== null) return false;
-    if (touch) this.db.prepare("update grants set last_used_at = ? where id = ?").run(touch.toISOString(), id);
+    if (touch) this.run(q.updateTable("grants").set({ last_used_at: touch.toISOString() }).where("id", "=", id));
     return true;
   }
 
   grants(actor: string): Grant[] {
-    return this.db.prepare("select * from grants where actor = ? and revoked_at is null order by created_at desc").all(actor) as Grant[];
+    return this.all(q.selectFrom("grants").selectAll().where("actor", "=", actor).where("revoked_at", "is", null).orderBy("created_at", "desc"));
   }
 
   /** Revokes one of the person's own grants: every token of that connection stops working at once. */
   revokeGrant(id: string, actor: string, now: Date = new Date()): Outcome {
-    const r = this.db.prepare("update grants set revoked_at = ? where id = ? and actor = ? and revoked_at is null").run(now.toISOString(), id, actor);
-    return r.changes ? { ok: true } : { ok: false, error: "no such connection" };
+    const changed = this.run(q.updateTable("grants").set({ revoked_at: now.toISOString() }).where("id", "=", id).where("actor", "=", actor).where("revoked_at", "is", null));
+    return changed ? { ok: true } : { ok: false, error: "no such connection" };
   }
 
   close(): void {
@@ -204,17 +225,7 @@ export class Store {
 }
 
 function toSubmission(row: Row): Submission {
-  return {
-    id: String(row.id),
-    form: String(row.form),
-    kind: row.kind as KindName,
-    state: String(row.state),
-    fields: JSON.parse(String(row.fields)) as Record<string, string>,
-    received_at: String(row.received_at),
-    closed_at: row.closed_at === null ? null : String(row.closed_at),
-    purged_at: row.purged_at === null ? null : String(row.purged_at),
-    origin: row.origin === null ? null : String(row.origin),
-  };
+  return { ...row, kind: row.kind as KindName, fields: JSON.parse(row.fields) as Record<string, string> };
 }
 
 function newId(): string {
