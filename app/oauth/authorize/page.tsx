@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { actorOf, checkAuthorize, runtime } from "@/backend";
+import { t } from "@/app/_lib/copy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +29,15 @@ export default async function AuthorizePage({ searchParams }: { searchParams: Pr
             <input key={name} type="hidden" name={name} value={value} />
           ))}
           <p className="mb-1">
-            <strong>{checked.clientName}</strong> wants to read and decide submissions as <strong>{actor}</strong>.
+            {t.authorize.wants[0]}
+            <strong>{checked.clientName}</strong>
+            {t.authorize.wants[1]}
+            <strong>{actor}</strong>
+            {t.authorize.wants[2]}
           </p>
-          <p className="mb-6 text-sm text-muted">Everything it does is recorded in your name, marked as done through it. Afterwards you are sent to {checked.redirectHost}.</p>
+          <p className="mb-6 text-sm text-muted">{t.authorize.recorded(checked.redirectHost)}</p>
           <button type="submit" className="btn-primary">
-            Allow
+            {t.authorize.allow}
           </button>
         </form>
       )}

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { formPath, KINDS, runtime } from "@/backend";
 import { ActionForm } from "../../ActionForm";
 import { deleteBox, renameBox } from "../../admin";
+import { t } from "@/app/_lib/copy";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,9 @@ export default async function BoxPage({ params }: { params: Promise<{ box: strin
       <h1 className="mb-6 text-[28px] leading-tight font-bold tracking-tight">{box}</h1>
 
       <section className="mb-10">
-        <h2 className="section-title">Forms</h2>
+        <h2 className="section-title">{t.box.forms}</h2>
         {forms.length === 0 ? (
-          <p className="text-muted">No forms in this box yet.</p>
+          <p className="text-muted">{t.box.none}</p>
         ) : (
           <ul className="grid gap-2">
             {forms.map((f) => (
@@ -29,33 +30,33 @@ export default async function BoxPage({ params }: { params: Promise<{ box: strin
                   {f.title}
                 </Link>
                 <span className="text-[13px] text-muted">
-                  {KINDS[f.kind].label}s · /f/{f.name}
+                  {t.box.kindAndEndpoint(KINDS[f.kind].label, f.name)}
                 </span>
               </li>
             ))}
           </ul>
         )}
         <Link href={`/forms/new?box=${encodeURIComponent(box)}`} className="btn mt-4">
-          New form in this box
+          {t.box.newFormHere}
         </Link>
       </section>
 
       <section className="mb-10 max-w-xl">
-        <h2 className="section-title">Name</h2>
-        <ActionForm action={renameBox} button="Rename the box">
+        <h2 className="section-title">{t.common.name}</h2>
+        <ActionForm action={renameBox} button={t.box.rename}>
           <input type="hidden" name="from" value={box} />
           <label htmlFor="box-to" className="mb-1 block font-bold">
-            Name
+            {t.common.name}
           </label>
           <input id="box-to" name="to" required maxLength={40} defaultValue={box} className="field" />
-          <p className="mt-1 text-[13px] text-muted">The forms in it follow the new name.</p>
+          <p className="mt-1 text-[13px] text-muted">{t.box.renameHint}</p>
         </ActionForm>
       </section>
 
       <section className="max-w-xl">
-        <h2 className="section-title">Remove</h2>
-        <p className="text-muted">A box can be removed once it has no forms.</p>
-        <ActionForm action={deleteBox} button="Remove the box" danger>
+        <h2 className="section-title">{t.common.remove}</h2>
+        <p className="text-muted">{t.box.removeText}</p>
+        <ActionForm action={deleteBox} button={t.box.remove} danger>
           <input type="hidden" name="name" value={box} />
         </ActionForm>
       </section>

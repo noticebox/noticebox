@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState, useSyncExternalStore } fro
 import { stateLabel, verbFor } from "@/app/_lib/format";
 import { decide, type DecideState } from "./actions";
 import { Icon } from "@/app/_lib/icons";
+import { t } from "@/app/_lib/copy";
 
 const noop = () => () => {};
 
@@ -56,19 +57,19 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
     setTarget(to);
   };
   const chosen = pick;
-  const title = chosen ? verbFor(chosen, initial) : "Add a note";
+  const title = chosen ? verbFor(chosen, initial) : t.stateMenu.addNote;
   const needs = reasonRequired.includes(chosen);
   const big = size === "lg";
 
   return (
     <div ref={root} className="relative inline-flex items-center gap-2" data-hydrated={hydrated || undefined}>
-      <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`State: ${stateLabel(state)}`} onClick={() => setOpen((o) => !o)} className={`badge ${tone} ${big ? "px-3 py-1 text-[15px]" : ""} cursor-pointer`}>
+      <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={t.stateMenu.state(stateLabel(state))} onClick={() => setOpen((o) => !o)} className={`badge ${tone} ${big ? "px-3 py-1 text-[15px]" : ""} cursor-pointer`}>
         {stateLabel(state)}
         <Icon name="dropdown" className="size-3 shrink-0 opacity-70" />
       </button>
       {withNote && (
         <button type="button" onClick={() => choose("")} className="btn">
-          Add a note
+          {t.stateMenu.addNote}
         </button>
       )}
       {open && (
@@ -83,7 +84,7 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
           <li role="none" className="my-1 border-t border-rule" />
           <li role="none">
             <button type="button" role="menuitem" onClick={() => choose("")} className="block w-full px-3 py-1.5 text-left hover:bg-soft">
-              Add a note
+              {t.stateMenu.addNote}
             </button>
           </li>
         </ul>
@@ -94,17 +95,17 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
             <h2 id={`dlg-${id}`} className="mb-1 text-[22px] leading-tight font-bold tracking-tight">
               {title}
             </h2>
-            <p className="mb-5 text-muted">{needs ? "The reason is the record of this decision; it stays with the submission." : "What you write stays in the history, with your name and the time."}</p>
+            <p className="mb-5 text-muted">{needs ? t.stateMenu.whyReason : t.stateMenu.whyNote}</p>
             <input type="hidden" name="id" value={id} />
             <label htmlFor={`reason-${id}`} className="mb-1 block font-bold">
-              {chosen ? "Reason" : "Note"}
+              {chosen ? t.stateMenu.reason : t.stateMenu.note}
             </label>
             <textarea key={`reason-${attempt}`} id={`reason-${id}`} name="reason" rows={4} autoFocus required={needs || !chosen} className="field" defaultValue={result.ok ? "" : (result.reason ?? "")} />
             <label htmlFor={`to-${id}`} className="mt-4 mb-1 block font-bold">
-              Then
+              {t.stateMenu.then}
             </label>
             <select key={`to-${attempt}`} id={`to-${id}`} name="to" className="field" defaultValue={pick} onChange={(e) => setPick(e.target.value)}>
-              <option value="">keep it {stateLabel(state)}</option>
+              <option value="">{t.stateMenu.keep(stateLabel(state))}</option>
               {next.map((t) => (
                 <option key={t} value={t}>
                   {verbFor(t, initial).toLowerCase()}
@@ -118,7 +119,7 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
             )}
             <div className="mt-6 flex justify-end gap-2">
               <button type="button" onClick={() => setTarget(null)} className="btn">
-                Cancel
+                {t.common.cancel}
               </button>
               <button type="submit" disabled={pending} className="btn-primary">
                 {title}

@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { linkFor, runtime, submissionPath, summaryOf } from "@/backend";
 import { stateTone } from "@/app/_lib/format";
 import { SubmissionTable, type Row } from "./SubmissionTable";
+import { t } from "@/app/_lib/copy";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function SubmissionsPage({ params }: { params: Promise<{ fo
   return (
     <div>
       <SubmissionTable rows={rows} states={form.states} fields={fields} linkLabel={form.link ? form.link.label : null} />
-      {list.length >= LIMIT && <p className="mt-2 text-[13px] text-muted">The newest {LIMIT} are shown; the download has all of them.</p>}
+      {list.length >= LIMIT && <p className="mt-2 text-[13px] text-muted">{t.table.limited(LIMIT)}</p>}
     </div>
   );
 }

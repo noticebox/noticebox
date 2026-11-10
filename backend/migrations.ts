@@ -50,7 +50,7 @@ drop table if exists issues;
   },
 ];
 
-/** What a migration needs of a connection; node:sqlite's and better-sqlite3's both have it. */
+/** What a migration needs of a connection: better-sqlite3 has it, and so does any other SQLite driver. */
 export type Connection = { exec(sql: string): unknown; prepare(sql: string): { get(): unknown } };
 
 /**

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { t } from "@/app/_lib/copy";
 
 export function CopyButton({ text }: { text: string }) {
   const [done, setDone] = useState(false);
@@ -18,7 +19,7 @@ export function CopyButton({ text }: { text: string }) {
         }
       }}
     >
-      {done ? "Copied" : "Copy"}
+      {done ? t.common.copied : t.common.copy}
     </button>
   );
 }

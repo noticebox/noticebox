@@ -1,13 +1,12 @@
 // The migrations: a new database, one made before migrations existed, opening twice, a failure, and a newer database.
-import { mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import Database from "better-sqlite3";
 import { afterEach, expect, test } from "vitest";
 import { Store } from "./db";
 import { MIGRATIONS, migrate, type Migration } from "./migrations";
 import { REPORT, testConfig } from "./testutil";
-
-const { DatabaseSync } = process.getBuiltinModule("node:sqlite") as typeof import("node:sqlite");
 
 const dirs: string[] = [];
 function tempFile(): string {
@@ -20,7 +19,7 @@ afterEach(() => {
 });
 
 const version = (path: string) => {
-  const db = new DatabaseSync(path);
+  const db = new Database(path);
   const v = (db.prepare("pragma user_version").get() as { user_version: number }).user_version;
   const tables = (db.prepare("select name from sqlite_master where type = 'table' and name not like 'sqlite_%' order by name").all() as { name: string }[]).map((t) => t.name);
   db.close();
@@ -37,7 +36,7 @@ test("a database made by 0.10.0, before migrations, opens at the latest version 
   const path = tempFile();
   // What 0.9.0 left: its tables, written out here as that release created them (not taken from migration 1, which is
   // what is being tested), with no version recorded, and the table 0.10.0 dropped.
-  const old = new DatabaseSync(path);
+  const old = new Database(path);
   old.exec(`
     create table submissions (id text primary key, form text not null, kind text not null, state text not null, fields text not null,
       received_at text not null, closed_at text, purged_at text, origin text);
@@ -62,12 +61,32 @@ test("a database made by 0.10.0, before migrations, opens at the latest version 
   expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["events", "grants", "submissions"] });
 });
 
+test("a database written by 0.11.1 (node:sqlite) opens and keeps its data", () => {
+  const path = tempFile();
+  copyFileSync(new URL("./fixtures/0.11.1.sqlite", import.meta.url), path);
+  const store = new Store(path);
+  expect(store.list().map((s) => [s.form, s.state]).sort()).toEqual([
+    ["contact", "new"],
+    ["report", "rejected"],
+  ]);
+  const report = store.list({ form: "report" })[0]!;
+  expect(report.fields).toEqual(REPORT);
+  expect(store.events(report.id).map((e) => [e.actor, e.from_state, e.to_state, e.reason])).toEqual([
+    ["form", null, "open", ""],
+    ["marcel", "open", "rejected", "Not spam."],
+    ["marcel via Claude", "rejected", null, "Checked."],
+  ]);
+  expect(store.grants("marcel").map((g) => g.client_name)).toEqual(["Claude"]);
+  store.close();
+  expect(version(path).v).toBe(MIGRATIONS.length);
+});
+
 test("opening twice applies nothing the second time", () => {
   const path = tempFile();
   const store = new Store(path);
   store.receive(testConfig().forms.report!, REPORT, null, new Date());
   store.close();
-  const db = new DatabaseSync(path);
+  const db = new Database(path);
   expect(migrate(db)).toBe(0);
   expect(migrate(db, [...MIGRATIONS, { name: "later", sql: "create table later (x)" }])).toBe(1);
   expect(migrate(db, [...MIGRATIONS, { name: "later", sql: "create table later (x)" }])).toBe(0);
@@ -75,7 +94,7 @@ test("opening twice applies nothing the second time", () => {
 });
 
 test("a failing migration rolls back and the store refuses to open", () => {
-  const db = new DatabaseSync(":memory:");
+  const db = new Database(":memory:");
   migrate(db);
   const broken: Migration[] = [...MIGRATIONS, { name: "half done", sql: "create table half (x); insert into nowhere values (1);" }];
   expect(() => migrate(db, broken)).toThrow(/migration 2 \(half done\).*nowhere/);
@@ -86,7 +105,7 @@ test("a failing migration rolls back and the store refuses to open", () => {
 
 test("a database from a newer release is refused, and the store does not open", () => {
   const path = tempFile();
-  const db = new DatabaseSync(path);
+  const db = new Database(path);
   db.exec(`pragma user_version = ${MIGRATIONS.length + 1}`);
   expect(() => migrate(db)).toThrow(/newer/);
   db.close();
