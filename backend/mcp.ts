@@ -4,7 +4,7 @@
 import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotocol/server";
 import * as z from "zod";
 import { bearerOf, mcpResource, publicUrl } from "./auth";
-import type { Submission } from "./db";
+import type { Event, Submission } from "./db";
 import { issueUrl } from "./github";
 import { linkFor } from "./links";
 import { boxPath, endpointPath, formPath, submissionPath } from "./paths";
@@ -39,8 +39,9 @@ function server(rt: Runtime, who: Who): McpServer {
   const s = new McpServer({ name: "noticebox", version: "0.1.0" });
   const formUrl = (name: string) => base + formPath(name);
   const summary = (x: Submission) => ({ id: x.id, form: x.form, kind: x.kind, state: x.state, received_at: x.received_at, closed_at: x.closed_at, url: base + submissionPath(x.form, x.id), link: linkFor(rt.config.forms[x.form], x)?.url ?? null, summary: summaryOf(rt.config.forms[x.form], x, 120) });
-  const events = (id: string) => rt.store.events(id).map(({ at, actor, from_state, to_state, reason }) => ({ at, actor, from_state, to_state, reason }));
-  const full = (x: Submission) => ({ ...summary(x), fields: x.fields, github_issue_url: issueUrl(rt.config.forms[x.form], x, base), purged_at: x.purged_at, events: events(x.id) });
+  const event = ({ at, actor, from_state, to_state, reason }: Event) => ({ at, actor, from_state, to_state, reason });
+  /** A submission with its fields and history; `history` when the caller has already read it (the export). */
+  const full = (x: Submission, history: Event[] = rt.store.events(x.id)) => ({ ...summary(x), fields: x.fields, github_issue_url: issueUrl(rt.config.forms[x.form], x, base), purged_at: x.purged_at, events: history.map(event) });
 
   /** What follows from a submission's state: how to move it on, and what retention will do to it. */
   const afterSubmission = (x: Submission): string[] => {
@@ -127,16 +128,16 @@ function server(rt: Runtime, who: Who): McpServer {
   s.registerTool(
     "delete_form",
     {
-      description: "Delete a form that has no submissions. Destructive: its endpoint stops taking posts. A form with submissions is refused; export them and let retention delete them first.",
+      description: "Delete a form that has no submissions. Destructive: its endpoint stops taking posts. A form that has submissions is refused: they are its record, and they keep it.",
       inputSchema: z.object({ name: z.string() }),
-      outputSchema: withNext({ name: z.string(), deleted: z.boolean(), box: z.string() }),
+      outputSchema: withNext({ name: z.string(), deleted: z.boolean(), box: z.object({ name: z.string(), url: z.string() }) }),
       annotations: { destructiveHint: true },
     },
     async ({ name }) => {
       const box = rt.config.forms[name]?.box;
       const r = deleteForm(rt, name);
       if (!r.ok) return refuse(r.error);
-      return ok({ name, deleted: true, box: box! }, [`${base + endpointPath(name)} now answers 404: take the form off any page that posts there.`, `Its box "${box}" stays; delete it with delete_box once it is empty and unwanted.`]);
+      return ok({ name, deleted: true, box: { name: box!, url: base + boxPath(box!) } }, [`${base + endpointPath(name)} now answers 404: take the form off any page that posts there.`, `Its box "${box}" stays; delete it with delete_box once it is empty and unwanted.`]);
     },
   );
 
@@ -158,14 +159,15 @@ function server(rt: Runtime, who: Who): McpServer {
     {
       description: "Rename a box; its forms move along.",
       inputSchema: z.object({ from: z.string(), to: z.string() }),
-      outputSchema: withNext({ name: z.string(), url: z.string(), forms: z.array(z.string()) }),
-      annotations: { idempotentHint: true },
+      outputSchema: withNext({ name: z.string(), url: z.string(), forms: z.array(z.object({ name: z.string(), url: z.string() })) }),
     },
     async ({ from, to }) => {
       const r = renameBox(rt, from, to);
       if (!r.ok) return refuse(r.error);
-      const forms = Object.values(rt.config.forms).filter((f) => f.box === to).map((f) => f.name);
-      return ok({ name: to, url: base + boxPath(to), forms }, [forms.length ? `Its forms (${forms.join(", ")}) are listed under "${to}" now; their endpoints did not change.` : `"${to}" has no forms yet; create one with put_form.`]);
+      const forms = Object.values(rt.config.forms)
+        .filter((f) => f.box === to)
+        .map((f) => ({ name: f.name, url: formUrl(f.name) }));
+      return ok({ name: to, url: base + boxPath(to), forms }, [forms.length ? `Its forms (${forms.map((f) => f.name).join(", ")}) are listed under "${to}" now; their endpoints did not change.` : `"${to}" has no forms yet; create one with put_form.`]);
     },
   );
 
@@ -297,8 +299,9 @@ function server(rt: Runtime, who: Who): McpServer {
       annotations: { readOnlyHint: true },
     },
     async ({ form, state }) => {
-      const rows = exportSubmissions(rt, { form, state }).map((x) => ({ ...full(x), events: x.events.map(({ at, actor, from_state, to_state, reason }) => ({ at, actor, from_state, to_state, reason })) }));
-      const next = [`${rows.length} submission${rows.length === 1 ? "" : "s"}. The user can download the same as JSON from ${base}/export.json${form ? `?form=${encodeURIComponent(form)}` : ""}.`];
+      const rows = exportSubmissions(rt, { form, state }).map((x) => full(x, x.events));
+      const query = new URLSearchParams(Object.entries({ form, state }).filter((e): e is [string, string] => e[1] !== undefined)).toString();
+      const next = [`${rows.length} submission${rows.length === 1 ? "" : "s"}. The user can download the same as JSON from ${base}/export.json${query ? `?${query}` : ""}.`];
       if (rows.length === 1000) next.push("This hit the limit of 1000: narrow it with form or state.");
       return ok({ submissions: rows }, next);
     },

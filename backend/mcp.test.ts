@@ -302,7 +302,7 @@ test("boxes are created, renamed and deleted over MCP; a box with forms stays", 
   expect((await call("create_box", { name: "!" })).isError).toBe(true);
   await call("put_form", { name: "orders", form: { kind: "message", box: "shop.test" } });
   const renamed = await call("rename_box", { from: "shop.test", to: "shop" });
-  expect(renamed.structuredContent).toMatchObject({ name: "shop", forms: ["orders"] });
+  expect(renamed.structuredContent).toMatchObject({ name: "shop", forms: [{ name: "orders", url: `${BASE}/forms/orders` }] });
   expect(rt.config.forms.orders!.box).toBe("shop");
   expect((await call("delete_box", { name: "shop" })).content[0].text).toBe('the box "shop" still has forms');
   await call("delete_form", { name: "orders" });
@@ -318,7 +318,7 @@ test("a form with submissions is not deleted over MCP; an empty one is", async (
   rt.store.receive(rt.config.forms.report!, REPORT, null, new Date());
   expect((await call("delete_form", { name: "report" })).content[0].text).toBe("a form with submissions cannot be deleted; download them first");
   expect(rt.config.forms.report).toBeDefined();
-  expect((await call("delete_form", { name: "contact-open" })).structuredContent).toMatchObject({ name: "contact-open", deleted: true });
+  expect((await call("delete_form", { name: "contact-open" })).structuredContent).toMatchObject({ name: "contact-open", deleted: true, box: { name: "forms", url: `${BASE}/boxes/forms` } });
   expect(rt.config.forms["contact-open"]).toBeUndefined();
   expect((await call("delete_form", { name: "nope" })).isError).toBe(true);
 });
@@ -366,5 +366,7 @@ test("export gives the submissions with their histories, by form and state", asy
     ["form", "open"],
     ["marcel via Claude", "rejected"],
   ]);
-  expect((await call("export", { state: "new" })).structuredContent.submissions).toHaveLength(1);
+  const byState = (await call("export", { form: "contact", state: "new" })).structuredContent;
+  expect(byState.submissions).toHaveLength(1);
+  expect(byState.next[0]).toContain(`${BASE}/export.json?form=contact&state=new`);
 });

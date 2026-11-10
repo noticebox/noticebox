@@ -39,7 +39,7 @@ export function putForm(rt: Runtime, name: string, raw: RawForm): Outcome & { cr
   return r.ok ? { ok: true, created } : r;
 }
 
-/** Deletes a form that has no submissions; one with submissions stays until they are downloaded and gone. */
+/** Deletes a form that has no submissions; one with submissions stays, because they are its record. */
 export const deleteForm = (rt: Runtime, name: string): Outcome => rt.forms.deleteForm(name, hasSubmissions(rt, name));
 
 /** The person's connected assistants (MCP grants), newest first. */
