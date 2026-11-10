@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { stateLabel, verbFor } from "@/app/_lib/format";
 import { decide, type DecideState } from "./actions";
+import { Icon } from "@/app/_lib/icons";
 
 const noop = () => () => {};
 
@@ -63,9 +64,7 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
     <div ref={root} className="relative inline-flex items-center gap-2" data-hydrated={hydrated || undefined}>
       <button type="button" aria-haspopup="menu" aria-expanded={open} aria-label={`State: ${stateLabel(state)}`} onClick={() => setOpen((o) => !o)} className={`badge ${tone} ${big ? "px-3 py-1 text-[15px]" : ""} cursor-pointer`}>
         {stateLabel(state)}
-        <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className="opacity-70">
-          <path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
-        </svg>
+        <Icon name="dropdown" className="size-3 shrink-0 opacity-70" />
       </button>
       {withNote && (
         <button type="button" onClick={() => choose("")} className="btn">
