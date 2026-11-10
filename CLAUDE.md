@@ -12,11 +12,12 @@ npm test                                  # vitest: backend/**/*.test.ts and pro
 npx vitest run backend/intake.test.ts -t "name"   # one file / one test
 npm run typecheck                         # next typegen && tsc --noEmit
 npm run lint
+npm run format                            # Prettier at 160 columns (format:check in CI); not the MkDocs Markdown in docs/
 npm run test:e2e                          # next build, then Playwright on :3300 against e2e/noticebox.json
 npx playwright test e2e/inbox.spec.ts     # after a build; reuses a running server outside CI
 ```
 
-CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the image and smoke-tests `/health` and that `/` answers 401 before pushing.
+CI (`.github/workflows/ci.yml`) runs `format:check`, lint, typecheck, unit, e2e, then builds the image and smoke-tests `/health` and that `/` answers 401 before pushing.
 
 ## Architecture
 
