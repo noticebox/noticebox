@@ -8,7 +8,7 @@ noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-con
 
 ```sh
 NOTICEBOX_CONFIG=noticebox.example.json NOTICEBOX_DEV_USER=dev NTFY_REPORTS_TOPIC=x NTFY_CONTACT_TOPIC=y npm run dev
-npm test                                  # vitest: backend/**/*.test.ts and proxy.test.ts
+npm test                                  # vitest: backend/**/*.test.ts and proxy.test.ts; each test gets its own temp NOTICEBOX_DB/CONFIG (vitest.setup.ts)
 npx vitest run backend/intake.test.ts -t "name"   # one file / one test
 npm run typecheck                         # next typegen && tsc --noEmit
 npm run lint

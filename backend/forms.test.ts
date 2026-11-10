@@ -1,13 +1,11 @@
 import { readFileSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { expect, test } from "vitest";
 import { Forms } from "./forms";
 
 const FILE = { boxes: ["empty"], forms: { report: { box: "notes", kind: "report", fields: { text: { type: "textarea", required: true } }, notify: [{ type: "ntfy", url: "https://ntfy.sh/${TOPIC}" }] } } };
 
 function fresh(): { path: string; forms: Forms } {
-  const path = join(tmpdir(), `noticebox-forms-${process.pid}-${Math.random().toString(36).slice(2)}.json`);
+  const path = process.env.NOTICEBOX_CONFIG!; // the test's own temporary directory (vitest.setup.ts)
   writeFileSync(path, JSON.stringify(FILE));
   return { path, forms: new Forms(path, { TOPIC: "secret-topic" }) };
 }
