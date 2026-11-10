@@ -4,7 +4,7 @@ This runs noticebox on your machine with one form, posts a submission to it and 
 
 ## 1. The forms file
 
-noticebox reads its forms from one JSON file. Save this as `noticebox.json`:
+noticebox reads its forms from one JSON file. Save this as `data/noticebox.json`:
 
 ```json
 {
@@ -27,20 +27,30 @@ A form has a name (`contact`), belongs to a box (the sidebar groups forms by it)
 
 ## 2. Run it
 
+Next to the `data` folder, save the repository's [`compose.yaml`](https://github.com/noticebox/noticebox/blob/main/compose.yaml):
+
 ```yaml
 # compose.yaml
 services:
   noticebox:
-    image: ghcr.io/noticebox/noticebox:0.4.0
-    environment:
-      NOTICEBOX_BASE_URL: http://localhost:3000
-      # Only for trying it out: in production the login proxy says who is signed in.
-      NOTICEBOX_DEV_USER: you
+    image: ghcr.io/noticebox/noticebox:main
+    container_name: noticebox
+    restart: unless-stopped
+    env_file: .env
     volumes:
-      - ./noticebox.json:/app/noticebox.json:ro
       - ./data:/data
     ports:
       - "127.0.0.1:3000:3000"
+```
+
+and a `.env` with the settings; [`.env.example`](https://github.com/noticebox/noticebox/blob/main/.env.example) lists them all:
+
+```sh
+# .env
+NOTICEBOX_BASE_URL=http://localhost:3000
+NOTICEBOX_CONFIG=/data/noticebox.json
+# Only for trying it out: in production the login proxy says who is signed in.
+NOTICEBOX_DEV_USER=you
 ```
 
 ```sh
