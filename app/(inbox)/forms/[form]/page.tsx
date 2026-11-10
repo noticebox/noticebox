@@ -5,6 +5,7 @@ import { KINDS, publicUrl, runtime, submissionsPath } from "@/backend";
 import { stateLabel, stateTone } from "@/app/_lib/format";
 import { Chart } from "./Chart";
 import { CopyButton } from "./CopyButton";
+import { t } from "@/app/_lib/copy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,26 +29,25 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
   const open = counts.filter((c) => !form.states.find((s) => s.name === c.state)?.closed).reduce((a, c) => a + c.n, 0);
   const endpoint = `${publicUrl(await headers(), rt)}/f/${form.name}`;
   const list = submissionsPath(form.name);
-  const plural = (n: number) => (n === 1 ? kind.label : `${kind.label}s`);
 
   return (
     <div className="grid max-w-3xl grid-cols-1 gap-10">
       <p className="text-[22px] leading-snug">
         <Link href={list} className="font-bold hover:underline">
-          {open === 0 ? `No ${kind.label} waits for a decision.` : `${open} ${plural(open)} ${open === 1 ? "waits" : "wait"} for a decision.`}
+          {open === 0 ? t.overview.noneWaits(kind.label) : t.overview.waiting(open, kind.label)}
         </Link>{" "}
         <span className="text-muted">
-          {recent} {recent === 1 ? "arrived" : "arrived"} in the last {WINDOW} days.
+          {t.overview.recent(recent, WINDOW)}
         </span>
       </p>
 
       <section>
-        <h2 className="section-title">Received per day</h2>
+        <h2 className="section-title">{t.overview.perDay}</h2>
         <Chart days={days} counts={daily} />
       </section>
 
       <section>
-        <h2 className="section-title">By state</h2>
+        <h2 className="section-title">{t.overview.byState}</h2>
         <ul className="flex flex-wrap gap-2">
           {form.states.map((st) => (
             <li key={st.name}>
@@ -60,35 +60,35 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
       </section>
 
       <section>
-        <h2 className="section-title">Posting to this form</h2>
+        <h2 className="section-title">{t.overview.posting}</h2>
         <div className="flex gap-2">
           <code className="field min-w-0 truncate bg-soft text-sm leading-6">{endpoint}</code>
           <CopyButton text={endpoint} />
         </div>
         <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1 sm:grid-cols-[max-content_1fr] sm:gap-y-2">
-          <dt className="text-muted">Takes posts from</dt>
-          <dd className="mb-2 sm:mb-0">{form.origins.length ? form.origins.join(", ") : "anywhere"}</dd>
-          <dt className="text-muted">Afterwards the browser goes to</dt>
-          <dd className="mb-2 break-all sm:mb-0">{form.redirect ?? `the thank-you page at /f/${form.name}/thanks`}</dd>
-          <dt className="text-muted">Personal fields are removed</dt>
-          <dd className="mb-2 sm:mb-0">{form.retentionDays} {form.retentionDays === 1 ? "day" : "days"} after a submission is closed</dd>
-          <dt className="text-muted">New submissions are announced</dt>
-          <dd className="mb-2 sm:mb-0">{form.notify.length ? form.notify.map((t) => (t.type === "ntfy" ? `on ntfy (${new URL(t.url).host})` : `to a webhook (${new URL(t.url).host})`)).join(" and ") : "nowhere"}</dd>
+          <dt className="text-muted">{t.overview.origins}</dt>
+          <dd className="mb-2 sm:mb-0">{form.origins.length ? form.origins.join(", ") : t.overview.anywhere}</dd>
+          <dt className="text-muted">{t.overview.afterwards}</dt>
+          <dd className="mb-2 break-all sm:mb-0">{form.redirect ?? t.overview.thanksPage(form.name)}</dd>
+          <dt className="text-muted">{t.overview.retention}</dt>
+          <dd className="mb-2 sm:mb-0">{t.overview.retentionDays(form.retentionDays)}</dd>
+          <dt className="text-muted">{t.overview.announced}</dt>
+          <dd className="mb-2 sm:mb-0">{form.notify.length ? form.notify.map((n) => (n.type === "ntfy" ? t.overview.onNtfy(new URL(n.url).host) : t.overview.toWebhook(new URL(n.url).host))).join(t.overview.and) : t.overview.nowhere}</dd>
           {form.link && (
             <>
-              <dt className="text-muted">Each submission links to</dt>
+              <dt className="text-muted">{t.overview.linksTo}</dt>
               <dd className="break-all">{form.link.url}</dd>
             </>
           )}
         </dl>
-        <p className="mt-5 text-muted">{form.strict ? "Strict: only the fields below are taken." : "Open: any field a page posts is taken; the ones below are described."}</p>
+        <p className="mt-5 text-muted">{form.strict ? t.overview.strict : t.overview.open}</p>
         <table className="mt-2 w-full text-sm">
           <thead>
             <tr className="border-b border-rule text-left text-muted">
-              <th className="py-1.5 pr-3 font-bold">Field</th>
-              <th className="py-1.5 pr-3 font-bold">Type</th>
-              <th className="py-1.5 pr-3 font-bold">Required</th>
-              <th className="py-1.5 font-bold">Personal</th>
+              <th className="py-1.5 pr-3 font-bold">{t.overview.field}</th>
+              <th className="py-1.5 pr-3 font-bold">{t.overview.type}</th>
+              <th className="py-1.5 pr-3 font-bold">{t.overview.required}</th>
+              <th className="py-1.5 font-bold">{t.overview.personal}</th>
             </tr>
           </thead>
           <tbody>
@@ -99,8 +99,8 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
                   {f.type}
                   {f.type === "select" && <span className="text-muted">: {f.options.join(", ")}</span>}
                 </td>
-                <td className="py-1.5 pr-3">{f.required ? "yes" : ""}</td>
-                <td className="py-1.5">{f.personal ? "yes" : ""}</td>
+                <td className="py-1.5 pr-3">{f.required ? t.common.yes : ""}</td>
+                <td className="py-1.5">{f.personal ? t.common.yes : ""}</td>
               </tr>
             ))}
           </tbody>

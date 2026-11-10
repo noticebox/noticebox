@@ -1,16 +1,18 @@
+import { t } from "@/app/_lib/copy";
+
 /** An ISO timestamp as "2026-10-10 12:34 UTC". */
 export const when = (iso: string): string => iso.slice(0, 16).replace("T", " ") + " UTC";
 
 /** A state as people read it: "in_review" is "in review". */
-export const stateLabel = (state: string): string => state.replaceAll("_", " ");
+export const stateLabel = (state: string): string => t.states.label(state);
 
 type StateLike = { name: string; closed: boolean };
 
 /** The action that moves a submission into a state, named by what it does; the same words on the menu, the dialog and its button. */
 export function verbFor(to: string, initial: string): string {
-  if (to === initial) return "Reopen";
-  if (to === "in_review") return "Start review";
-  return `Mark as ${stateLabel(to)}`;
+  if (to === initial) return t.states.reopen;
+  if (to === "in_review") return t.states.startReview;
+  return t.states.markAs(to);
 }
 
 /** The badge class for a state: the first (what waits) is ink on paper, a closed one green (quiet when it is a rejection), anything between amber. */

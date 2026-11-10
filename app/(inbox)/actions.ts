@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { actorOf, runtime } from "@/backend";
+import { t } from "@/app/_lib/copy";
 
 // What the dialog gets back: refused, with the message and what was submitted, so it can show them again (React
 // resets a form's fields after every action), or done. `n` counts the attempts, so each answer redraws the fields.
@@ -17,10 +18,10 @@ export async function decide(prev: DecideState, data: FormData): Promise<DecideS
   const to = String(data.get("to") ?? "").trim();
   const reason = String(data.get("reason") ?? "");
   const n = (prev.n ?? 0) + 1;
-  if (!actor) return { error: "Sign in first.", to, reason, n };
+  if (!actor) return { error: t.common.signInFirst, to, reason, n };
   const s = rt.store.get(id);
   const form = s && rt.config.forms[s.form];
-  if (!s || !form) return { error: "No such submission.", to, reason, n };
+  if (!s || !form) return { error: t.common.noSuchSubmission, to, reason, n };
   const r = to ? rt.store.transition(form, id, actor, to, reason, rt.now()) : rt.store.note(id, actor, reason, rt.now());
   if (!r.ok) return { error: r.error, to, reason, n };
   revalidatePath("/", "layout");

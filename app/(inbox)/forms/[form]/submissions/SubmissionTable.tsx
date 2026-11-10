@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { stateLabel, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../StateMenu";
 import { Icon } from "@/app/_lib/icons";
+import { t } from "@/app/_lib/copy";
 
 export type Row = {
   id: string;
@@ -27,9 +28,9 @@ type Props = {
 type Sort = { key: string; dir: 1 | -1 };
 
 const BASE = [
-  { key: "received", label: "Received" },
-  { key: "state", label: "State" },
-  { key: "summary", label: "Summary" },
+  { key: "received", label: t.table.received },
+  { key: "state", label: t.table.state },
+  { key: "summary", label: t.table.summary },
 ];
 
 // All submissions of a form in one table: filtered by a word and by state, sorted by any column, with the columns
@@ -69,11 +70,11 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input type="search" aria-label="Filter submissions" placeholder="Filter…" value={query} onChange={(e) => setQuery(e.target.value)} className="field !mt-0 w-full sm:w-64" />
-        <select aria-label="Filter by state" value={show} onChange={(e) => setShow(e.target.value)} className="field !mt-0 w-auto">
-          <option value="all">All states</option>
-          <option value="open">Open</option>
-          <option value="closed">Closed</option>
+        <input type="search" aria-label={t.table.filter} placeholder={t.table.filterPlaceholder} value={query} onChange={(e) => setQuery(e.target.value)} className="field !mt-0 w-full sm:w-64" />
+        <select aria-label={t.table.byState} value={show} onChange={(e) => setShow(e.target.value)} className="field !mt-0 w-auto">
+          <option value="all">{t.table.all}</option>
+          <option value="open">{t.table.open}</option>
+          <option value="closed">{t.table.closed}</option>
           {states.map((s) => (
             <option key={s.name} value={s.name}>
               {stateLabel(s.name)}
@@ -81,7 +82,7 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
           ))}
         </select>
         <details className="relative">
-          <summary className="btn cursor-pointer list-none">Columns</summary>
+          <summary className="btn cursor-pointer list-none">{t.table.columns}</summary>
           <ul className="sheet absolute left-0 z-20 mt-1 min-w-48 py-1 text-[15px] shadow-lg">
             {columns.map((c) => (
               <li key={c.key}>
@@ -94,12 +95,12 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
           </ul>
         </details>
         <span className="ml-auto text-[13px] text-muted" aria-live="polite">
-          {shown.length} of {rows.length}
+          {t.table.count(shown.length, rows.length)}
         </span>
       </div>
       <div className="sheet overflow-x-auto">
         {shown.length === 0 ? (
-          <p className="px-5 py-10 text-center text-muted">{rows.length === 0 ? "Nothing yet. New submissions appear here as they arrive." : "Nothing matches."}</p>
+          <p className="px-5 py-10 text-center text-muted">{rows.length === 0 ? t.table.empty : t.table.noMatch}</p>
         ) : (
           <table className="w-full">
             <thead>
@@ -132,7 +133,7 @@ export function SubmissionTable({ rows, states, fields, linkLabel }: Props) {
                         <StateMenu id={r.id} state={r.state} tone={r.tone} states={states} />
                       ) : c.key === "summary" ? (
                         <Link href={r.href} className="block min-w-48 [overflow-wrap:anywhere] hover:underline">
-                          {r.summary || <span className="text-muted">No text</span>}
+                          {r.summary || <span className="text-muted">{t.table.noText}</span>}
                         </Link>
                       ) : (
                         <span className="block max-w-80 [overflow-wrap:anywhere]">{(r.fields[c.key.slice(2)] ?? "").slice(0, 200)}</span>

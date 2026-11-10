@@ -32,6 +32,7 @@ CI (`.github/workflows/ci.yml`) runs lint, typecheck, unit, e2e, then builds the
 
 - Each feature PR bumps `version` in `package.json` (and `package-lock.json`) and updates README + the matching `docs/` page; commit titles look like `NOTICEBOX #<issue>: <what>; noticebox <version>`.
 - Architecturally significant decisions get an ADR in `docs/adr/`.
+- UI text is English and comes from `app/_lib/copy/en.ts` through `t` (`@/app/_lib/copy`), never inline in a component or server action; another language is one file typed as `Copy`. Backend messages (validation errors, shared with MCP) stay in the backend, in English.
 - Comments explain why, in full sentences, at the top of each module; keep that style.
 
 ## Agent skills
