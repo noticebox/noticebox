@@ -67,3 +67,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Attached to the image in the registry: what it contains, and how and from which commit it was built.
+          sbom: true
+          provenance: mode=max
