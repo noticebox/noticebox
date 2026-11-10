@@ -1,6 +1,6 @@
 {
   "name": "noticebox",
-  "version": "0.13.3",
+  "version": "0.14.0",
   "description": "An inbox for the forms on static pages: one endpoint per form, SQLite, and a small app that walks each notice through its states with an audit trail. MCP for assisted reviews.",
   "license": "AGPL-3.0-only",
   "private": true,
@@ -35,7 +35,7 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.4.6",
     "eslint-config-prettier": "10.1.8",
     "prettier": "3.9.10",
