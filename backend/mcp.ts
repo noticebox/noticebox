@@ -32,19 +32,19 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
     {
       description: "The forms this inbox takes, each with its states: a submission starts in the first; a state flagged closed counts as done; one flagged reason needs a written reason to enter.",
       inputSchema: z.object({}),
-      outputSchema: z.object({ forms: z.array(z.object({ name: z.string(), title: z.string(), kind: z.string(), states: z.array(z.object({ name: z.string(), closed: z.boolean(), reason: z.boolean() })), retention_days: z.number() })) }),
+      outputSchema: z.object({ forms: z.array(z.object({ name: z.string(), title: z.string(), kind: z.string(), states: z.array(z.object({ name: z.string(), closed: z.boolean(), reason: z.boolean() })), retention_days: z.number(), delete_after_days: z.number().nullable() })) }),
       annotations: { readOnlyHint: true },
     },
     async () =>
       ok({
-        forms: Object.values(rt.config.forms).map((f) => ({ name: f.name, title: f.title, kind: f.kind, states: f.states, retention_days: f.retentionDays })),
+        forms: Object.values(rt.config.forms).map((f) => ({ name: f.name, title: f.title, kind: f.kind, states: f.states, retention_days: f.retentionDays, delete_after_days: f.deleteAfterDays })),
       }),
   );
 
   s.registerTool(
     "get_form",
     {
-      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, notify, link, github, states. `${VAR}` references stay as written, never expanded. Change what you need and send the whole form back with put_form.",
+      description: "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, deleteAfterDays, notify, link, github, states. `${VAR}` references stay as written, never expanded. Change what you need and send the whole form back with put_form.",
       inputSchema: z.object({ name: z.string() }),
       outputSchema: z.object({ name: z.string(), form: z.record(z.string(), z.unknown()) }),
       annotations: { readOnlyHint: true },
@@ -59,7 +59,7 @@ function server(rt: Runtime, actor: string, base: string): McpServer {
     "put_form",
     {
       description:
-        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, notify ([{type: ntfy|webhook, url}]), link ({url, label}), github ({repo: owner/name, labels}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes.",
+        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, deleteAfterDays (optional: days after closing until the submission and its history are deleted, at least retentionDays), notify ([{type: ntfy|webhook, url}]), link ({url, label}), github ({repo: owner/name, labels}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes.",
       inputSchema: z.object({ name: z.string().describe("lowercase letters, digits, - and _"), form: z.record(z.string(), z.unknown()) }),
       outputSchema: z.object({ name: z.string(), created: z.boolean(), form: z.record(z.string(), z.unknown()) }),
       annotations: { destructiveHint: true, idempotentHint: true },

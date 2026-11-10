@@ -35,7 +35,7 @@ The path of one submission: the checks come first, so a refused post stores noth
 
 **Actor.** The person who took a step, by the name the login proxy passes. A step taken by an assistant through MCP is recorded as *name via client*.
 
-**Retention.** A submission closed longer ago than its form's `retentionDays` loses its personal fields: free text, addresses, anything not marked `personal: false`. The ids, the chosen category, the states and the history stay.
+**Retention.** A submission closed longer ago than its form's `retentionDays` loses its personal fields: free text, addresses, anything not marked `personal: false`. The ids, the chosen category, the states and the history stay, unless the form also sets `deleteAfterDays`: after that, the whole submission is deleted.
 
 **Link.** A form's `link` is a URL template over its fields, such as `https://notefeed.me/r/{read_id}/{note_id}`. Each submission shows it filled in, so the thing it is about is one click away.
 

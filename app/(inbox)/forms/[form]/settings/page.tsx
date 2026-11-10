@@ -48,6 +48,7 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
     origins: Array.isArray(raw.origins) ? raw.origins.join("\n") : "",
     redirect: str(raw.redirect),
     retentionDays: str(raw.retentionDays),
+    deleteAfterDays: str(raw.deleteAfterDays),
     linkUrl: typeof link === "string" ? link : str((link as Record<string, unknown> | undefined)?.url),
     linkLabel: typeof link === "object" && link ? str((link as Record<string, unknown>).label) : "",
     notify,
