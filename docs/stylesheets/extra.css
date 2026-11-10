@@ -37,3 +37,235 @@
   white-space: nowrap;
   word-break: normal;
 }
+
+/* ---- The roadmap timeline (docs/roadmap.yml, rendered by docs_hooks/roadmap.py; from passageway) ----------------------------------------
+   A label on the left (a date for what shipped), a line with a marker (hollow: planned, filled with a check: shipped) and a
+   card on the right. On narrow screens the label moves into the card and the line stays on the left. */
+.md-typeset .nb-center {
+  text-align: center;
+}
+.md-typeset .nb-lead {
+  max-width: 34em;
+  margin-inline: auto;
+  color: var(--md-default-fg-color--light);
+}
+
+.nb-timeline {
+  --nb-dot: 1.1rem;
+  --nb-when: 6.2rem;
+  --nb-gap: 0.9rem;
+  max-width: 46rem;
+  margin: 2.2rem auto 2.6rem;
+}
+.nb-tl-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--nb-when) var(--nb-dot) minmax(0, 1fr);
+  column-gap: var(--nb-gap);
+  padding-bottom: 0.6rem;
+}
+.nb-tl-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--nb-when) + var(--nb-gap) + var(--nb-dot) / 2 - 1px);
+  width: 2px;
+  background: var(--md-default-fg-color--lightest);
+}
+.nb-tl-row:first-child::before {
+  top: 1.25rem;
+}
+.nb-tl-row:last-child::before {
+  bottom: calc(100% - 1.25rem);
+}
+
+.nb-tl-when {
+  padding-top: 0.78rem;
+  text-align: right;
+  font-size: 0.72rem;
+  font-style: italic;
+  white-space: nowrap;
+  color: var(--md-default-fg-color--light);
+}
+.nb-tl-dot {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: var(--nb-dot);
+  height: var(--nb-dot);
+  margin-top: 0.7rem;
+  border: 2px solid var(--md-accent-fg-color);
+  border-radius: 50%;
+  background: var(--md-default-bg-color);
+}
+.nb-now .nb-tl-dot {
+  border-width: 3px;
+  border-color: var(--md-accent-fg-color);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--md-accent-fg-color) 22%, transparent);
+}
+.nb-later .nb-tl-dot {
+  border-color: var(--md-default-fg-color--lighter);
+}
+.nb-decide .nb-tl-dot {
+  border-style: dashed;
+  border-color: var(--md-accent-fg-color);
+}
+.nb-done .nb-tl-dot {
+  background: var(--md-accent-fg-color);
+}
+.nb-done .nb-tl-dot::after {
+  content: "";
+  position: absolute;
+  left: 0.27rem;
+  top: 0.06rem;
+  width: 0.28rem;
+  height: 0.56rem;
+  border: solid var(--md-default-bg-color);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.nb-tl-card {
+  padding: 0.65rem 1rem 0.7rem;
+  border-radius: 0.6rem;
+  background: var(--md-code-bg-color);
+}
+.nb-tl-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.nb-ic {
+  display: inline-flex;
+  flex: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  color: var(--md-accent-fg-color);
+}
+.nb-ic svg {
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+}
+.nb-later .nb-ic {
+  color: var(--md-default-fg-color--light);
+}
+.nb-decide .nb-ic {
+  color: var(--md-accent-fg-color);
+}
+.nb-tl-title {
+  flex: 1 1 auto;
+  font-weight: 600;
+}
+.nb-tl-links {
+  display: flex;
+  gap: 0.7rem;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+.md-typeset .nb-tl-summary {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--md-default-fg-color--light);
+}
+/* Material styles every <details> as an admonition (a box with an icon and a chevron); here it is a quiet "Details" toggle. */
+.md-typeset details.nb-tl-details {
+  margin: 0.45rem 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  font-size: 0.76rem;
+}
+.md-typeset details.nb-tl-details > summary {
+  margin: 0;
+  padding: 0;
+  background: none;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--md-typeset-a-color);
+}
+.md-typeset details.nb-tl-details > summary::before {
+  content: none;
+}
+.md-typeset details.nb-tl-details > summary::after {
+  content: "\203A";
+  position: static;
+  display: inline-block;
+  width: auto;
+  height: auto;
+  margin-left: 0.35em;
+  background: none;
+  -webkit-mask-image: none;
+  mask-image: none;
+  color: inherit;
+  transition: transform 0.15s;
+}
+.md-typeset details.nb-tl-details[open] > summary::after {
+  transform: rotate(90deg);
+}
+.md-typeset .nb-tl-details p,
+.md-typeset .nb-tl-details ul {
+  margin: 0.4em 0;
+}
+
+@media screen and (max-width: 44.9375em) {
+  .nb-timeline {
+    --nb-when: 0rem;
+  }
+  .nb-tl-row {
+    grid-template-columns: var(--nb-dot) minmax(0, 1fr);
+    grid-template-areas: ". when" "dot card";
+  }
+  .nb-tl-row::before {
+    left: calc(var(--nb-dot) / 2 - 1px);
+  }
+  .nb-tl-when {
+    grid-area: when;
+    padding: 0.2rem 0 0.15rem;
+    text-align: left;
+    font-size: 0.68rem;
+  }
+  .nb-tl-dot {
+    grid-area: dot;
+    margin-top: 0.7rem;
+  }
+  .nb-tl-card {
+    grid-area: card;
+  }
+  .nb-tl-head {
+    flex-wrap: wrap;
+  }
+}
+
+/* Diagrams in the site's palette: Material reads these for Mermaid, in light and dark mode. */
+:root > * {
+  --md-mermaid-font-family: var(--md-text-font-family), sans-serif;
+  --md-mermaid-edge-color: var(--md-accent-fg-color);
+  --md-mermaid-node-bg-color: var(--md-code-bg-color);
+  --md-mermaid-node-fg-color: var(--md-default-fg-color);
+  --md-mermaid-label-bg-color: var(--md-default-bg-color);
+  --md-mermaid-label-fg-color: var(--md-default-fg-color);
+  --md-mermaid-sequence-actor-bg-color: var(--md-code-bg-color);
+  --md-mermaid-sequence-actor-fg-color: var(--md-default-fg-color);
+  --md-mermaid-sequence-actor-border-color: var(--md-accent-fg-color);
+  --md-mermaid-sequence-actor-line-color: var(--md-default-fg-color--lighter);
+  --md-mermaid-sequence-actorman-bg-color: var(--md-code-bg-color);
+  --md-mermaid-sequence-actorman-line-color: var(--md-accent-fg-color);
+  --md-mermaid-sequence-box-bg-color: var(--md-code-bg-color);
+  --md-mermaid-sequence-box-fg-color: var(--md-default-fg-color);
+  --md-mermaid-sequence-label-bg-color: var(--md-code-bg-color);
+  --md-mermaid-sequence-label-fg-color: var(--md-default-fg-color);
+  --md-mermaid-sequence-loop-bg-color: var(--md-default-bg-color);
+  --md-mermaid-sequence-loop-fg-color: var(--md-default-fg-color);
+  --md-mermaid-sequence-loop-border-color: var(--md-accent-fg-color);
+  --md-mermaid-sequence-message-fg-color: var(--md-default-fg-color);
+  --md-mermaid-sequence-message-line-color: var(--md-accent-fg-color);
+  --md-mermaid-sequence-note-bg-color: var(--md-code-bg-color);
+  --md-mermaid-sequence-note-fg-color: var(--md-default-fg-color);
+  --md-mermaid-sequence-note-border-color: var(--md-accent-fg-color);
+  --md-mermaid-sequence-number-bg-color: var(--md-accent-fg-color);
+  --md-mermaid-sequence-number-fg-color: var(--md-default-bg-color);
+}
