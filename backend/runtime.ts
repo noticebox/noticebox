@@ -120,8 +120,11 @@ export function runtime(): Runtime {
 }
 
 /** Retention, run at start and then every six hours (instrumentation.ts). */
-export function sweepNow(rt: Runtime = runtime()): number {
-  const n = rt.store.sweep(rt.config, rt.now());
-  if (n) console.log(`retention: personal fields removed from ${n} closed submission${n === 1 ? "" : "s"}`);
-  return n;
+export function sweepNow(rt: Runtime = runtime()): { purged: number; deleted: number } {
+  const purged = rt.store.sweep(rt.config, rt.now());
+  const deleted = rt.store.expire(rt.config, rt.now());
+  const plural = (n: number) => `${n} closed submission${n === 1 ? "" : "s"}`;
+  if (purged) rt.log(`retention: personal fields removed from ${plural(purged)}`);
+  if (deleted) rt.log(`retention: deleted ${plural(deleted)} with their history`);
+  return { purged, deleted };
 }

@@ -84,3 +84,31 @@ test("listing filters by form, state and openness, newest first", () => {
   ]);
   store.close();
 });
+
+test("deleteAfterDays deletes a closed submission and its history; open and reopened ones stay", () => {
+  const config = testConfig();
+  const report = { ...config.forms.report!, deleteAfterDays: 365 };
+  const withDelete = { ...config, forms: { ...config.forms, report } };
+  const store = new Store(":memory:");
+  const t0 = new Date("2026-01-01T00:00:00Z");
+  const old = store.receive(report, REPORT, null, t0);
+  const recent = store.receive(report, REPORT, null, t0);
+  const reopened = store.receive(report, REPORT, null, t0);
+  const open = store.receive(report, REPORT, null, t0);
+  store.transition(report, old.id, "marcel", "acted_on", "Removed.", t0);
+  store.transition(report, recent.id, "marcel", "rejected", "Fine.", new Date(t0.getTime() + 100 * DAY));
+  store.transition(report, reopened.id, "marcel", "rejected", "Fine.", t0);
+  store.transition(report, reopened.id, "marcel", "in_review", "Again.", new Date(t0.getTime() + DAY));
+
+  expect(store.expire(withDelete, new Date(t0.getTime() + 364 * DAY))).toBe(0);
+  expect(store.expire(config, new Date(t0.getTime() + 400 * DAY))).toBe(0); // without deleteAfterDays nothing goes
+  expect(store.expire(withDelete, new Date(t0.getTime() + 366 * DAY))).toBe(1);
+  expect(store.get(old.id)).toBeUndefined();
+  expect(store.events(old.id)).toEqual([]);
+  expect(store.get(recent.id)).toBeDefined();
+  expect(store.get(reopened.id)).toBeDefined();
+  expect(store.get(open.id)).toBeDefined();
+  expect(store.expire(withDelete, new Date(t0.getTime() + 466 * DAY))).toBe(1);
+  expect(store.get(recent.id)).toBeUndefined();
+  store.close();
+});
