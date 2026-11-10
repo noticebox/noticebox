@@ -58,19 +58,29 @@ export type Connection = { exec(sql: string): unknown; prepare(sql: string): { g
  * thrown, so the store refuses to open on a half-migrated database; one newer than this release knows is refused too.
  */
 export function migrate(db: Connection, migrations: Migration[] = MIGRATIONS): number {
-  const current = (db.prepare("pragma user_version").get() as { user_version: number }).user_version;
-  if (current > migrations.length) throw new Error(`the database is at schema version ${current}, newer than this release knows (${migrations.length}); a downgrade is not supported`);
-  for (let i = current; i < migrations.length; i++) {
-    const m = migrations[i]!;
+  const version = () => (db.prepare("pragma user_version").get() as { user_version: number }).user_version;
+  let ran = 0;
+  for (;;) {
+    // The version is read under the write lock, so two processes opening the same file at once never run one twice.
     db.exec("begin immediate");
+    const current = version();
+    if (current >= migrations.length) {
+      db.exec("rollback");
+      if (current > migrations.length) throw new Error(`the database is at schema version ${current}, newer than this release knows (${migrations.length}); a downgrade is not supported`);
+      return ran;
+    }
+    const m = migrations[current]!;
     try {
       db.exec(m.sql);
-      db.exec(`pragma user_version = ${i + 1}`);
+      db.exec(`pragma user_version = ${current + 1}`);
       db.exec("commit");
+      ran++;
     } catch (e) {
-      db.exec("rollback");
-      throw new Error(`migration ${i + 1} (${m.name}) failed: ${(e as Error).message}`);
+      // SQLite may have rolled back by itself already (a full disk, say); the migration's own error is the one to report.
+      try {
+        db.exec("rollback");
+      } catch {}
+      throw new Error(`migration ${current + 1} (${m.name}) failed: ${(e as Error).message}`);
     }
   }
-  return migrations.length - current;
 }
