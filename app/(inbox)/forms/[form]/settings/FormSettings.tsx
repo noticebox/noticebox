@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { type AdminState, deleteForm, updateForm } from "../../../admin";
+import { Icon } from "@/app/_lib/icons";
 
 export type RawFieldRow = { name: string; type: string; label: string; required: boolean; max: string; options: string; personal: "default" | "yes" | "no"; help: string };
 export type RawTarget = { type: "ntfy" | "webhook"; url: string };
@@ -16,6 +17,7 @@ export type Settings = {
   origins: string; // one per line
   redirect: string;
   retentionDays: string;
+  deleteAfterDays: string;
   linkUrl: string;
   linkLabel: string;
   notify: RawTarget[];
@@ -53,6 +55,7 @@ function toRaw(s: Settings): Record<string, unknown> {
   if (origins.length) raw.origins = origins;
   if (s.redirect.trim()) raw.redirect = s.redirect.trim();
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
+  if (s.deleteAfterDays.trim()) raw.deleteAfterDays = Number(s.deleteAfterDays);
   if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim() }));
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
   const labels = s.githubLabels.split(",").map((x) => x.trim()).filter(Boolean);
@@ -180,13 +183,13 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 </div>
                 <div className="flex items-end gap-1">
                   <button type="button" onClick={() => move(i, -1)} aria-label="Move up" className="btn px-2" disabled={i === 0}>
-                    ↑
+                    <Icon name="moveUp" />
                   </button>
                   <button type="button" onClick={() => move(i, 1)} aria-label="Move down" className="btn px-2" disabled={i === s.fields.length - 1}>
-                    ↓
+                    <Icon name="moveDown" />
                   </button>
                   <button type="button" onClick={() => set((x) => ({ ...x, fields: x.fields.filter((_, j) => j !== i) }))} aria-label={`Remove field ${f.name || i + 1}`} className="btn px-2 text-error">
-                    ✕
+                    <Icon name="remove" />
                   </button>
                 </div>
                 {f.type === "select" && (
@@ -240,13 +243,13 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 </label>
                 <div className="ml-auto flex gap-1">
                   <button type="button" onClick={() => moveState(i, -1)} aria-label="Move state up" className="btn px-2" disabled={i === 0}>
-                    ↑
+                    <Icon name="moveUp" />
                   </button>
                   <button type="button" onClick={() => moveState(i, 1)} aria-label="Move state down" className="btn px-2" disabled={i === s.states.length - 1}>
-                    ↓
+                    <Icon name="moveDown" />
                   </button>
                   <button type="button" onClick={() => set((x) => ({ ...x, states: x.states.filter((_, j) => j !== i) }))} aria-label={`Remove state ${st.name || i + 1}`} className="btn px-2 text-error" disabled={statesInUse.includes(st.name) || s.states.length === 1} title={statesInUse.includes(st.name) ? "Submissions are in this state" : undefined}>
-                    ✕
+                    <Icon name="remove" />
                   </button>
                 </div>
               </div>
@@ -294,7 +297,7 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 </select>
                 <input value={t.url} onChange={(e) => target(i, { url: e.target.value })} className="field min-w-0 flex-1" placeholder={t.type === "ntfy" ? "https://ntfy.sh/your-topic" : "https://hooks.example.org/noticebox"} aria-label={`Target ${i + 1} URL`} />
                 <button type="button" onClick={() => set((x) => ({ ...x, notify: x.notify.filter((_, j) => j !== i) }))} aria-label={`Remove target ${i + 1}`} className="btn px-2 text-error">
-                  ✕
+                  <Icon name="remove" />
                 </button>
               </div>
             ))}
@@ -315,6 +318,16 @@ export function FormSettings({ name, boxes, initial, hasSubmissions, seen, state
                 <input id="s-retention" value={s.retentionDays} onChange={(e) => patch({ retentionDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder="180" />
                 <span>days after a submission is closed</span>
               </div>
+            </div>
+            <div>
+              <label htmlFor="s-delete-after" className={label}>
+                The whole submission is deleted
+              </label>
+              <div className="flex items-center gap-2">
+                <input id="s-delete-after" value={s.deleteAfterDays} onChange={(e) => patch({ deleteAfterDays: e.target.value })} inputMode="numeric" className="field w-24" placeholder="never" />
+                <span>days after it is closed</span>
+              </div>
+              <p className={hint}>With its history. Empty: the record without personal fields is kept.</p>
             </div>
             <div className="sm:col-span-2">
               <label htmlFor="s-link" className={label}>

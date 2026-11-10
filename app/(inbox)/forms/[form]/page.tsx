@@ -72,6 +72,8 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
           <dd className="mb-2 break-all sm:mb-0">{form.redirect ?? `the thank-you page at /f/${form.name}/thanks`}</dd>
           <dt className="text-muted">Personal fields are removed</dt>
           <dd className="mb-2 sm:mb-0">{form.retentionDays} {form.retentionDays === 1 ? "day" : "days"} after a submission is closed</dd>
+          <dt className="text-muted">The whole submission is deleted</dt>
+          <dd className="mb-2 sm:mb-0">{form.deleteAfterDays === null ? "never; the record without personal fields stays" : `${form.deleteAfterDays} ${form.deleteAfterDays === 1 ? "day" : "days"} after it is closed`}</dd>
           <dt className="text-muted">New submissions are announced</dt>
           <dd className="mb-2 sm:mb-0">{form.notify.length ? form.notify.map((t) => (t.type === "ntfy" ? `on ntfy (${new URL(t.url).host})` : `to a webhook (${new URL(t.url).host})`)).join(" and ") : "nowhere"}</dd>
           {form.link && (

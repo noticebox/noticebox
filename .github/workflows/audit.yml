@@ -1,0 +1,38 @@
+name: Audit
+
+# Known vulnerabilities in what is shipped: the production dependencies and the published image. A scheduled run, because an advisory
+# appears without a commit. A red run means: upgrade the dependency, or release again so the image is rebuilt on a fixed base.
+# Dependabot security updates open the pull request for a fixed version as soon as an advisory is known; this run is the net for what
+# they miss.
+on:
+  schedule:
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths: [.github/workflows/audit.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  # Production dependencies only: what the tests and the build need is not in the image.
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm audit --omit=dev --audit-level=high
+
+  # The image self-hosters run. Only findings that have a fix: the others cannot be acted on.
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: anchore/scan-action@v7
+        with:
+          image: ghcr.io/noticebox/noticebox:main
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table

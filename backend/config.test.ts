@@ -1,6 +1,4 @@
 import { writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { expect, test } from "vitest";
 import { expand, loadConfig, parseConfig } from "./config";
 
@@ -17,6 +15,8 @@ test("defaults fill in what the file leaves out", () => {
   expect(own.fields).toEqual({});
   expect(f.link).toBeNull();
   expect(f.retentionDays).toBe(180);
+  expect(f.deleteAfterDays).toBeNull();
+  expect(parseConfig({ forms: { x: { kind: "report", retentionDays: 90, deleteAfterDays: 90 } } }).forms.x!.deleteAfterDays).toBe(90);
   expect(f.origins).toEqual([]);
   expect(f.redirect).toBeNull();
   expect(f.notify).toEqual([]);
@@ -42,6 +42,9 @@ test("mistakes are named with their place", () => {
   bad({ forms: { x: { kind: "report", fields: { a: {} }, origins: ["example.org"] } } }, /origins: "example.org" is not a URL/);
   bad({ forms: { x: { kind: "report", fields: { a: {} }, origins: ["https://example.org/path"] } } }, /must be an origin/);
   bad({ forms: { x: { kind: "report", fields: { a: {} }, retentionDays: 0 } } }, /retentionDays/);
+  bad({ forms: { x: { kind: "report", deleteAfterDays: 1.5 } } }, /deleteAfterDays: a whole number of days, at least retentionDays \(180\)/);
+  bad({ forms: { x: { kind: "report", deleteAfterDays: 0 } } }, /deleteAfterDays: a whole number/);
+  bad({ forms: { x: { kind: "report", retentionDays: 90, deleteAfterDays: 30 } } }, /x.deleteAfterDays: a whole number of days, at least retentionDays \(90\)/);
   bad({ forms: { x: { kind: "report", fields: { a: {} }, notify: { ntfy: "ntfy.sh/topic" } } } }, /notify.ntfy/);
   bad({ forms: { x: { kind: "report", fields: { a: {} }, redirect: "ftp://x" } } }, /redirect: must be http/);
 });
@@ -51,7 +54,7 @@ test("origins lose a trailing slash and the file may take values from the enviro
   expect(c.forms.x!.origins).toEqual(["https://example.org"]);
   expect(expand('{"a": "${TOPIC}"}', { TOPIC: 'quo"te' })).toBe('{"a": "quo\\"te"}');
   expect(() => expand("${MISSING}", {})).toThrow(/\$\{MISSING\} is not set/);
-  const path = join(tmpdir(), `noticebox-${process.pid}.json`);
+  const path = process.env.NOTICEBOX_CONFIG!; // the test's own temporary directory (vitest.setup.ts)
   writeFileSync(path, JSON.stringify({ forms: { x: { kind: "report", fields: { a: {} }, notify: { ntfy: "https://ntfy.sh/${TOPIC}" } } } }));
   expect(loadConfig(path, { TOPIC: "t1" }).forms.x!.notify).toEqual([{ type: "ntfy", url: "https://ntfy.sh/t1" }]);
   expect(() => loadConfig("/nonexistent.json")).toThrow(/cannot read/);
