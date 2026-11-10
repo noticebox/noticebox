@@ -10,6 +10,25 @@ The words the rest of the documentation uses.
 
 **Submission.** One post to a form: its fields, when it arrived, where from, and its state.
 
+```mermaid
+sequenceDiagram
+  participant Page as the page with the form
+  participant NB as noticebox<br/>/f/contact
+  participant DB as SQLite
+  participant N as ntfy or webhook
+  actor You as you, in the inbox
+  Page->>NB: POST the fields (plain post or JSON)
+  NB->>NB: origin, bot trap, rate limit, fields
+  NB-->>Page: refused: back to the page with ?error=
+  NB->>DB: the submission, in its first state
+  NB-->>Page: redirect to the thank-you page (or 201 with the id)
+  NB-)N: something arrived, and the link (never the content)
+  You->>DB: move it to another state, with the reason
+  Note over DB: every step is an event: who, when, why
+```
+
+The path of one submission: the checks come first, so a refused post stores nothing; the notification carries only the link; every later decision is added to the submission's history.
+
 **State and decision.** A submission can be moved to any other of its form's states. A state can be flagged closed (done, and under retention) and flagged as needing a reason: the reason is the record of the decision.
 
 **History.** Every step a submission took: received, moved from one state to another, or a note added; by whom, when, with what reason. The history is append-only; nothing in it is ever changed or removed.
