@@ -17,3 +17,11 @@ A submission should be able to become an issue in a GitHub repository chosen per
 Option 2, from 0.10.0. A person reads every issue before it exists, so the draft can carry everything the person sent, which is what makes it useful, except their email address, which never belongs in an issue. noticebox holds no GitHub token and calls no GitHub API: nothing to create, rotate, encrypt or leak, and nothing leaves the box until someone submits on GitHub. The cost: noticebox does not learn the issue's number, and a long submission is cut to fit GitHub's URL limit, with a note.
 
 Option 1 shipped in 0.8.0 and 0.9.0. 0.10.0 drops it, and drops its `issues` and `form_tokens` tables at start.
+
+### Consequences
+
+- Good: noticebox holds no GitHub token and calls no GitHub API. There is nothing to create, rotate, encrypt or leak.
+- Good: a person reads every issue before it exists, so the draft can carry the whole submission, without the email address.
+- Bad: noticebox doesn't learn the issue's number or URL, so a submission doesn't link to its issue.
+- Bad: a long submission is cut to fit GitHub's URL limit, with a note saying so.
+- Bad: opening an issue takes a person on GitHub. Neither MCP nor a script can file one on its own.
