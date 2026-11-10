@@ -211,7 +211,7 @@ export class Store {
   expire(config: Config, now: Date): number {
     let deleted = 0;
     for (const form of Object.values(config.forms)) {
-      if (form.deleteAfterDays === null || form.deleteAfterDays === undefined) continue;
+      if (form.deleteAfterDays === null) continue;
       const before = new Date(now.getTime() - form.deleteAfterDays * 86400000).toISOString();
       this.db.exec("begin");
       try {
