@@ -26,8 +26,8 @@ Everything is in the one SQLite file (`NOTICEBOX_DB`, `/data/noticebox.sqlite` i
 
 ```sh
 docker exec noticebox node -e '
-  const { DatabaseSync } = require("node:sqlite");
-  new DatabaseSync("/data/noticebox.sqlite").exec("VACUUM INTO \x27/data/backup.sqlite\x27")'
+  const Database = require("better-sqlite3");
+  new Database("/data/noticebox.sqlite").exec("VACUUM INTO \x27/data/backup.sqlite\x27")'
 ```
 
 or stop the container and copy the three files. The forms file is in your repository already.
