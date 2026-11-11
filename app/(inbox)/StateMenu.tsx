@@ -73,7 +73,7 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
         aria-expanded={open}
         aria-label={t.stateMenu.state(stateLabel(state))}
         onClick={() => setOpen((o) => !o)}
-        className={`badge ${tone} ${big ? "px-3 py-1 text-[15px]" : ""} cursor-pointer`}
+        className={`badge ${tone} ${big ? "px-3 py-1 text-[14px]" : ""} cursor-pointer hover:brightness-95`}
       >
         {stateLabel(state)}
         <Icon name="dropdown" className="size-3 shrink-0 opacity-70" />
@@ -84,31 +84,36 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
         </button>
       )}
       {open && (
-        <ul role="menu" className="sheet absolute top-full left-0 z-20 mt-1 min-w-48 py-1 text-[15px] shadow-lg">
+        <ul role="menu" className="sheet absolute top-full left-0 z-30 mt-1 min-w-52 p-1 text-[15px] shadow-lg">
           {next.map((t) => (
             <li key={t} role="none">
-              <button type="button" role="menuitem" onClick={() => choose(t)} className="block w-full px-3 py-1.5 text-left hover:bg-soft">
+              <button type="button" role="menuitem" onClick={() => choose(t)} className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-hover">
                 {verbFor(t, initial)}
               </button>
             </li>
           ))}
           <li role="none" className="my-1 border-t border-rule" />
           <li role="none">
-            <button type="button" role="menuitem" onClick={() => choose("")} className="block w-full px-3 py-1.5 text-left hover:bg-soft">
+            <button type="button" role="menuitem" onClick={() => choose("")} className="block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-hover">
               {t.stateMenu.addNote}
             </button>
           </li>
         </ul>
       )}
-      <dialog ref={dialog} onClose={() => setTarget(null)} aria-labelledby={`dlg-${id}`} className="sheet m-auto w-[min(92vw,28rem)] p-0 text-ink shadow-xl">
+      <dialog
+        ref={dialog}
+        onClose={() => setTarget(null)}
+        aria-labelledby={`dlg-${id}`}
+        className="sheet m-auto w-[min(92vw,30rem)] rounded-xl p-0 text-ink shadow-xl"
+      >
         {target !== null && (
-          <form action={action} className="p-6">
-            <h2 id={`dlg-${id}`} className="mb-1 text-[22px] leading-tight font-bold tracking-tight">
+          <form action={action} className="p-5">
+            <h2 id={`dlg-${id}`} className="mb-1 text-[18px] leading-tight font-bold tracking-tight">
               {title}
             </h2>
-            <p className="mb-5 text-muted">{needs ? t.stateMenu.whyReason : t.stateMenu.whyNote}</p>
+            <p className="mb-4 text-[14px] text-muted">{needs ? t.stateMenu.whyReason : t.stateMenu.whyNote}</p>
             <input type="hidden" name="id" value={id} />
-            <label htmlFor={`reason-${id}`} className="mb-1 block font-bold">
+            <label htmlFor={`reason-${id}`} className="mb-1 block text-sm font-bold">
               {chosen ? t.stateMenu.reason : t.stateMenu.note}
             </label>
             <textarea
@@ -121,7 +126,7 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
               className="field"
               defaultValue={result.ok ? "" : (result.reason ?? "")}
             />
-            <label htmlFor={`to-${id}`} className="mt-4 mb-1 block font-bold">
+            <label htmlFor={`to-${id}`} className="mt-4 mb-1 block text-sm font-bold">
               {t.stateMenu.then}
             </label>
             <select key={`to-${attempt}`} id={`to-${id}`} name="to" className="field" defaultValue={pick} onChange={(e) => setPick(e.target.value)}>
@@ -137,7 +142,7 @@ export function StateMenu({ id, state, tone, states, size = "sm", withNote = fal
                 {result.error}
               </p>
             )}
-            <div className="mt-6 flex justify-end gap-2">
+            <div className="mt-5 flex justify-end gap-2">
               <button type="button" onClick={() => setTarget(null)} className="btn">
                 {t.common.cancel}
               </button>

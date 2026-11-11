@@ -41,9 +41,40 @@ export const en = {
     signOut: "Sign out",
   },
 
+  theme: {
+    label: "Colours",
+    light: "Light",
+    dark: "Dark",
+    system: "Like the system",
+  },
+
   home: {
     title: "Nothing here yet",
     text: "A form is what a page posts to. Make one, and its endpoint is ready.",
+  },
+
+  /** How long ago, short: for the age of a submission. */
+  age: {
+    hours: (n: number) => (n < 1 ? "under 1 h" : `${n} h`),
+    days: (n: number) => `${n} ${plural(n, "day", "days")}`,
+  },
+
+  /** A day as people read it, "14 Nov", in UTC like every time in the inbox. */
+  day: (iso: string) => new Date(iso.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
+
+  figures: {
+    label: "Figures",
+    open: "Open",
+    nothingOpen: "nothing waits",
+    oldest: "Oldest open",
+    oldestNone: "—",
+    closed: (days: number) => `Closed, last ${days} days`,
+    nothingClosed: "none closed",
+    erase: "Fields next removed",
+    eraseNone: "—",
+    eraseNothing: "nothing is due",
+    eraseCount: (n: number) => `from ${n} ${plural(n, "submission", "submissions")}`,
+    separator: " · ",
   },
 
   stateMenu: {
@@ -103,6 +134,7 @@ export const en = {
       report: { name: "Report", text: "about content: open, in review, then acted on or rejected with a reason" },
       message: { name: "Message", text: "a contact message: new until answered" },
     },
+    startsWith: "Its states, to start with:",
   },
 
   tabs: {
@@ -119,6 +151,10 @@ export const en = {
     perDay: "Received per day",
     chart: (days: number) => `Received per day, last ${days} days`,
     byState: "By state",
+    kept: (n: number) => `${n} kept`,
+    lastDays: (days: number) => `last ${days} days`,
+    snippet: "A form on your page that posts here",
+    snippetButton: "Send",
     posting: "Posting to this form",
     origins: "Takes posts from",
     anywhere: "anywhere",
@@ -147,16 +183,23 @@ export const en = {
     filter: "Filter submissions",
     filterPlaceholder: "Filter…",
     byState: "Filter by state",
-    all: "All states",
+    all: "All",
     open: "Open",
     closed: "Closed",
     columns: "Columns",
+    id: "ID",
     received: "Received",
     state: "State",
     summary: "Summary",
+    age: "Age",
+    sortBy: (label: string) => `Sort by ${label}`,
     count: (shown: number, all: number) => `${shown} of ${all}`,
     empty: "Nothing yet. New submissions appear here as they arrive.",
     noMatch: "Nothing matches.",
+    nothingOpen: "Nothing waits for a decision.",
+    hiddenClosed: (n: number) => `${n} closed ${plural(n, "submission is", "submissions are")} not shown.`,
+    showAll: "Show all",
+    clearState: (label: string) => `Show the open ones again instead of only ${label}`,
     noText: "No text",
     limited: (n: number) => `The newest ${n} are shown; the download has all of them.`,
   },
@@ -175,6 +218,14 @@ export const en = {
     movedFrom: "moved it from",
     to: "to",
     id: (id: string) => `Submission ${id}`,
+    pane: (id: string) => `Submission ${id}`,
+    close: "Close the submission",
+    asPage: "Open on a page of its own",
+    asPane: "Open beside the table",
+    personal: "personal",
+    keptUntilClosed: (days: number) => `Personal fields are removed ${days} ${plural(days, "day", "days")} after this is closed. The history stays.`,
+    removedOn: (day: string) => `Personal fields are removed on ${day}. The history stays.`,
+    appendOnly: "only added to, never changed",
   },
 
   settings: {
@@ -258,6 +309,7 @@ export const en = {
     removeBlocked: "A form with submissions cannot be removed. Download them first, or keep the form.",
     removeText: "The form and its endpoint go; nothing was posted to it yet.",
     removeForm: "Remove the form",
+    sections: "Sections of the settings",
   },
 
   you: {

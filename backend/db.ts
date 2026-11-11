@@ -64,6 +64,19 @@ export type Tables = {
 
 type Row = Tables["submissions"];
 
+const DAY = 86400000;
+
+/** What `Store.figures` returns; see there. */
+export type Figures = {
+  open: number;
+  openByState: { state: string; n: number }[];
+  oldestOpen: { id: string; received_at: string } | null;
+  days: number;
+  closed: number;
+  closedByState: { state: string; n: number }[];
+  nextErase: { day: string; n: number } | null;
+};
+
 /** Builds queries and compiles them to SQL; it never connects to anything. */
 const q = new Kysely<Tables>({
   dialect: {
@@ -159,6 +172,45 @@ export class Store {
         .select(["form", "state", (eb) => eb.fn.countAll<number>().as("n")])
         .groupBy(["form", "state"]),
     );
+  }
+
+  /**
+   * A form's figures at a glance: what is open (per state), the oldest open submission, what was closed in the last
+   * `days` days (per state), and the next day personal fields are removed with how many submissions lose them then.
+   * Retention removes them `retentionDays` after closing, at the next sweep, so the day is when they become due.
+   */
+  figures(form: Pick<Form, "name" | "retentionDays">, now: Date, days = 30): Figures {
+    const perState = (closedSince: string | null) => {
+      let query = q
+        .selectFrom("submissions")
+        .select(["state", (eb) => eb.fn.countAll<number>().as("n")])
+        .where("form", "=", form.name);
+      query = closedSince === null ? query.where("closed_at", "is", null) : query.where("closed_at", ">=", closedSince);
+      return this.all(query.groupBy("state").orderBy("state"));
+    };
+    const open = perState(null);
+    const closed = perState(new Date(now.getTime() - days * DAY).toISOString());
+    const oldest = this.first(
+      q
+        .selectFrom("submissions")
+        .select(["id", "received_at"])
+        .where("form", "=", form.name)
+        .where("closed_at", "is", null)
+        .orderBy("received_at")
+        .orderBy("id")
+        .limit(1),
+    );
+    const due = q.selectFrom("submissions").where("form", "=", form.name).where("closed_at", "is not", null).where("purged_at", "is", null);
+    const first = this.first(due.select((eb) => eb.fn.min<string>("closed_at").as("at")))?.at;
+    let nextErase: Figures["nextErase"] = null;
+    if (first) {
+      const day = new Date(first.slice(0, 10) + "T00:00:00.000Z");
+      const end = new Date(day.getTime() + DAY).toISOString();
+      const n = this.first(due.select((eb) => eb.fn.countAll<number>().as("n")).where("closed_at", "<", end))?.n ?? 0;
+      nextErase = { day: new Date(day.getTime() + form.retentionDays * DAY).toISOString().slice(0, 10), n };
+    }
+    const sum = (rows: { n: number }[]) => rows.reduce((a, r) => a + r.n, 0);
+    return { open: sum(open), openByState: open, oldestOpen: oldest ?? null, days, closed: sum(closed), closedByState: closed, nextErase };
   }
 
   /** How many a form received per day (UTC) since `since`, for the overview's chart; days without any are absent. */

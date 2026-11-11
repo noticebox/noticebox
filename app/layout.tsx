@@ -31,14 +31,21 @@ export function generateMetadata(): Metadata {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7f5" },
-    { media: "(prefers-color-scheme: dark)", color: "#15181b" },
+    { media: "(prefers-color-scheme: light)", color: "#fbfcfd" },
+    { media: "(prefers-color-scheme: dark)", color: "#111417" },
   ],
 };
 
+// The theme chosen in the top bar (app/(inbox)/ThemeSwitch.tsx) is put on <html> before the first paint, so a dark
+// choice never flashes light. Without a choice, or without storage, the system's scheme applies.
+const THEME = `try{var t=localStorage.getItem("noticebox-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={atkinson.variable}>
+    <html lang="en" className={atkinson.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME }} />
+      </head>
       <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
