@@ -28,7 +28,7 @@ npm run lint
 npm run test:e2e    # builds, then Playwright against the production build
 ```
 
-Node 22 or newer. The store is SQLite through `better-sqlite3` (prebuilt binaries, no compiler needed) with typed `kysely` queries. `backend/` is framework-free and imported by the app only through `@/backend`. [CLAUDE.md](CLAUDE.md) has the architecture.
+Node 26 or newer. The store is SQLite through `better-sqlite3` (prebuilt binaries, no compiler needed) with typed `kysely` queries. `backend/` is framework-free and imported by the app only through `@/backend`. [CLAUDE.md](CLAUDE.md) has the architecture.
 
 ## Licence
 

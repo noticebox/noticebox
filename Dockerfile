@@ -1,5 +1,5 @@
 # Build: full deps, next build (standalone output).
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 RUN npm ci --ignore-scripts
@@ -8,7 +8,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Runtime: only the standalone server and its traced deps.
-FROM node:22-alpine
+FROM node:26-alpine
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 NOTICEBOX_DB=/data/noticebox.sqlite NOTICEBOX_CONFIG=/app/noticebox.json
 COPY --from=build --chown=node:node /app/.next/standalone ./
