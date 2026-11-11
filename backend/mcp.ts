@@ -1,17 +1,17 @@
-// The MCP endpoint: POST /mcp, the tools over the same store, forms file and admin functions the pages use. The bearer is an access token this
-// instance signed at /oauth/token, so every action is done in the name of the person who allowed the client, and
-// the audit trail says so: "<user> via <client>".
+// The MCP endpoint: POST /mcp, the tools over the same store, forms and admin functions the pages use. The bearer is
+// an access token Better Auth issued for /mcp (accounts.ts), so every action is done in the name of the person who
+// allowed the client, and the audit trail says so: "<username> via <client>".
+import { requireMcpAuth } from "@better-auth/mcp";
 import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotocol/server";
 import * as z from "zod";
-import { bearerOf, mcpResource, publicUrl } from "./auth";
+import { publicUrl } from "./auth";
 import type { Event, Submission } from "./db";
 import { issueUrl } from "./github";
 import { linkFor } from "./links";
 import { boxPath, endpointPath, formPath, submissionPath } from "./paths";
-import { connections, createBox, deleteBox, deleteForm, exportSubmissions, putForm, renameBox, revokeConnection } from "./admin";
+import { clientName, connected, connections, createBox, deleteBox, deleteForm, exportSubmissions, putForm, renameBox, revokeConnection } from "./admin";
 import type { Runtime } from "./runtime";
 import { summaryOf } from "./summary";
-import { verify } from "./tokens";
 
 // Every result carries `next`: what to do now, built from what the call did. Guidance that matters only after a call
 // lives there, not in the tool descriptions. Every result that names a box, form or submission carries its URL.
@@ -43,12 +43,13 @@ const FULL = {
   events: z.array(EVENT),
 };
 const Full = z.object(FULL);
-const GRANT = z.object({ id: z.string(), client_name: z.string(), created_at: z.string(), last_used_at: z.string(), current: z.boolean() });
+const CONNECTION = z.object({ id: z.string(), client_name: z.string(), created_at: z.string(), current: z.boolean() });
 
 const DAY = 86400000;
 const day = (iso: string, days: number) => new Date(new Date(iso).getTime() + days * DAY).toISOString().slice(0, 10);
 
-type Who = { actor: string; person: string; grant: string; base: string };
+/** Who an MCP call acts for: the person (Better Auth's user id), what events record, and the client they allowed. */
+export type Who = { actor: string; person: string; clientId: string; base: string };
 
 function server(rt: Runtime, who: Who): McpServer {
   const { actor, person, base } = who;
@@ -360,16 +361,15 @@ function server(rt: Runtime, who: Who): McpServer {
     {
       description: "The assistants you allowed to use this inbox over MCP (this one included), newest first.",
       inputSchema: z.object({}),
-      outputSchema: withNext({ connections: z.array(GRANT) }),
+      outputSchema: withNext({ connections: z.array(CONNECTION) }),
       annotations: { readOnlyHint: true },
     },
     async () => {
-      const list = connections(rt, person).map((g) => ({
-        id: g.id,
-        client_name: g.client_name,
-        created_at: g.created_at,
-        last_used_at: g.last_used_at,
-        current: g.id === who.grant,
+      const list = (await connections(rt, person)).map((c) => ({
+        id: c.id,
+        client_name: c.client_name,
+        created_at: c.created_at,
+        current: c.client_id === who.clientId,
       }));
       return ok({ connections: list }, [
         "Revoke one the user no longer uses with revoke_connection; current marks this connection.",
@@ -388,11 +388,12 @@ function server(rt: Runtime, who: Who): McpServer {
       annotations: { destructiveHint: true },
     },
     async ({ id }) => {
-      const r = revokeConnection(rt, person, id);
+      const current = (await connections(rt, person)).find((c) => c.id === id)?.client_id === who.clientId;
+      const r = await revokeConnection(rt, person, id);
       if (!r.ok) return refuse(r.error);
       return ok(
         { id, revoked: true },
-        id === who.grant
+        current
           ? ["This was the current connection: the next call fails. Connecting again needs the user to allow it in the browser."]
           : ["That connection's tokens stopped working. Connecting it again needs the user to allow it in the browser."],
       );
@@ -442,9 +443,30 @@ function handlerFor(rt: Runtime) {
   return h;
 }
 
-/** What may reach the handler: our own origin or none, and an access token minted for this resource. */
-function gate(req: Request, rt: Runtime): Response | Auth {
-  if (!rt.secret) return rpcError(404, "not found");
+const rpcErrorFor = (base: string) => (message: string) =>
+  rpcError(401, message, { "www-authenticate": `Bearer error="invalid_token", resource_metadata="${base}/.well-known/oauth-protected-resource/mcp"` });
+
+/**
+ * Who a token's person and client stand for: the person must still exist and still allow the client, so revoking a
+ * connection stops its tokens at the next call. A string says why not.
+ */
+export async function whoFor(rt: Runtime, personId: string, clientId: string, base: string): Promise<Who | string> {
+  const user = (await (await (await rt.auth()).$context).internalAdapter.findUserById(personId)) as { username?: string | null; email: string } | null;
+  if (!user) return "this person no longer exists";
+  if (!(await connected(rt, personId, clientId))) return "this connection was revoked";
+  return { actor: `${user.username || user.email} via ${await clientName(rt, clientId)}`, person: personId, clientId, base };
+}
+
+/** Answers one MCP request for `who`; the caller has checked who that is (mcpRoute, or a test through whoFor). */
+export const mcpAs = (req: Request, rt: Runtime, who: Who): Promise<Response> =>
+  handlerFor(rt).fetch(req, { authInfo: { token: "", clientId: who.clientId, scopes: [], extra: who } satisfies Auth });
+
+/**
+ * What may reach the tools: our own origin or none, and an access token Better Auth issued for /mcp (signature, issuer,
+ * audience, expiry), for a person who still exists and still allows that client. A session cookie or an API token is
+ * no such token.
+ */
+export async function mcpRoute(req: Request, rt: Runtime): Promise<Response> {
   const base = publicUrl(req.headers, rt);
   const origin = req.headers.get("origin");
   if (origin !== null) {
@@ -454,19 +476,16 @@ function gate(req: Request, rt: Runtime): Response | Auth {
     } catch {}
     if (host !== new URL(base).host) return rpcError(403, "forbidden origin");
   }
-  const unauthorized = (message: string, error = "") =>
-    rpcError(401, message, { "www-authenticate": `Bearer ${error}resource_metadata="${base}/.well-known/oauth-protected-resource/mcp"` });
-  const token = bearerOf(req.headers.get("authorization"));
-  if (!token) return unauthorized("an access token is needed");
-  const claims = verify(rt.secret, "access", token);
-  if (!claims) return unauthorized("invalid token", 'error="invalid_token", ');
-  if (claims.aud !== mcpResource(req.headers, rt)) return unauthorized("token for another resource", 'error="invalid_token", ');
-  if (!rt.store.grantOk(claims.gid, rt.now())) return unauthorized("this connection was revoked", 'error="invalid_token", ');
-  return { token, clientId: claims.cn, scopes: [], extra: { actor: `${claims.sub} via ${claims.cn}`, person: claims.sub, grant: claims.gid, base } };
-}
-
-export async function mcpRoute(req: Request, rt: Runtime): Promise<Response> {
-  const auth = gate(req, rt);
-  if (auth instanceof Response) return auth;
-  return handlerFor(rt).fetch(req, { authInfo: auth });
+  const auth = await rt.auth();
+  const refuse = rpcErrorFor(rt.signIn.baseUrl);
+  return requireMcpAuth(
+    auth,
+    async (r, claims) => {
+      const clientId = typeof claims.azp === "string" ? claims.azp : typeof claims.client_id === "string" ? claims.client_id : null;
+      if (typeof claims.sub !== "string" || !clientId) return refuse("invalid token");
+      const who = await whoFor(rt, claims.sub, clientId, base);
+      return typeof who === "string" ? refuse(who) : mcpAs(r, rt, who);
+    },
+    { resource: `${rt.signIn.baseUrl}/mcp`, jwksUrl: rt.signIn.jwksUrl },
+  )(req);
 }

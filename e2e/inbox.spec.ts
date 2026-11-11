@@ -17,21 +17,26 @@ test.beforeAll(async () => {
 });
 test.afterAll(() => new Promise<void>((r) => ntfy.close(() => r())));
 
-const USER = { "x-user": "marcel" };
 const REPORT = { read_id: "r1", note_id: "n1", file: "a.png", reason: "Personal data", text: "This note shows my address.", email: "who@example.org" };
 
-test("without the login header the inbox is closed; the public side is open", async ({ browser, request }) => {
-  const anonymous = await browser.newContext({ extraHTTPHeaders: {} });
+test("without a session the inbox is closed, whatever header a proxy sets; the public side is open", async ({ browser, request }) => {
+  const anonymous = await browser.newContext({ storageState: undefined, extraHTTPHeaders: { "x-authentik-username": "marcel" } });
+  expect((await anonymous.request.get("/")).status()).toBe(401);
+  expect((await anonymous.request.get("/forms/report")).status()).toBe(401);
+  expect((await anonymous.request.get("/settings")).status()).toBe(401);
+  // A person is sent on from the 401 to the sign-in page.
   const page = await anonymous.newPage();
-  expect((await page.goto("/"))?.status()).toBe(401);
-  expect((await page.goto("/forms/report"))?.status()).toBe(401);
+  await page.goto("/forms/report");
+  await expect(page).toHaveURL(/\/login\?next=%2Fforms%2Freport$/);
+  await expect(page.getByRole("button", { name: "Send a sign-in code" })).toBeVisible();
   expect((await page.goto("/f/report/thanks"))?.status()).toBe(200);
   await anonymous.close();
   expect((await request.get("/health")).status()).toBe(200);
   const mcp = await request.post("/mcp", { data: {} });
   expect(mcp.status()).toBe(401);
   expect(mcp.headers()["www-authenticate"]).toContain("resource_metadata=");
-  expect((await request.get("/.well-known/oauth-authorization-server")).ok()).toBeTruthy();
+  expect((await request.get("/.well-known/oauth-authorization-server/api/auth")).ok()).toBeTruthy();
+  expect((await request.get("/.well-known/oauth-protected-resource/mcp")).ok()).toBeTruthy();
 });
 
 test("a report goes from a page's form through the inbox to a recorded decision", async ({ page, request }) => {
@@ -59,8 +64,7 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   expect(pings[0]!.body).toMatch(/^http:\/\/localhost:3300\/forms\/report\/submissions\/[A-Za-z0-9_-]+$/);
   expect(pings[0]!.body + pings[0]!.title).not.toContain("address");
 
-  // The inbox, with the login header the proxy would set: the sidebar, the overview, the table.
-  await page.setExtraHTTPHeaders(USER);
+  // The inbox, signed in (the session from global-setup.ts): the sidebar, the overview, the table.
   await page.goto("/");
   await expect(page).toHaveURL(/\/forms\/report$/);
   const sidebar = page.getByRole("complementary").first();
@@ -153,7 +157,7 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   await page.reload();
   await expect(page.locator("html")).not.toHaveAttribute("data-theme", /./);
 
-  const exported = (await (await request.get("/export.json?form=report", { headers: USER })).json()) as { state: string; events: unknown[] }[];
+  const exported = (await (await request.get("/export.json?form=report")).json()) as { state: string; events: unknown[] }[];
   expect(exported[0]!.state).toBe("acted_on");
   expect(exported[0]!.events).toHaveLength(3);
 });
@@ -167,9 +171,9 @@ test("a contact message from a script: only from the allowed origin, with CORS",
   const { id } = (await ok.json()) as { id: string };
   const pre = await request.fetch("/f/contact", { method: "OPTIONS", headers: { origin: "https://example.org" } });
   expect(pre.status()).toBe(204);
-  const short = await request.get(`/s/${id}`, { headers: USER, maxRedirects: 0 });
+  const short = await request.get(`/s/${id}`, { maxRedirects: 0 });
   expect(short.status()).toBe(307);
   expect(short.headers()["location"]).toBe(`/forms/contact/submissions/${id}`);
-  const detail = await request.get(`/forms/contact/submissions/${id}`, { headers: USER });
+  const detail = await request.get(`/forms/contact/submissions/${id}`);
   expect(await detail.text()).toContain("Hello there");
 });

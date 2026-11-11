@@ -10,13 +10,14 @@ Every setting is an environment variable, and in a deployment they all live in o
 |---|---|---|
 | `NOTICEBOX_DB` | `data/noticebox.sqlite` (`/data/noticebox.sqlite` in the image) | The SQLite file, with the boxes and forms; created at the first start |
 | `NOTICEBOX_CONFIG` | `noticebox.json` (`/app/noticebox.json` in the image) | **Deprecated**, and removed in a later release: the forms file of releases before 0.16, imported once on upgrade ([Upgrading](upgrading.md#from-the-forms-file-to-the-database)) |
-| `NOTICEBOX_BASE_URL` | from the request's `X-Forwarded-*` headers | The public URL, used in notifications and as the OAuth issuer. Set it. |
-| `NOTICEBOX_USER_HEADER` | `X-Authentik-Username` | The header the login proxy sets with the signed-in person's name |
-| `NOTICEBOX_SECRET` | none: no MCP | 32 or more random characters that sign the OAuth tokens |
+| `NOTICEBOX_BASE_URL` | none; required | The public URL: in notifications, sign-in links and MCP tokens |
+| `NOTICEBOX_SECRET` | none; required | 32 or more random characters that sign sessions and tokens (`openssl rand -base64 48`) |
+| `NOTICEBOX_ALLOWED_EMAILS` | empty: nobody | Who may sign in: addresses and `@domain` entries, comma-separated ([Sign-in](login.md#who-may-sign-in)) |
+| `NOTICEBOX_SMTP_URL`, `NOTICEBOX_SMTP_FROM` | none | Where sign-in codes are mailed from ([Sign-in](login.md#ways-to-sign-in)) |
+| `NOTICEBOX_OIDC_<NAME>_CLIENT_ID`, `_CLIENT_SECRET`, `_ISSUER`, `_LABEL` | none | A provider to sign in with; `GITHUB` and `GOOGLE` need no issuer ([Sign-in](login.md#ways-to-sign-in)) |
 | `NOTICEBOX_RATE_LIMIT` | `10` | Posts per client address and form in ten minutes; `0` turns it off |
 | `NOTICEBOX_TRUST_PROXY` | on | `0` to ignore `X-Forwarded-For` and take the connecting address |
-| `NOTICEBOX_DEV_USER` | none | A fixed name standing in for the login, for development. Never in production. |
-| `NOTICEBOX_SIGN_OUT_URL` | `/outpost.goauthentik.io/sign_out` | Where *Sign out* in the user menu goes; the Authentik outpost's sign-out by default. Hidden with `NOTICEBOX_DEV_USER`. |
+| `NOTICEBOX_DEV_USER` | none | A fixed name instead of signing in, for development; refused when `NODE_ENV=production` |
 | `PORT` | `3000` | Where it listens |
 | `PUID`, `PGID` | the owner of the mounted `/data` (1000 if that is root) | Who the server runs as inside the container, so the database belongs to the host user |
 

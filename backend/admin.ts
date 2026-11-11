@@ -1,7 +1,7 @@
 // Administration of boxes, forms, connections and the export: what the inbox's settings pages and the MCP tools both
 // do. The rules that need the store as well as the forms file (a form with submissions stays; a state that
 // submissions are in stays) live here once, so neither the server actions nor the tools hold any of them.
-import type { Event, Grant, ListFilter, Outcome, Submission } from "./db";
+import type { Event, ListFilter, Outcome, Submission } from "./db";
 import { isKind, KINDS, type KindName } from "./kinds";
 import type { RawForm } from "./forms";
 import type { Runtime } from "./runtime";
@@ -42,11 +42,76 @@ export function putForm(rt: Runtime, name: string, raw: RawForm): Outcome & { cr
 /** Deletes a form that has no submissions; one with submissions stays, because they are its record. */
 export const deleteForm = (rt: Runtime, name: string): Outcome => rt.forms.deleteForm(name, hasSubmissions(rt, name));
 
-/** The person's connected assistants (MCP grants), newest first. */
-export const connections = (rt: Runtime, person: string): Grant[] => rt.store.grants(person);
+/** An assistant the person allowed over MCP: Better Auth's consent for that OAuth client. */
+export type Connection = { id: string; client_id: string; client_name: string; created_at: string };
 
-/** Revokes one of the person's own connections; every token of it stops working at once. */
-export const revokeConnection = (rt: Runtime, person: string, id: string): Outcome => rt.store.revokeGrant(id, person, rt.now());
+type Row = Record<string, unknown>;
+type Adapter = {
+  findMany(q: { model: string; where: { field: string; value: string }[] }): Promise<Row[]>;
+  findOne(q: { model: string; where: { field: string; value: string }[] }): Promise<Row | null>;
+  deleteMany(q: { model: string; where: { field: string; value: string }[] }): Promise<number>;
+};
+
+const adapterOf = async (rt: Runtime): Promise<Adapter> => (await (await rt.auth()).$context).adapter as unknown as Adapter;
+const iso = (d: unknown) => new Date(d as string | Date).toISOString();
+
+/** The name an OAuth client registered with, else its id. */
+export async function clientName(rt: Runtime, clientId: string): Promise<string> {
+  const c = await (await adapterOf(rt)).findOne({ model: "oauthClient", where: [{ field: "clientId", value: clientId }] });
+  return typeof c?.name === "string" && c.name ? c.name : clientId;
+}
+
+/** The person's connected assistants (MCP clients they allowed), newest first. */
+export async function connections(rt: Runtime, personId: string): Promise<Connection[]> {
+  const a = await adapterOf(rt);
+  const rows = await a.findMany({ model: "oauthConsent", where: [{ field: "userId", value: personId }] });
+  const list = await Promise.all(
+    rows.map(async (r) => ({
+      id: String(r.id),
+      client_id: String(r.clientId),
+      client_name: await clientName(rt, String(r.clientId)),
+      created_at: iso(r.createdAt),
+    })),
+  );
+  return list.sort((x, y) => y.created_at.localeCompare(x.created_at));
+}
+
+/** Whether the person still allows this client: /mcp asks at every call, so revoking takes effect at once. */
+export async function connected(rt: Runtime, personId: string, clientId: string): Promise<boolean> {
+  const a = await adapterOf(rt);
+  const rows = await a.findMany({
+    model: "oauthConsent",
+    where: [
+      { field: "userId", value: personId },
+      { field: "clientId", value: clientId },
+    ],
+  });
+  return rows.length > 0;
+}
+
+/**
+ * Revokes one of the person's own connections: the consent goes, and with it every refresh token of that client for
+ * them. Its access tokens fail at the next call, because /mcp checks the consent each time.
+ */
+export async function revokeConnection(rt: Runtime, personId: string, id: string): Promise<Outcome> {
+  const a = await adapterOf(rt);
+  const c = await a.findOne({
+    model: "oauthConsent",
+    where: [
+      { field: "id", value: id },
+      { field: "userId", value: personId },
+    ],
+  });
+  if (!c) return { ok: false, error: "no such connection" };
+  const mine = [
+    { field: "clientId", value: String(c.clientId) },
+    { field: "userId", value: personId },
+  ];
+  await a.deleteMany({ model: "oauthRefreshToken", where: mine });
+  await a.deleteMany({ model: "oauthAccessToken", where: mine });
+  await a.deleteMany({ model: "oauthConsent", where: [{ field: "id", value: id }] });
+  return { ok: true };
+}
 
 export type Exported = Submission & { events: Event[] };
 

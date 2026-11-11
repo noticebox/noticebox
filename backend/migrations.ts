@@ -69,6 +69,12 @@ create table settings (
 );
 `,
   },
+  {
+    // MCP clients sign in through Better Auth now (ADR 0002), whose data is in auth.sqlite; the old grants can't be
+    // carried over, so every client connects once more.
+    name: "drop grants",
+    sql: `drop table grants;`,
+  },
 ];
 
 /** What a migration needs of a connection: better-sqlite3 has it, and so does any other SQLite driver. */

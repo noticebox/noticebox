@@ -1,6 +1,6 @@
 {
   "name": "noticebox",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "An inbox for the forms on static pages: one endpoint per form, SQLite, and a small app that walks each notice through its states with an audit trail. MCP for assisted reviews.",
   "license": "AGPL-3.0-only",
   "private": true,
@@ -19,11 +19,16 @@
     "test:e2e": "next build && playwright test"
   },
   "dependencies": {
+    "@better-auth/cimd": "1.7.21",
+    "@better-auth/mcp": "1.7.21",
+    "@better-auth/oauth-provider": "1.7.21",
     "@modelcontextprotocol/server": "2.4.0",
+    "better-auth": "1.7.21",
     "better-sqlite3": "13.0.3",
     "kysely": "0.29.8",
     "lucide-react": "1.71.0",
     "next": "16.4.6",
+    "nodemailer": "^10.5.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "zod": "^4.6.7"
@@ -33,6 +38,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "^22",
+    "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^10",

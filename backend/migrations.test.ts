@@ -31,7 +31,7 @@ const version = (path: string) => {
 test("a fresh database ends at the latest version with the expected tables", () => {
   const path = tempFile();
   new Store(path).close();
-  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "forms", "grants", "settings", "submissions"] });
+  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "forms", "settings", "submissions"] });
 });
 
 test("a database made by 0.10.0, before migrations, opens at the latest version and keeps its data", () => {
@@ -62,7 +62,7 @@ test("a database made by 0.10.0, before migrations, opens at the latest version 
   expect(store.get("s1")?.fields).toEqual(REPORT);
   expect(store.events("s1")).toHaveLength(1);
   store.close();
-  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "forms", "grants", "settings", "submissions"] });
+  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "forms", "settings", "submissions"] });
 });
 
 test("a database written by 0.11.1 (node:sqlite) opens and keeps its data", () => {
@@ -85,7 +85,7 @@ test("a database written by 0.11.1 (node:sqlite) opens and keeps its data", () =
     ["marcel", "open", "rejected", "Not spam."],
     ["marcel via Claude", "rejected", null, "Checked."],
   ]);
-  expect(store.grants("marcel").map((g) => g.client_name)).toEqual(["Claude"]);
+  // The grants of 0.15's own OAuth server are gone (migration 3): every MCP client connects once more.
   store.close();
   expect(version(path).v).toBe(MIGRATIONS.length);
 });

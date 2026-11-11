@@ -1,121 +1,54 @@
-// The whole MCP path: a client registers, the signed-in person allows it, the code becomes tokens, and the tools
-// act in that person's name.
-import { createHash, randomBytes } from "node:crypto";
-import { beforeEach, expect, test } from "vitest";
-import { mcpRoute } from "./mcp";
-import { authorizeRoute, authServerRoute, checkAuthorize, protectedResourceRoute, registerRoute, tokenRoute } from "./oauth";
-import { resetTokensForTests } from "./tokens";
-import { BASE, formPost, jsonPost, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
+// The tools: what each does, in whose name, and what it says to do next. A connection here is made straight in Better
+// Auth's tables (a person, a client, the person's consent) instead of through the OAuth dance, which accounts.test.ts
+// runs end to end over HTTP; each call still goes through whoFor, so a revoked connection stops its calls here too.
+import { randomBytes } from "node:crypto";
+import { expect, test } from "vitest";
+import { revokeConnection, connections } from "./admin";
+import { mcpAs, mcpRoute, whoFor } from "./mcp";
+import { BASE, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
 
 const V = "2026-07-28";
 const META = { "io.modelcontextprotocol/clientInfo": { name: "t", version: "0" }, "io.modelcontextprotocol/clientCapabilities": {} };
 
-beforeEach(() => resetTokensForTests());
-
-function rpc(rt: TestRuntime, method: string, params: Record<string, unknown> = {}, headers: Record<string, string> = {}) {
+/** A stand-in bearer for a test connection: `test:<person id>:<client id>`, resolved by whoFor like a verified token. */
+async function rpc(rt: TestRuntime, method: string, params: Record<string, unknown> = {}, headers: Record<string, string> = {}) {
   const name: Record<string, string> = typeof params.name === "string" ? { "mcp-name": params.name } : {};
   const _meta = { "io.modelcontextprotocol/protocolVersion": V, ...META };
-  return mcpRoute(
-    new Request(`${BASE}/mcp`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        accept: "application/json, text/event-stream",
-        "mcp-protocol-version": V,
-        "mcp-method": method,
-        ...name,
-        ...headers,
-      },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: { ...params, _meta } }),
-    }),
-    rt,
-  );
-}
-
-/** Registers a client, has `user` allow it, and exchanges the code: the access token. */
-async function connect(rt: TestRuntime, user = "marcel", clientName = "Claude"): Promise<{ access: string; refresh: string; clientId: string }> {
-  const reg = await registerRoute(jsonPost("/oauth/register", { client_name: clientName, redirect_uris: ["http://localhost:4567/cb"] }), rt);
-  expect(reg.status).toBe(201);
-  const { client_id: clientId } = (await reg.json()) as { client_id: string };
-  const verifier = randomBytes(32).toString("base64url");
-  const challenge = createHash("sha256").update(verifier).digest("base64url");
-  const fields = {
-    response_type: "code",
-    client_id: clientId,
-    redirect_uri: "http://localhost:4567/cb",
-    code_challenge: challenge,
-    code_challenge_method: "S256",
-    state: "s1",
-    resource: `${rt.baseUrl}/mcp`,
-  };
-  const page = checkAuthorize(new URLSearchParams(fields), new Headers(), rt);
-  expect(page.kind).toBe("page");
-  const allowed = await authorizeRoute(formPost("/api/oauth/authorize", fields, { "x-user": user, "sec-fetch-site": "same-origin" }), rt);
-  expect(allowed.status).toBe(303);
-  const back = new URL(allowed.headers.get("location")!);
-  expect(back.origin + back.pathname).toBe("http://localhost:4567/cb");
-  expect(back.searchParams.get("state")).toBe("s1");
-  expect(back.searchParams.get("iss")).toBe(rt.baseUrl);
-  const code = back.searchParams.get("code")!;
-  const tok = await tokenRoute(
-    formPost("/oauth/token", {
-      grant_type: "authorization_code",
-      code,
-      client_id: clientId,
-      redirect_uri: "http://localhost:4567/cb",
-      code_verifier: verifier,
-    }),
-    rt,
-  );
-  expect(tok.status).toBe(200);
-  const t = (await tok.json()) as { access_token: string; refresh_token: string; token_type: string };
-  expect(t.token_type).toBe("Bearer");
-  return { access: t.access_token, refresh: t.refresh_token, clientId };
-}
-
-test("the metadata points a client at this instance; nothing is there without a secret", async () => {
-  const rt = testRuntime();
-  const pr = await protectedResourceRoute(new Request(`${BASE}/.well-known/oauth-protected-resource/mcp`), rt).json();
-  expect(pr).toEqual({ resource: `${BASE}/mcp`, authorization_servers: [BASE], bearer_methods_supported: ["header"] });
-  const as = (await authServerRoute(new Request(`${BASE}/.well-known/oauth-authorization-server`), rt).json()) as Record<string, unknown>;
-  expect(as.issuer).toBe(BASE);
-  expect(as.registration_endpoint).toBe(`${BASE}/oauth/register`);
-  expect(as.code_challenge_methods_supported).toEqual(["S256"]);
-  const off = testRuntime({ secret: null });
-  expect(protectedResourceRoute(new Request(`${BASE}/x`), off).status).toBe(404);
-  expect((await registerRoute(jsonPost("/oauth/register", { redirect_uris: ["https://a.b/cb"] }), off)).status).toBe(404);
-  expect((await rpc(off, "tools/list")).status).toBe(404);
-});
-
-test("the authorize step needs the signed-in person, from our own page, for a registered client", async () => {
-  const rt = testRuntime();
-  const reg = (await (await registerRoute(jsonPost("/oauth/register", { client_name: "Claude", redirect_uris: ["https://claude.ai/cb"] }), rt)).json()) as {
-    client_id: string;
-  };
-  const fields = {
-    response_type: "code",
-    client_id: reg.client_id,
-    redirect_uri: "https://claude.ai/cb",
-    code_challenge: "a".repeat(43),
-    code_challenge_method: "S256",
-  };
-  expect((await authorizeRoute(formPost("/api/oauth/authorize", fields, { "sec-fetch-site": "same-origin" }), rt)).status).toBe(401);
-  expect((await authorizeRoute(formPost("/api/oauth/authorize", fields, { "x-user": "marcel", "sec-fetch-site": "cross-site" }), rt)).status).toBe(403);
-  expect(
-    (
-      await authorizeRoute(
-        formPost("/api/oauth/authorize", { ...fields, redirect_uri: "https://evil.example/cb" }, { "x-user": "marcel", "sec-fetch-site": "same-origin" }),
-        rt,
-      )
-    ).status,
-  ).toBe(400);
-  expect(checkAuthorize(new URLSearchParams({ ...fields, client_id: "forged" }), new Headers(), rt)).toMatchObject({ kind: "error" });
-  expect(checkAuthorize(new URLSearchParams({ ...fields, code_challenge_method: "plain" }), new Headers(), rt)).toMatchObject({
-    kind: "redirect",
-    location: expect.stringContaining("error=invalid_request"),
+  const { authorization, ...rest } = headers;
+  const req = new Request(`${BASE}/mcp`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      "mcp-protocol-version": V,
+      "mcp-method": method,
+      ...name,
+      ...rest,
+      ...(authorization && !authorization.startsWith("Bearer test:") ? { authorization } : {}),
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: { ...params, _meta } }),
   });
-  expect((await registerRoute(jsonPost("/oauth/register", { redirect_uris: ["http://evil.example/cb"] }), rt)).status).toBe(400);
-});
+  const m = /^Bearer test:([^:]+):(.+)$/.exec(authorization ?? "");
+  if (!m) return mcpRoute(req, rt);
+  const who = await whoFor(rt, m[1]!, m[2]!, BASE);
+  return typeof who === "string" ? Response.json({ error: who }, { status: 401 }) : mcpAs(req, rt, who);
+}
+
+type Adapter = { create(q: { model: string; data: Record<string, unknown> }): Promise<Record<string, unknown>> };
+
+/** `user` (made on first use) allows a new client called `clientName`: the stand-in bearer for that connection. */
+async function connect(rt: TestRuntime, user = "marcel", clientName = "Claude"): Promise<{ access: string; clientId: string; personId: string }> {
+  const ctx = await (await rt.auth()).$context;
+  const a = ctx.adapter as unknown as Adapter;
+  const now = new Date();
+  const email = `${user}@test.example`;
+  const found = (await ctx.internalAdapter.findUserByEmail(email))?.user;
+  const person = found ?? (await a.create({ model: "user", data: { email, name: user, username: user, emailVerified: true, createdAt: now, updatedAt: now } }));
+  const clientId = randomBytes(8).toString("hex");
+  await a.create({ model: "oauthClient", data: { clientId, name: clientName, redirectUris: ["http://localhost:4567/cb"], createdAt: now, updatedAt: now } });
+  await a.create({ model: "oauthConsent", data: { clientId, userId: person.id, scopes: ["openid"], createdAt: now, updatedAt: now } });
+  return { access: `test:${String(person.id)}:${clientId}`, clientId, personId: String(person.id) };
+}
 
 test("tools act in the name of the person who allowed the client, and the trail says through what", async () => {
   const rt = testRuntime();
@@ -186,50 +119,27 @@ test("tools act in the name of the person who allowed the client, and the trail 
   expect(got.isError).toBe(true);
 });
 
-test("the gate: no token, a forged token, a token for another resource, a foreign origin", async () => {
+test("the gate: no token or a forged one gets 401 with the way to sign in; another site's page gets 403", async () => {
   const rt = testRuntime();
   const none = await rpc(rt, "tools/list");
   expect(none.status).toBe(401);
-  expect(none.headers.get("www-authenticate")).toBe(`Bearer resource_metadata="${BASE}/.well-known/oauth-protected-resource/mcp"`);
-  const forged = await rpc(rt, "tools/list", {}, { authorization: "Bearer abc.def" });
-  expect(forged.status).toBe(401);
-  expect(forged.headers.get("www-authenticate")).toContain('error="invalid_token"');
-  const other = testRuntime({ baseUrl: "https://other.test" });
-  const { access } = await connect(other);
+  expect(none.headers.get("www-authenticate")).toContain(`resource_metadata="${BASE}/.well-known/oauth-protected-resource/mcp"`);
+  expect((await rpc(rt, "tools/list", {}, { authorization: "Bearer abc.def" })).status).toBe(401);
+  // The origin is checked before any token: a page of another site can't drive the endpoint.
+  expect((await rpc(rt, "tools/list", {}, { origin: "https://evil.example" })).status).toBe(403);
+});
+
+test("a revoked connection stops working at once, and the settings page's list loses it", async () => {
+  const rt = testRuntime();
+  const { access, personId } = await connect(rt);
+  const anna = await connect(rt, "anna");
+  const [c] = await connections(rt, personId);
+  expect(c).toMatchObject({ client_name: "Claude" });
+  expect(await revokeConnection(rt, anna.personId, c!.id)).toEqual({ ok: false, error: "no such connection" });
+  expect(await revokeConnection(rt, personId, c!.id)).toEqual({ ok: true });
+  expect(await connections(rt, personId)).toEqual([]);
   expect((await rpc(rt, "tools/list", {}, { authorization: `Bearer ${access}` })).status).toBe(401);
-  const mine = await connect(rt);
-  expect((await rpc(rt, "tools/list", {}, { authorization: `Bearer ${mine.access}`, origin: "https://evil.example" })).status).toBe(403);
-  expect((await rpc(rt, "tools/list", {}, { authorization: `Bearer ${mine.access}`, origin: BASE })).status).toBe(200);
-});
-
-test("a code is spent once, the verifier must match, and a refresh token rotates", async () => {
-  const rt = testRuntime();
-  const { refresh, clientId } = await connect(rt);
-  const again = await tokenRoute(formPost("/oauth/token", { grant_type: "refresh_token", refresh_token: refresh, client_id: clientId }), rt);
-  expect(again.status).toBe(200);
-  const t2 = (await again.json()) as { refresh_token: string; access_token: string };
-  expect(t2.refresh_token).not.toBe(refresh);
-  const replay = await tokenRoute(formPost("/oauth/token", { grant_type: "refresh_token", refresh_token: refresh, client_id: clientId }), rt);
-  expect(replay.status).toBe(400);
-  expect(await replay.json()).toEqual({ error: "invalid_grant" });
-  expect((await rpc(rt, "tools/list", {}, { authorization: `Bearer ${t2.access_token}` })).status).toBe(200);
-  const wrong = await tokenRoute(formPost("/oauth/token", { grant_type: "password", client_id: clientId }), rt);
-  expect(await wrong.json()).toEqual({ error: "unsupported_grant_type" });
-});
-
-test("a revoked connection stops working at once: the access token, the refresh token, and the list on the settings page", async () => {
-  const rt = testRuntime();
-  const { access, refresh, clientId } = await connect(rt);
-  const [g] = rt.store.grants("marcel");
-  expect(g).toMatchObject({ actor: "marcel", client_name: "Claude" });
-  expect(rt.store.grants("someone else")).toEqual([]);
-  expect(rt.store.revokeGrant(g!.id, "someone else")).toMatchObject({ ok: false });
-  expect(rt.store.revokeGrant(g!.id, "marcel")).toEqual({ ok: true });
-  expect(rt.store.grants("marcel")).toEqual([]);
-  const call = await rpc(rt, "tools/list", {}, { authorization: `Bearer ${access}` });
-  expect(call.status).toBe(401);
-  const again = await tokenRoute(formPost("/oauth/token", { grant_type: "refresh_token", refresh_token: refresh, client_id: clientId }), rt);
-  expect(again.status).toBe(400);
+  expect(await connections(rt, anna.personId)).toHaveLength(1);
 });
 
 test("an assistant reads a form, creates one and replaces it; an invalid form changes nothing", async () => {
@@ -302,10 +212,11 @@ test("a submission whose form names a repository carries the link to a filled-in
 
 /** A connected client's tool call: the result as the client sees it. */
 async function caller(rt: TestRuntime, user = "marcel", client = "Claude") {
-  const { access } = await connect(rt, user, client);
+  const { access, personId } = await connect(rt, user, client);
   const auth = { authorization: `Bearer ${access}` };
   return {
     access,
+    personId,
     call: async (name: string, args: Record<string, unknown> = {}) => (await (await rpc(rt, "tools/call", { name, arguments: args }, auth)).json()).result,
     tools: async () =>
       (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string; annotations?: Record<string, boolean>; description: string }[],
@@ -317,8 +228,7 @@ test("every tool's result says what to do next", async () => {
   const { call, tools } = await caller(rt);
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
   const other = await connect(rt, "marcel", "Other");
-  void other;
-  const grant = rt.store.grants("marcel").find((g) => g.client_name === "Other")!.id;
+  const grant = (await connections(rt, other.personId)).find((c) => c.client_name === "Other")!.id;
   // One valid call per tool, in an order where each finds what it needs.
   const calls: [string, Record<string, unknown>][] = [
     ["list_forms", {}],
@@ -409,18 +319,18 @@ test("connections are the person's own: listed, and revoked at once, this one in
   const rt = testRuntime();
   const me = await caller(rt, "marcel", "Claude");
   const other = await caller(rt, "marcel", "Desktop");
-  await caller(rt, "anna", "Claude");
+  const annaCaller = await caller(rt, "anna", "Claude");
   const listed = (await me.call("list_connections")).structuredContent.connections as { id: string; client_name: string; current: boolean }[];
   expect(listed.map((c) => [c.client_name, c.current]).sort()).toEqual([
     ["Claude", true],
     ["Desktop", false],
   ]);
   const desktop = listed.find((c) => c.client_name === "Desktop")!;
-  const anna = rt.store.grants("anna")[0]!;
+  const anna = (await connections(rt, annaCaller.personId))[0]!;
   expect((await me.call("revoke_connection", { id: anna.id })).content[0].text).toBe("no such connection");
   expect((await me.call("revoke_connection", { id: desktop.id })).structuredContent).toMatchObject({ id: desktop.id, revoked: true });
   expect((await other.call("list_forms")) ?? null).toBeNull(); // its token stopped working: the request got a 401, no result
-  expect(rt.store.grants("anna")).toHaveLength(1);
+  expect(await connections(rt, annaCaller.personId)).toHaveLength(1);
 });
 
 test("export gives the submissions with their histories, by form and state", async () => {

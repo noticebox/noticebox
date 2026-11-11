@@ -8,6 +8,10 @@ docker compose pull && docker compose up -d
 
 The database schema is brought up to date at start: each release carries the schema changes since the first as numbered migrations, and the database records which have run (its `user_version`), so every change is applied exactly once, in order, each in a transaction. A migration that fails is rolled back and the app does not start, with the reason in the log. A downgrade is not supported: a release refuses a database that a newer one has migrated. Take a [backup](retention.md#backups) before an upgrade that the notes call out as changing the database.
 
+## From the login proxy to sign-in (0.17)
+
+From 0.17, noticebox signs people in itself and the header a login proxy sets counts for nothing. Before upgrading, set `NOTICEBOX_SECRET`, `NOTICEBOX_ALLOWED_EMAILS` and a way to sign in: SMTP, or a provider such as your Authentik. Without one, the new release refuses to start and says why. [Sign-in](login.md#coming-from-the-login-proxy-up-to-016) walks through it, including keeping the names the history records. Every MCP client connects once more after the upgrade.
+
 ## From the forms file to the database
 
 Up to 0.15, boxes and forms were in a JSON file (`NOTICEBOX_CONFIG`). From 0.16 they are in the database ([ADR 0004](https://github.com/noticebox/noticebox/blob/main/docs/adr/0004-forms-live-in-the-database.md)). The first start of 0.16 or later imports the file once, if the database has no boxes or forms yet: the same boxes and forms, `${VAR}` references as written, and every submission still with its form. The log says so:

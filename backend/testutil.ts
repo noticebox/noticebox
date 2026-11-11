@@ -49,8 +49,6 @@ export function testRuntime(o: Partial<Runtime> = {}): TestRuntime {
     config: testConfig(),
     store: new Store(":memory:"),
     baseUrl: BASE,
-    userHeader: "x-user",
-    secret: SECRET,
     rate: new Rate(10),
     log: () => {},
     fetch: (async (url: string | URL | Request, init?: RequestInit) => {

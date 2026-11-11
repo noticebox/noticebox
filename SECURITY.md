@@ -6,7 +6,7 @@ Report it privately through [**Report a vulnerability**](https://github.com/noti
 
 This covers the server and the image `ghcr.io/noticebox/noticebox`: the form intake, the inbox, the MCP endpoint and its OAuth server, and the notifications it sends.
 
-Helpful in a report: the version or image tag, how the instance is configured as far as it matters (the login proxy in front, the forms), and the steps that show the problem.
+Helpful in a report: the version or image tag, how the instance is configured as far as it matters (how people sign in, the forms), and the steps that show the problem.
 
 You get an answer within seven days. Once a fix is released, the advisory is published and names you, unless you would rather not be named.
 

@@ -1,9 +1,6 @@
 import Database from "better-sqlite3";
 import { expect, test } from "@playwright/test";
 
-const USER = { "x-user": "marcel" };
-test.use({ extraHTTPHeaders: USER });
-
 test("a box and a form are made in the inbox, the form's settings are saved to the database, and the form is removed again", async ({ page, request }) => {
   await page.goto("/");
   const sidebar = page.getByRole("complementary").first();

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon, Mark } from "@/app/_lib/icons";
+import { authClient } from "@/app/_lib/auth-client";
 import { t } from "@/app/_lib/copy";
 import { ThemeSwitch } from "./ThemeSwitch";
 
@@ -67,9 +68,10 @@ const item = "block w-full rounded-md px-2.5 py-1.5 text-left hover:bg-hover";
 // The frame of the inbox: a sidebar with the boxes and their forms (a drawer on small screens), a thin bar with who
 // is signed in, and the page. A page may add a pane on the right (`data-pane`, the open submission); on wide screens
 // it is fixed to the window's edge and the page makes room for it.
-export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; actor: string; signOutUrl: string | null; children: React.ReactNode }) {
+export function Shell({ boxes, actor, canSignOut, children }: { boxes: Box[]; actor: string; canSignOut: boolean; children: React.ReactNode }) {
   const [drawer, setDrawer] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const close = () => setDrawer(false);
 
   const nav = (
@@ -181,11 +183,19 @@ export function Shell({ boxes, actor, signOutUrl, children }: { boxes: Box[]; ac
                   {t.shell.yourSettings}
                 </Link>
               </li>
-              {signOutUrl && (
+              {canSignOut && (
                 <li role="none">
-                  <a role="menuitem" href={signOutUrl} className={item}>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={`${item} w-full text-left`}
+                    onClick={async () => {
+                      await authClient.signOut();
+                      router.replace("/login");
+                    }}
+                  >
                     {t.shell.signOut}
-                  </a>
+                  </button>
                 </li>
               )}
             </Menu>
