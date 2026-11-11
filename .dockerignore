@@ -1,0 +1,17 @@
+# The image builds from the tracked sources only: what a local checkout adds (build output, installed modules,
+# secrets, databases, test reports) stays out of the build context, so a local build matches CI's.
+.git
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+data/
+*.sqlite*
+.env*
+test-results/
+playwright-report/
+.e2e/
+.venv-docs/
+site/
+.open-design/
