@@ -112,3 +112,40 @@ test("deleteAfterDays deletes a closed submission and its history; open and reop
   expect(store.get(recent.id)).toBeUndefined();
   store.close();
 });
+
+test("figures: what is open, the oldest open one, what closed lately and when fields are next removed", () => {
+  const config = testConfig();
+  const store = new Store(":memory:");
+  const report = config.forms.report!;
+  const t0 = new Date("2026-01-01T10:00:00Z");
+  expect(store.figures(report, t0)).toEqual({ open: 0, openByState: [], oldestOpen: null, days: 30, closed: 0, closedByState: [], nextErase: null });
+
+  const old = store.receive(report, REPORT, null, t0);
+  const later = store.receive(report, REPORT, null, new Date(t0.getTime() + DAY));
+  const a = store.receive(report, REPORT, null, t0);
+  const b = store.receive(report, REPORT, null, t0);
+  const c = store.receive(report, REPORT, null, t0);
+  store.transition(report, later.id, "marcel", "in_review", "", t0);
+  store.transition(report, a.id, "marcel", "acted_on", "Removed.", new Date(t0.getTime() + 2 * DAY));
+  store.transition(report, b.id, "marcel", "rejected", "Fine.", new Date(t0.getTime() + 2 * DAY + 3600000));
+  store.transition(report, c.id, "marcel", "rejected", "Fine.", new Date(t0.getTime() - 40 * DAY)); // closed long before: not in the last 30 days
+
+  const f = store.figures(report, new Date(t0.getTime() + 3 * DAY));
+  expect(f.open).toBe(2);
+  expect(f.openByState).toEqual([
+    { state: "in_review", n: 1 },
+    { state: "open", n: 1 },
+  ]);
+  expect(f.oldestOpen).toEqual({ id: old.id, received_at: t0.toISOString() });
+  expect(f.closed).toBe(2);
+  expect(f.closedByState).toEqual([
+    { state: "acted_on", n: 1 },
+    { state: "rejected", n: 1 },
+  ]);
+  // c closed first, so its fields go first: retentionDays after the day it closed.
+  expect(f.nextErase).toEqual({ day: new Date(t0.getTime() - 40 * DAY + report.retentionDays * DAY).toISOString().slice(0, 10), n: 1 });
+
+  store.sweep(config, new Date(t0.getTime() - 40 * DAY + (report.retentionDays + 1) * DAY));
+  expect(store.figures(report, t0).nextErase).toEqual({ day: new Date(t0.getTime() + 2 * DAY + report.retentionDays * DAY).toISOString().slice(0, 10), n: 2 });
+  store.close();
+});

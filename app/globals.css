@@ -1,43 +1,33 @@
 @import "tailwindcss";
 
+/* Every colour once, light and dark: light-dark() takes the one the colour scheme asks for. The scheme follows the
+   system unless the person chose one in the top bar (data-theme on <html>, set before the first paint by the script
+   in app/layout.tsx). */
 :root {
-  --paper: #f6f7f5;
-  --card: #ffffff;
-  --ink: #1b2229;
-  --accent: #176b5c;
-  --accent-soft: #e2efeb;
-  --rule: #dfe3e2;
-  --muted: #5f6b74;
-  --error: #a12d1f;
-  --on-accent: #ffffff;
-  --soft: #eef0ee;
-  --amber: #8a5a0b;
-  --amber-soft: #f8ecd2;
-  /* The done badge's green is darker and its fill deeper than the accent's, so it stays apart from the grey badge
-     with red-green colour blindness (app/palette.test.ts). */
-  --ok: #125348;
-  --ok-soft: #c6e1d8;
+  --paper: light-dark(#fbfcfd, #111417);
+  --card: light-dark(#ffffff, #16191d);
+  --ink: light-dark(#0e1217, #e9ebee);
+  --accent: light-dark(#0066cd, #70adfb);
+  --accent-soft: light-dark(#e1f0ff, #152c48);
+  --rule: light-dark(#e2e5e8, #2a2e33);
+  --muted: light-dark(#5e646a, #a0a5ab);
+  --error: light-dark(#ac3031, #fb9890);
+  --on-accent: light-dark(#ffffff, #0e1217);
+  --soft: light-dark(#f0f2f4, #1f2327);
+  --hover: light-dark(#f3f5f8, #1b1f23);
+  --amber: light-dark(#845000, #f0be67);
+  --amber-soft: light-dark(#ffeccd, #3e2d10);
+  /* The done badge's green is darker and its fill deeper than the accent's blue, so the four state badges stay apart
+     with each kind of colour blindness (app/palette.test.ts). */
+  --ok: light-dark(#00603c, #80daac);
+  --ok-soft: light-dark(#cff2de, #143525);
+  color-scheme: light dark;
+}
+:root[data-theme="light"] {
   color-scheme: light;
 }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #15181b;
-    --card: #1c2024;
-    --ink: #e4e7e6;
-    --accent: #7fcdb6;
-    --accent-soft: #1f3530;
-    --rule: #2e3438;
-    --muted: #9aa4aa;
-    --error: #f08b7c;
-    --on-accent: #15181b;
-    --soft: #23282c;
-    --amber: #e8b85a;
-    --amber-soft: #3a2f16;
-    --ok: #9fe0cc;
-    --ok-soft: #244a41;
-    color-scheme: dark;
-  }
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -52,6 +42,7 @@
   --color-error: var(--error);
   --color-on-accent: var(--on-accent);
   --color-soft: var(--soft);
+  --color-hover: var(--hover);
   --color-amber: var(--amber);
   --color-amber-soft: var(--amber-soft);
   --color-ok: var(--ok);
@@ -79,43 +70,61 @@ body {
 }
 
 @layer components {
-  /* A sheet: the table, the dialog, the menu. Everything else sits on the paper. */
+  /* A sheet: the table, the figures, the dialog, the menu. Everything else sits on the paper. */
   .sheet {
-    @apply rounded-md border border-rule bg-card;
+    @apply rounded-[10px] border border-rule bg-card;
   }
 
   .field {
-    @apply w-full rounded-md border border-rule bg-card px-3 py-2 text-[15px] focus:border-accent focus:outline-none;
+    @apply w-full rounded-lg border border-rule bg-card px-3 py-1.5 text-[15px] focus:border-accent focus:ring-3 focus:ring-accent-soft focus:outline-none;
   }
 
   .btn {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-rule bg-card px-3 py-1.5 text-sm font-bold hover:bg-soft disabled:opacity-60;
+    @apply inline-flex items-center gap-1.5 rounded-lg border border-rule bg-card px-3 py-1.5 text-sm font-bold whitespace-nowrap hover:bg-hover disabled:opacity-60;
   }
 
+  /* The one strong button of a page: ink, so the accent stays for what is open and what is selected. */
   .btn-primary {
-    @apply inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-sm font-bold text-on-accent hover:opacity-90 disabled:opacity-60;
+    @apply inline-flex items-center gap-1.5 rounded-lg border border-ink bg-ink px-3 py-1.5 text-sm font-bold whitespace-nowrap text-paper hover:opacity-90 disabled:opacity-60;
   }
 
+  /* A state: a pill with a dot. The dot's shape says it too (hollow for a quiet close), not only the colour. */
   .badge {
-    @apply inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[13px] font-bold whitespace-nowrap;
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[13px] font-bold whitespace-nowrap;
+  }
+  .badge::before {
+    content: "";
+    @apply size-[7px] shrink-0 rounded-full bg-current;
   }
 
   .badge-open {
-    @apply border-ink bg-card text-ink;
+    @apply bg-accent-soft text-accent;
   }
   .badge-review {
-    @apply border-amber/40 bg-amber-soft text-amber;
+    @apply bg-amber-soft text-amber;
   }
   .badge-done {
-    @apply border-ok/40 bg-ok-soft text-ok;
+    @apply bg-ok-soft text-ok;
   }
   .badge-off {
-    @apply border-rule bg-soft text-muted;
+    @apply bg-soft text-muted;
+  }
+  .badge-off::before {
+    @apply size-[6px] border-[1.5px] border-current bg-transparent;
   }
 
   /* A section of a page: a heading on a rule, no box. */
   .section-title {
     @apply mb-3 border-b border-rule pb-2 text-base font-bold;
+  }
+
+  /* A small heading inside a sheet or the case pane. */
+  .label {
+    @apply mb-3 text-[13px] font-bold text-muted;
+  }
+
+  .tag {
+    @apply rounded border border-rule px-1.5 font-mono text-[12px] text-muted;
   }
 }
 
@@ -128,5 +137,5 @@ body {
 }
 
 dialog::backdrop {
-  background: rgb(27 34 41 / 0.45);
+  background: rgb(14 18 23 / 0.4);
 }

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-conventions; the rules here win where they differ. Next.js 16 app + a framework-free TypeScript backend, one SQLite file (`better-sqlite3` with typed `kysely` queries, Node ≥ 22), an MCP endpoint behind OAuth 2.1. User docs: `docs/` (MkDocs, `mkdocs build --strict`) are the one place for usage, deployment and settings; README only says what noticebox is, installs it in a few lines and links there.
+noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-conventions; the rules here win where they differ. Next.js 16 app + a framework-free TypeScript backend, one SQLite file (`better-sqlite3` with typed `kysely` queries, Node ≥ 26, the major in `.nvmrc` and the Dockerfile), an MCP endpoint behind OAuth 2.1. User docs: `docs/` (MkDocs, `mkdocs build --strict`) are the one place for usage, deployment and settings; README only says what noticebox is, installs it in a few lines and links there.
 
 ## Commands
 

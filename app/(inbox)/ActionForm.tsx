@@ -33,7 +33,7 @@ export function ActionForm({
           {state.error}
         </p>
       )}
-      <button type="submit" disabled={pending} className={danger ? "btn mt-3 text-error" : "btn-primary mt-3"}>
+      <button type="submit" disabled={pending} className={danger ? "btn mt-3 justify-self-start text-error" : "btn-primary mt-3 justify-self-start"}>
         {button}
       </button>
     </form>

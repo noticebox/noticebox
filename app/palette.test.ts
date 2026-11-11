@@ -9,10 +9,10 @@ import { expect, test } from "vitest";
 type RGB = [number, number, number];
 
 const css = readFileSync(new URL("./globals.css", import.meta.url), "utf8");
-const block = (start: number) => css.slice(css.indexOf("{", start) + 1, css.indexOf("}", start));
-const vars = (text: string) => Object.fromEntries([...text.matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6})/g)].map((m) => [m[1]!, m[2]!]));
-const light = vars(block(css.indexOf(":root")));
-const dark = { ...light, ...vars(block(css.indexOf(":root", css.indexOf("prefers-color-scheme: dark")))) };
+// Each colour is `--name: light-dark(#light, #dark);`, once.
+const pairs = [...css.matchAll(/--([a-z-]+):\s*light-dark\((#[0-9a-f]{6}),\s*(#[0-9a-f]{6})\)/g)];
+const light = Object.fromEntries(pairs.map((m) => [m[1]!, m[2]!]));
+const dark = Object.fromEntries(pairs.map((m) => [m[1]!, m[3]!]));
 
 const hex = (h: string): RGB => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255) as RGB;
 const lin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -61,7 +61,7 @@ const deltaE = (a: RGB, b: RGB) => {
 
 // What each badge class in globals.css paints: [text, fill].
 const badges = (v: Record<string, string>): Record<string, [string, string]> => ({
-  "badge-open": [v.ink!, v.card!],
+  "badge-open": [v.accent!, v["accent-soft"]!],
   "badge-review": [v.amber!, v["amber-soft"]!],
   "badge-done": [v.ok!, v["ok-soft"]!],
   "badge-off": [v.muted!, v.soft!],

@@ -69,7 +69,7 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   await expect(page.getByRole("heading", { name: /Report content/ })).toBeVisible();
   await expect(page.getByText(/1 report waits for a decision/)).toBeVisible();
   await expect(page.getByText("Received per day")).toBeVisible();
-  await expect(page.getByText("http://localhost:3300/f/report")).toBeVisible();
+  await expect(page.getByText("http://localhost:3300/f/report", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Submissions" }).click();
   await expect(page).toHaveURL(/\/forms\/report\/submissions$/);
   const row = page.getByRole("row").filter({ hasText: REPORT.text });
@@ -94,29 +94,64 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   await dialog.getByLabel("Reason").fill("Address blurred, reporter informed.");
   await dialog.getByRole("button", { name: "Mark as acted on" }).click();
   await expect(dialog).toBeHidden();
-  await expect(row.getByRole("button", { name: "State: acted on" })).toBeVisible(); // the table keeps every state
-  await page.getByLabel("Filter by state").selectOption("open"); // "Open" hides what is closed
-  await expect(page.getByText(REPORT.text)).toHaveCount(0);
-  await page.getByLabel("Filter by state").selectOption("all");
+  // The table opens on what is open: a decided one leaves it, and "Show all" brings it back with its new state.
+  await expect(row).toHaveCount(0);
+  await expect(page.getByText("Nothing waits for a decision.")).toBeVisible();
+  await page.getByRole("button", { name: "Show all" }).click();
+  await expect(row.getByRole("button", { name: "State: acted on" })).toBeVisible();
+  const byState = page.getByRole("group", { name: "Filter by state" });
+  await expect(byState.getByRole("button", { name: /^All/ })).toHaveAttribute("aria-pressed", "true");
+  await page
+    .locator("summary")
+    .filter({ hasText: /^State$/ })
+    .click(); // one state, as a chip that goes back to Open
+  await page.getByRole("button", { name: /^acted on/ }).click();
+  await expect(row).toBeVisible();
+  await page.getByRole("button", { name: /instead of only acted on/ }).click();
+  await expect(byState.getByRole("button", { name: /^Open/ })).toHaveAttribute("aria-pressed", "true");
+  await expect(row).toHaveCount(0);
+  await byState.getByRole("button", { name: /^All/ }).click();
   await page.getByLabel("Filter submissions").fill("nothing like this");
   await expect(page.getByText("Nothing matches.")).toBeVisible();
   await page.getByLabel("Filter submissions").fill("");
 
-  // The detail: fields, history, a note after the fact.
+  // The detail, as a pane beside the table: fields, history, a note after the fact.
   await row.getByRole("link", { name: REPORT.text }).click();
   await expect(page).toHaveURL(/\/forms\/report\/submissions\/[A-Za-z0-9_-]+$/);
-  await expect(page.getByText("who@example.org")).toBeVisible();
-  await expect(page.getByText("r1", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Open the note" })).toHaveAttribute("href", "https://notes.test/r/r1/n1");
-  const history = page.getByRole("list").filter({ hasText: "received it as" });
+  const pane = page.getByRole("complementary", { name: /^Submission / });
+  await expect(pane.getByText("who@example.org")).toBeVisible();
+  await expect(pane.getByText("r1", { exact: true })).toBeVisible();
+  await expect(pane.getByRole("link", { name: "Open the note" })).toHaveAttribute("href", "https://notes.test/r/r1/n1");
+  await expect(row).toHaveAttribute("aria-current", "true"); // the table stays, the open one marked
+  const history = pane.getByRole("list").filter({ hasText: "received it as" });
   await expect(history.getByRole("listitem").filter({ hasText: "Address blurred" })).toContainText("marcel moved it from open to acted on");
-  await page.locator("[data-hydrated]").waitFor();
-  await page.getByRole("button", { name: "Add a note" }).click();
+  await pane.locator("[data-hydrated]").waitFor();
+  await pane.getByRole("button", { name: "Add a note" }).click();
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Add a note" })).toBeVisible();
   await page.getByRole("dialog").getByLabel("Note").fill("Reporter said thanks.");
   await page.getByRole("dialog").getByRole("button", { name: "Add a note" }).click();
   await expect(history.getByRole("listitem").filter({ hasText: "Reporter said thanks." })).toContainText("marcel noted");
-  await expect(page.getByRole("button", { name: "State: acted on" })).toBeVisible();
+  await expect(pane.getByRole("button", { name: "State: acted on" })).toBeVisible();
+  // The same submission on a page of its own, and back beside the table.
+  await pane.getByRole("link", { name: "Open on a page of its own" }).click();
+  await expect(page).toHaveURL(/\/forms\/report\/case\/[A-Za-z0-9_-]+$/);
+  const own = page.getByRole("article", { name: /^Submission / });
+  await expect(own.getByText("Reporter said thanks.")).toBeVisible();
+  await expect(page.getByRole("table")).toHaveCount(0);
+  await own.getByRole("link", { name: "Open beside the table" }).click();
+  await expect(page).toHaveURL(/\/forms\/report\/submissions\/[A-Za-z0-9_-]+$/);
+  await pane.getByRole("link", { name: "Close the submission" }).click();
+  await expect(page).toHaveURL(/\/forms\/report\/submissions$/);
+  await expect(pane).toHaveCount(0);
+
+  // Dark chosen in the top bar outlasts a reload; "Like the system" forgets the choice.
+  await page.getByRole("button", { name: "Dark" }).click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Like the system" }).click();
+  await page.reload();
+  await expect(page.locator("html")).not.toHaveAttribute("data-theme", /./);
 
   const exported = (await (await request.get("/export.json?form=report", { headers: USER })).json()) as { state: string; events: unknown[] }[];
   expect(exported[0]!.state).toBe("acted_on");
