@@ -1,33 +1,78 @@
-// The forms file as something that can be edited: the raw JSON object as the file has it (with its `${VAR}`
-// references, which must never be written back expanded), the parsed configuration, and one way to change it: a
-// mutation of a copy of the raw object, parsed to prove it valid, then written to the file and taken into use.
-import { readFileSync, writeFileSync } from "node:fs";
-import { expand, FORM_NAME, parseConfig, type Config, type Env, type KindName } from "./config";
-import type { Outcome } from "./db";
+// The boxes and forms as something that can be edited. They live in the database (ADR 0004), each form as the JSON it
+// was written as, with its `${VAR}` references, which must never be stored expanded. One way to change them: a
+// mutation of a copy of that raw object, parsed whole to prove it valid, then written to the store and taken into use.
+// Older releases kept them in a JSON file (NOTICEBOX_CONFIG); `importFile` brings such a file in once, on upgrade.
+import { existsSync, readFileSync } from "node:fs";
+import { expand, FORM_NAME, parseStoredConfig, type Config, type Env, type KindName } from "./config";
+import type { Outcome, Store } from "./db";
 
 export type RawForm = Record<string, unknown>;
 export type RawConfig = { boxes?: string[]; forms?: Record<string, RawForm> };
 
+/** The settings key that records the one-time import of the forms file. */
+const IMPORTED = "forms_file_imported_at";
+
 export class Forms {
-  readonly path: string | null; // null: in memory only (tests)
+  private store: Store;
   private env: Env;
+  private log: (line: string) => void;
   private raw: RawConfig;
   config: Config;
 
-  constructor(path: string | null, env: Env, raw?: RawConfig) {
-    this.path = path;
+  constructor(store: Store, env: Env, log: (line: string) => void = console.error) {
+    this.store = store;
     this.env = env;
-    this.raw = raw ?? (path ? parseRaw(readFileSync(path, "utf8"), path) : { forms: {} });
-    this.config = parseConfig(JSON.parse(expand(JSON.stringify(this.raw), env)));
+    this.log = log;
+    const stored = store.readForms();
+    const named = new Set(Object.values(stored.forms).map((f) => (typeof f.box === "string" ? f.box : "forms")));
+    this.raw = { boxes: stored.boxes.filter((b) => !named.has(b)), forms: stored.forms };
+    this.config = this.load(this.raw);
   }
 
-  /** A copy of the raw object, for the settings pages to show what the file says (secrets as `${VAR}`). */
+  /** Parses stored forms; a variable the environment lacks is logged, not fatal (see parseStoredConfig). */
+  private load(raw: RawConfig): Config {
+    const { config, missing } = parseStoredConfig(raw, this.env);
+    for (const name of missing) this.log(`forms: \${${name}} is not set in the environment; what needs it is skipped`);
+    return config;
+  }
+
+  /**
+   * Imports the forms file of an older release, once: only into a database without boxes or forms, and never again
+   * after it has been done. The file is not read after that; the log says it can go.
+   */
+  importFile(path: string, now: Date = new Date()): void {
+    if (!existsSync(path)) return;
+    const at = this.store.setting(IMPORTED);
+    if (at) {
+      this.log(`forms: ${path} was imported on ${at.slice(0, 10)} and is no longer read; remove it and NOTICEBOX_CONFIG`);
+      return;
+    }
+    if (this.config.boxes.length > 0) {
+      this.log(`forms: the database already has boxes and forms, so ${path} is ignored; remove it and NOTICEBOX_CONFIG`);
+      return;
+    }
+    const raw = parseRaw(readFileSync(path, "utf8"), path);
+    let config: Config;
+    try {
+      config = this.load(raw);
+    } catch (e) {
+      throw new Error(`${path}: ${(e as Error).message}`);
+    }
+    this.store.writeForms({ boxes: config.boxes, forms: raw.forms ?? {} }, (n) => config.forms[n]!.box);
+    this.store.setSetting(IMPORTED, now.toISOString());
+    this.raw = { ...raw, forms: raw.forms ?? {} };
+    this.config = config;
+    const n = Object.keys(config.forms).length;
+    this.log(`forms: imported ${n} form${n === 1 ? "" : "s"} from ${path} into the database; the file is no longer read and can be removed`);
+  }
+
+  /** A copy of a form as written, for the settings pages and MCP to show (secrets as `${VAR}`). */
   rawForm(name: string): RawForm | undefined {
     const f = this.raw.forms?.[name];
     return f ? (structuredClone(f) as RawForm) : undefined;
   }
 
-  /** Applies `change` to a copy of the raw object; if the result parses, it is written and becomes the configuration. */
+  /** Applies `change` to a copy of the raw object; if the result parses, it is stored and becomes the configuration. */
   edit(change: (raw: RawConfig) => void | string): Outcome {
     const next = structuredClone(this.raw) as RawConfig;
     next.forms ??= {};
@@ -35,20 +80,32 @@ export class Forms {
     if (refused) return { ok: false, error: refused };
     let parsed: Config;
     try {
-      parsed = parseConfig(JSON.parse(expand(JSON.stringify(next), this.env)));
+      // A form being saved must have every variable it names; the others were checked when they were saved.
+      for (const [name, f] of Object.entries(next.forms)) {
+        const text = JSON.stringify(f);
+        if (text !== JSON.stringify(this.raw.forms?.[name])) expand(text, this.env);
+      }
+      parsed = this.load(next);
     } catch (e) {
       return { ok: false, error: (e as Error).message };
     }
-    // The file lists only the boxes no form names; the rest follow from the forms.
+    // Only the boxes no form names are kept in the list; the rest follow from the forms.
     const named = new Set(Object.values(parsed.forms).map((f) => f.box));
     const listed = parsed.boxes.filter((b) => !named.has(b));
     if (listed.length === 0) delete next.boxes;
     else next.boxes = listed;
-    // In place, so a bind-mounted file keeps its inode; the file is small and read only at start and after an edit.
-    if (this.path) writeFileSync(this.path, JSON.stringify(next, null, 2) + "\n");
+    this.store.writeForms({ boxes: parsed.boxes, forms: next.forms }, (n) => parsed.forms[n]!.box);
     this.raw = next;
     this.config = parsed;
     return { ok: true };
+  }
+
+  /** Replaces every box and form (tests seed a runtime this way). */
+  replace(raw: RawConfig): Outcome {
+    return this.edit((r) => {
+      r.boxes = raw.boxes ?? [];
+      r.forms = structuredClone(raw.forms ?? {});
+    });
   }
 
   createBox(name: string): Outcome {

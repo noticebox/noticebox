@@ -21,7 +21,7 @@ The [quick start](https://noticebox.github.io/noticebox/get-started/quick-start/
 
 ```sh
 npm install
-NOTICEBOX_CONFIG=noticebox.example.json NOTICEBOX_DEV_USER=dev NTFY_REPORTS_TOPIC=x NTFY_CONTACT_TOPIC=y npm run dev
+NOTICEBOX_CONFIG=noticebox.example.json NOTICEBOX_DEV_USER=dev NTFY_REPORTS_TOPIC=x NTFY_CONTACT_TOPIC=y npm run dev   # the example forms go into data/ once
 npm test            # unit tests (vitest)
 npm run typecheck
 npm run lint

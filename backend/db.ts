@@ -1,4 +1,4 @@
-// The store: one SQLite file with submissions and their append-only events. Nothing is ever updated in `events`; a
+// The store: one SQLite file with the boxes and forms, the submissions and their append-only events. Nothing is ever updated in `events`; a
 // submission's state is the result of its events and is kept on the row only to list and filter quickly. The schema
 // is the migrations' (migrations.ts), applied when the store opens.
 // Queries are built with kysely, typed by the tables below, and run synchronously on better-sqlite3: kysely only
@@ -60,7 +60,13 @@ export type Tables = {
   };
   events: { id: Generated<number>; submission_id: string; at: string; actor: string; from_state: string | null; to_state: string | null; reason: string };
   grants: Grant;
+  boxes: { name: string; position: number };
+  forms: { name: string; box: string; definition: string; position: number };
+  settings: { key: string; value: string };
 };
+
+/** The boxes and forms as stored: each form as written, `${VAR}` references and all, in the order they were made. */
+export type StoredForms = { boxes: string[]; forms: Record<string, Record<string, unknown>> };
 
 type Row = Tables["submissions"];
 
@@ -337,6 +343,41 @@ export class Store {
       q.updateTable("grants").set({ revoked_at: now.toISOString() }).where("id", "=", id).where("actor", "=", actor).where("revoked_at", "is", null),
     );
     return changed ? { ok: true } : { ok: false, error: "no such connection" };
+  }
+
+  /** Every box (also those a form names) and every form, each in its stored order. */
+  readForms(): StoredForms {
+    const boxes = this.all(q.selectFrom("boxes").select("name").orderBy("position")).map((b) => b.name);
+    const rows = this.all(q.selectFrom("forms").select(["name", "definition"]).orderBy("position"));
+    return { boxes, forms: Object.fromEntries(rows.map((r) => [r.name, JSON.parse(r.definition) as Record<string, unknown>])) };
+  }
+
+  /**
+   * Replaces the boxes and forms in one transaction. They are a handful of rows, rewritten whole after each change, so
+   * the stored order is always the order the forms module has them in. `boxOf` is each form's box after parsing.
+   */
+  writeForms(stored: StoredForms, boxOf: (form: string) => string): void {
+    this.db.transaction(() => {
+      this.run(q.deleteFrom("forms"));
+      this.run(q.deleteFrom("boxes"));
+      stored.boxes.forEach((name, position) => this.run(q.insertInto("boxes").values({ name, position })));
+      Object.entries(stored.forms).forEach(([name, f], position) =>
+        this.run(q.insertInto("forms").values({ name, box: boxOf(name), definition: JSON.stringify(f), position })),
+      );
+    })();
+  }
+
+  setting(key: string): string | undefined {
+    return this.first(q.selectFrom("settings").select("value").where("key", "=", key))?.value;
+  }
+
+  setSetting(key: string, value: string): void {
+    this.run(
+      q
+        .insertInto("settings")
+        .values({ key, value })
+        .onConflict((oc) => oc.column("key").doUpdateSet({ value })),
+    );
   }
 
   close(): void {

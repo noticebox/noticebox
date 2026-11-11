@@ -7,13 +7,13 @@ noticebox: an inbox for forms on static pages. Follows Marceltov/engineering-con
 ## Commands
 
 ```sh
-NOTICEBOX_CONFIG=noticebox.example.json NOTICEBOX_DEV_USER=dev NTFY_REPORTS_TOPIC=x NTFY_CONTACT_TOPIC=y npm run dev
+NOTICEBOX_CONFIG=noticebox.example.json NOTICEBOX_DEV_USER=dev NTFY_REPORTS_TOPIC=x NTFY_CONTACT_TOPIC=y npm run dev   # imports the example forms into data/ once
 npm test                                  # vitest: backend/**/*.test.ts, app/**/*.test.ts (the palette check) and proxy.test.ts; each test gets its own temp NOTICEBOX_DB/CONFIG (vitest.setup.ts)
 npx vitest run backend/intake.test.ts -t "name"   # one file / one test
 npm run typecheck                         # next typegen && tsc --noEmit
 npm run lint
 npm run format                            # Prettier at 160 columns (format:check in CI); not the MkDocs Markdown in docs/
-npm run test:e2e                          # next build, then Playwright on :3300 against e2e/noticebox.json
+npm run test:e2e                          # next build, then Playwright on :3300; e2e/seed.ts creates the forms before the server starts
 npx playwright test e2e/inbox.spec.ts     # after a build; reuses a running server outside CI
 ```
 
@@ -28,7 +28,7 @@ Dependabot (`.github/dependabot.yml`) opens weekly grouped bumps; patch and mino
 - **The boundary is lint-enforced** (`eslint.config.mjs`): `app/` and `proxy.ts` import the backend only through `@/backend` (`backend/index.ts`, the one door; export new things there). `backend/` never imports next/react or the frontend, and uses relative imports internally.
 - **Runtime** (`backend/runtime.ts`): one `Runtime` per process on `globalThis` (forms, store, rate limiter, env settings, injectable `now`/`fetch`/`log`). Route handlers and server actions call `runtime()`; tests build their own with `makeRuntime` / helpers in `backend/testutil.ts`. Backend route handlers (`intakeRoute`, `mcpRoute`, OAuth routes) take the runtime and are thin re-exports in `app/**/route.ts`.
 - **Auth is the reverse proxy's**: `proxy.ts` lets the public paths through (`/f/…`, `/api/f/…`, `/health`, `/mcp`, `/oauth/token|register`, `/.well-known/…`) and answers 401 on everything else without the user header; fail closed. It also rewrites non-GET `/f/<form>` to `/api/f/<form>`. Actions are attributed via `actorOf`; MCP actions as `<person> via <client>`.
-- **The forms file is the configuration and is editable** (`backend/forms.ts`): every change mutates a copy of the raw JSON, parses it whole (`backend/config.ts`), then writes it. `${VAR}` references stay unexpanded in the file — never write the expanded config back.
+- **Boxes and forms live in the database** (`backend/forms.ts`, ADR 0004): each form is stored as the JSON it was written as. Every change mutates a copy of the raw JSON, parses it whole (`backend/config.ts`), then rewrites the `boxes`/`forms` rows. `${VAR}` references stay unexpanded in the store — never store the expanded config; a variable unset at load only marks the notify targets that need it. The deprecated forms file (`NOTICEBOX_CONFIG`) is only imported once (`Forms.importFile`).
 - **Store** (`backend/db.ts`): `submissions` + append-only `events` (only retention's optional second step, `deleteAfterDays`, deletes a submission together with its events); a submission's state is derived from its events and only cached on the row. The schema is ordered migrations (`backend/migrations.ts`, recorded in `PRAGMA user_version`) applied at open; a shipped migration is never edited, a change is a new one. Queries are `kysely` builders typed by `Tables`, only compiled by kysely and run synchronously on `better-sqlite3`, so the store stays synchronous. Kinds (`backend/kinds.ts`) are presets of states (`closed`, `reason` flags); any state may move to any other.
 - **MCP first**: every inbox feature is an MCP tool too (`backend/mcp.ts`), and a new feature lands as a tool first. Server actions and tools are thin adapters over the same backend functions (`backend/admin.ts` for boxes, forms, connections, export); every tool result carries `next: string[]`, built in the tool layer from what the call did, and the `url` of each item it names.
 - **Retention** runs at start and every 6 h (`instrumentation.ts` → `sweepNow`): closed submissions past `retentionDays` lose personal fields; ids, states and events stay, until the form's optional `deleteAfterDays` deletes the submission and its events (`Store.expire`, ADR 0005).

@@ -4,7 +4,7 @@ The words the rest of the documentation uses.
 
 **Box.** A group of forms: a site, a project. The sidebar lists boxes and their forms. A box is nothing but the `box` name on each form.
 
-**Form.** What a page posts to: a name, its states, the fields it knows about, where posts may come from, where the browser goes afterwards, how long closed submissions keep personal data, where to announce a new one, and a link to what a submission is about. A form takes any field a page posts unless it is strict. All of it is in `noticebox.json`, made and changed in the inbox or by hand.
+**Form.** What a page posts to: a name, its states, the fields it knows about, where posts may come from, where the browser goes afterwards, how long closed submissions keep personal data, where to announce a new one, and a link to what a submission is about. A form takes any field a page posts unless it is strict. All of it is in the database, made and changed in the inbox or over MCP.
 
 **Kind.** The preset of states a form starts with. A **report** is a notice about content: *open*, *in review*, *acted on*, *rejected*. A **message** is *new* until *answered*. The states can be changed per form. [States, reasons and kinds](../using/kinds.md) has the details.
 

@@ -48,6 +48,27 @@ drop table if exists form_tokens;
 drop table if exists issues;
 `,
   },
+  {
+    // Boxes and forms move here from the forms file (ADR 0004). A form is kept as the JSON it was written as, with its
+    // `${VAR}` references, because parsing fills in defaults and expands them; `box` is a column for queries.
+    name: "boxes, forms and settings",
+    sql: `
+create table boxes (
+  name text primary key,
+  position integer not null
+);
+create table forms (
+  name text primary key,
+  box text not null,
+  definition text not null,
+  position integer not null
+);
+create table settings (
+  key text primary key,
+  value text not null
+);
+`,
+  },
 ];
 
 /** What a migration needs of a connection: better-sqlite3 has it, and so does any other SQLite driver. */

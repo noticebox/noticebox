@@ -30,4 +30,4 @@ docker exec noticebox node -e '
   new Database("/data/noticebox.sqlite").exec("VACUUM INTO \x27/data/backup.sqlite\x27")'
 ```
 
-or stop the container and copy the three files. The forms file is in your repository already.
+or stop the container and copy the three files. The boxes and forms are in the same file, so the backup has them too.

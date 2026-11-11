@@ -8,7 +8,7 @@ The three buttons beside the name choose the colours: light, dark, or like the s
 
 The boxes and their forms, each form with the number of submissions that wait for a decision (highlighted while there are any). The front door opens the first form. A box's name opens the box's page: its forms, a rename, and its removal once it is empty.
 
-**Add new** makes a form or a box. A new form needs a name (its endpoint, `/f/<name>`, which cannot change later), a box, a kind and a title. It starts without fields: the first submission brings them, or the page [describes them itself](../integrations/forms.md#describing-fields-from-the-page). Every change made here is written to the forms file, validated as a whole first.
+**Add new** makes a form or a box. A new form needs a name (its endpoint, `/f/<name>`, which cannot change later), a box, a kind and a title. It starts without fields: the first submission brings them, or the page [describes them itself](../integrations/forms.md#describing-fields-from-the-page). Every change made here is validated as a whole first, then saved to the database.
 
 ## A form
 
@@ -16,7 +16,7 @@ Every page of a form starts with its box, its kind and its endpoint, its title, 
 
 ## Settings
 
-A form's third tab, with the list of its sections at the left on wide screens: title and box; the described fields (name, type, label, required, length, options of a select, whether personal, a help text) and, beside them, the fields seen in submissions that nobody described yet, one click away from being described; the *Strict* switch; the states with their two flags; where posts are accepted from and where the browser goes afterwards; the notification targets (any number of ntfy topics and webhooks); the retention and the link. *Save the settings*, in the bar that stays at the bottom, writes the file; a refused save says what is wrong and keeps what was typed. A form without submissions can be removed here.
+A form's third tab, with the list of its sections at the left on wide screens: title and box; the described fields (name, type, label, required, length, options of a select, whether personal, a help text) and, beside them, the fields seen in submissions that nobody described yet, one click away from being described; the *Strict* switch; the states with their two flags; where posts are accepted from and where the browser goes afterwards; the notification targets (any number of ntfy topics and webhooks); the retention and the link. *Save the settings*, in the bar that stays at the bottom, saves the form; a refused save says what is wrong and keeps what was typed. A form without submissions can be removed here.
 
 ## Overview
 

@@ -31,7 +31,7 @@ const version = (path: string) => {
 test("a fresh database ends at the latest version with the expected tables", () => {
   const path = tempFile();
   new Store(path).close();
-  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["events", "grants", "submissions"] });
+  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "forms", "grants", "settings", "submissions"] });
 });
 
 test("a database made by 0.10.0, before migrations, opens at the latest version and keeps its data", () => {
@@ -62,7 +62,7 @@ test("a database made by 0.10.0, before migrations, opens at the latest version 
   expect(store.get("s1")?.fields).toEqual(REPORT);
   expect(store.events("s1")).toHaveLength(1);
   store.close();
-  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["events", "grants", "submissions"] });
+  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "forms", "grants", "settings", "submissions"] });
 });
 
 test("a database written by 0.11.1 (node:sqlite) opens and keeps its data", () => {
@@ -106,7 +106,7 @@ test("a failing migration rolls back and the store refuses to open", () => {
   const db = new Database(":memory:");
   migrate(db);
   const broken: Migration[] = [...MIGRATIONS, { name: "half done", sql: "create table half (x); insert into nowhere values (1);" }];
-  expect(() => migrate(db, broken)).toThrow(/migration 2 \(half done\).*nowhere/);
+  expect(() => migrate(db, broken)).toThrow(new RegExp(`migration ${MIGRATIONS.length + 1} \\(half done\\).*nowhere`));
   expect(db.prepare("select name from sqlite_master where name = 'half'").get()).toBeUndefined();
   expect((db.prepare("pragma user_version").get() as { user_version: number }).user_version).toBe(MIGRATIONS.length);
   db.close();

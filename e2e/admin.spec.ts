@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
+import Database from "better-sqlite3";
 import { expect, test } from "@playwright/test";
 
 const USER = { "x-user": "marcel" };
 test.use({ extraHTTPHeaders: USER });
 
-test("a box and a form are made in the inbox, the form's settings are saved to the file, and the form is removed again", async ({ page, request }) => {
+test("a box and a form are made in the inbox, the form's settings are saved to the database, and the form is removed again", async ({ page, request }) => {
   await page.goto("/");
   const sidebar = page.getByRole("complementary").first();
   await sidebar.getByRole("button", { name: "Add new" }).click();
@@ -42,19 +42,21 @@ test("a box and a form are made in the inbox, the form's settings are saved to t
   await page.getByLabel("Takes posts from").fill("https://example.org");
   await page.getByRole("button", { name: "Save the settings" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
-  const file = JSON.parse(readFileSync(".e2e/noticebox.json", "utf8")) as {
-    boxes?: string[];
-    forms: Record<string, { box: string; fields: Record<string, unknown>; notify: unknown; origins: string[] }>;
-  };
-  expect(file.forms.orders).toMatchObject({
+  const db = new Database(".e2e/e2e.sqlite", { readonly: true });
+  type Row = { box: string; fields: Record<string, unknown>; notify: unknown; origins: string[] };
+  const rows = db.prepare("select name, definition from forms").all() as { name: string; definition: string }[];
+  const boxes = (db.prepare("select name from boxes").all() as { name: string }[]).map((b) => b.name);
+  db.close();
+  const stored = { forms: Object.fromEntries(rows.map((r) => [r.name, JSON.parse(r.definition) as Row])) };
+  expect(stored.forms.orders).toMatchObject({
     box: "example.org",
     origins: ["https://example.org"],
     notify: [{ type: "webhook", url: "https://hooks.test/orders" }],
     states: [{ name: "new" }, { name: "answered", closed: true }, { name: "forwarded" }],
   });
-  expect(Object.keys(file.forms.orders!.fields)).toEqual(["quantity", "message"]);
-  expect(file.forms.report!.notify).toEqual({ ntfy: "${NTFY_URL}" }); // the other form's secret stays a reference
-  expect(file.boxes ?? []).not.toContain("example.org"); // the box has a form now
+  expect(Object.keys(stored.forms.orders!.fields)).toEqual(["quantity", "message"]);
+  expect(stored.forms.report!.notify).toEqual({ ntfy: "${NTFY_URL}" }); // the other form's secret stays a reference
+  expect(boxes).toContain("example.org");
 
   // A refused save keeps what was typed and says why.
   await page.getByLabel("Personal fields are removed").fill("0");

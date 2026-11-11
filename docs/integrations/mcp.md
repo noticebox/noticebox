@@ -25,8 +25,8 @@ MCP is noticebox's main interface: everything the inbox can do, an assistant can
 | `get_submission` | One submission with its fields and history, and `github_issue_url` when its form names a [repository](github.md) |
 | `add_note` | A note on a submission |
 | `decide` | A move to another state, with the reason; refused like in the UI when the reason is missing or the move is not allowed |
-| `get_form` | One form as the forms file has it, `${VAR}` references unexpanded, with its figures: open and closed in the last 30 days (by state), the oldest open submission, and when personal fields are next removed |
-| `put_form` | Creates a form or replaces it as a whole; the file is validated before it is written, so an invalid form, a `${VAR}` the environment does not have, or dropping a state that submissions are in changes nothing |
+| `get_form` | One form as it is stored, `${VAR}` references unexpanded, with its figures: open and closed in the last 30 days (by state), the oldest open submission, and when personal fields are next removed |
+| `put_form` | Creates a form or replaces it as a whole; the form is validated before it is saved, so an invalid form, a `${VAR}` the environment does not have, or dropping a state that submissions are in changes nothing |
 | `delete_form` | Deletes a form without submissions (destructive) |
 | `create_box`, `rename_box`, `delete_box` | A box: made, renamed with its forms, deleted once empty (destructive) |
 | `list_connections` | Your connected assistants, the current one marked |

@@ -1,6 +1,8 @@
 import { writeFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { expand, loadConfig, parseConfig } from "./config";
+import { expand, FORM_NAME, loadConfig, parseConfig } from "./config";
+import { Store } from "./db";
+import { Forms } from "./forms";
 
 test("defaults fill in what the file leaves out", () => {
   const c = parseConfig({
@@ -42,8 +44,20 @@ test("defaults fill in what the file leaves out", () => {
   expect(f.fields.topic!.personal).toBe(false);
 });
 
-test("mistakes are named with their place", () => {
-  const bad = (raw: unknown, re: RegExp) => expect(() => parseConfig(raw)).toThrow(re);
+test("mistakes are named with their place, and a form saved to the database is refused for the same ones", () => {
+  const forms = new Forms(new Store(":memory:"), {}, () => {});
+  const bad = (raw: unknown, re: RegExp) => {
+    expect(() => parseConfig(raw)).toThrow(re);
+    const entries = (raw as { forms: unknown }).forms;
+    if (Array.isArray(entries)) return; // not a set of forms at all, which saving one form cannot express
+    for (const [name, f] of Object.entries(entries as Record<string, Record<string, unknown>>)) {
+      const r = forms.putForm(name, f);
+      expect(r.ok).toBe(false);
+      // A bad name is refused before parsing, in the words the inbox and MCP have always used for it.
+      if (!r.ok) expect(r.error).toMatch(FORM_NAME.test(name) ? re : /a form name is lowercase letters/);
+    }
+    expect(forms.config.forms).toEqual({});
+  };
   bad({ forms: [] }, /forms: must be an object/);
   bad({ forms: { "Bad Name": { kind: "report", fields: { a: {} } } } }, /form name "Bad Name"/);
   bad({ forms: { "-x": { kind: "report", fields: { a: {} } } } }, /form name "-x"/);
