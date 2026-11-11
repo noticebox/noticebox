@@ -2,7 +2,7 @@
 // Icons). An icon only repeats a word next to it, or sits in a control that has an aria-label, so every icon is
 // hidden from screen readers. The app's own mark is drawn for noticebox (the same as app/icon.svg), not taken from
 // the library.
-import { ArrowDown, ArrowUp, ChevronDown, ExternalLink, Menu, X, type LucideIcon } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ExternalLink, Maximize2, Menu, Minimize2, Monitor, Moon, Sun, X, type LucideIcon } from "lucide-react";
 
 const ICONS = {
   moveUp: ArrowUp,
@@ -14,6 +14,11 @@ const ICONS = {
   menu: Menu,
   dropdown: ChevronDown,
   external: ExternalLink, // a link that opens another site in a new tab
+  expand: Maximize2, // the open submission on a page of its own
+  collapse: Minimize2, // back to the pane beside the table
+  light: Sun,
+  dark: Moon,
+  system: Monitor, // the theme the system asks for
 } satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

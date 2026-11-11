@@ -240,6 +240,12 @@ test("an assistant reads a form, creates one and replaces it; an invalid form ch
 
   const report = await call("get_form", { name: "report" });
   expect(report.structuredContent.form).toMatchObject({ kind: "report" });
+  expect(report.structuredContent.figures).toMatchObject({ open: 0, oldest_open: null, days: 30, closed: 0, next_erase: null });
+  const waiting = rt.store.receive(rt.config.forms.report!, REPORT, null, rt.now());
+  const figures = (await call("get_form", { name: "report" })).structuredContent.figures;
+  expect(figures).toMatchObject({ open: 1, open_by_state: [{ state: "open", n: 1 }] });
+  expect(figures.oldest_open).toMatchObject({ id: waiting.id });
+  expect(figures.oldest_open.url).toContain(waiting.id);
   expect((await call("get_form", { name: "nope" })).isError).toBe(true);
 
   const order = {

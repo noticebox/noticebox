@@ -23,3 +23,9 @@ export function stateTone(state: string, states: readonly StateLike[]): string {
   if (states[0]?.name === state) return "badge-open";
   return "badge-review";
 }
+
+/** How long ago `iso` was at `now`, short: hours under two days, then days. */
+export function age(iso: string, now: Date): string {
+  const hours = Math.floor((now.getTime() - new Date(iso).getTime()) / 3600000);
+  return hours < 48 ? t.age.hours(Math.max(0, hours)) : t.age.days(Math.floor(hours / 24));
+}

@@ -146,15 +146,41 @@ function server(rt: Runtime, who: Who): McpServer {
       description:
         "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, deleteAfterDays, notify, link, github, states. `${VAR}` references stay as written, never expanded.",
       inputSchema: z.object({ name: z.string() }),
-      outputSchema: withNext({ name: z.string(), url: z.string(), endpoint: z.string(), form: z.record(z.string(), z.unknown()) }),
+      outputSchema: withNext({
+        name: z.string(),
+        url: z.string(),
+        endpoint: z.string(),
+        form: z.record(z.string(), z.unknown()),
+        figures: z.object({
+          open: z.number(),
+          open_by_state: z.array(z.object({ state: z.string(), n: z.number() })),
+          oldest_open: z.object({ id: z.string(), received_at: z.string(), url: z.string() }).nullable(),
+          days: z.number(),
+          closed: z.number(),
+          closed_by_state: z.array(z.object({ state: z.string(), n: z.number() })),
+          next_erase: z.object({ day: z.string(), n: z.number() }).nullable(),
+        }),
+      }),
       annotations: { readOnlyHint: true },
     },
     async ({ name }) => {
       const form = rt.forms.rawForm(name);
-      if (!form) return refuse(`no form called "${name}"`);
-      return ok({ name, url: formUrl(name), endpoint: base + endpointPath(name), form }, [
+      const parsed = rt.config.forms[name];
+      if (!form || !parsed) return refuse(`no form called "${name}"`);
+      const f = rt.store.figures(parsed, rt.now());
+      const figures = {
+        open: f.open,
+        open_by_state: f.openByState,
+        oldest_open: f.oldestOpen && { ...f.oldestOpen, url: base + submissionPath(name, f.oldestOpen.id) },
+        days: f.days,
+        closed: f.closed,
+        closed_by_state: f.closedByState,
+        next_erase: f.nextErase,
+      };
+      return ok({ name, url: formUrl(name), endpoint: base + endpointPath(name), form, figures }, [
         "To change it, edit this object and send all of it back with put_form; leave `${VAR}` references as they are.",
         `Pages post to ${base + endpointPath(name)}.`,
+        ...(f.oldestOpen ? [`The oldest open submission waits since ${f.oldestOpen.received_at}: read it with get_submission (id ${f.oldestOpen.id}).`] : []),
       ]);
     },
   );

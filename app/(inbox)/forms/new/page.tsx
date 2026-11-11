@@ -1,4 +1,5 @@
 import { KINDS, runtime } from "@/backend";
+import { stateLabel, stateTone } from "@/app/_lib/format";
 import { ActionForm } from "../../ActionForm";
 import { BoxPicker } from "../../BoxPicker";
 import { createForm } from "../../admin";
@@ -16,7 +17,7 @@ export default async function NewFormPage({ searchParams }: { searchParams: Prom
   const boxes = rt.config.boxes;
   return (
     <div className="mx-auto max-w-xl">
-      <h1 className="mb-1 text-[28px] leading-tight font-bold tracking-tight">{t.newForm.title}</h1>
+      <h1 className="mb-1 text-[26px] leading-tight font-bold tracking-tight">{t.newForm.title}</h1>
       <p className="mb-6 text-muted">{t.newForm.intro}</p>
       <ActionForm action={createForm} button={t.newForm.create} className="grid gap-5">
         <div>
@@ -35,14 +36,28 @@ export default async function NewFormPage({ searchParams }: { searchParams: Prom
         <BoxPicker boxes={boxes} defaultValue={preset && boxes.includes(preset) ? preset : (boxes[0] ?? "")} />
         <fieldset>
           <legend className="mb-1 block font-bold">{t.newForm.kind}</legend>
-          {(Object.keys(KINDS) as (keyof typeof KINDS)[]).map((k, i) => (
-            <label key={k} className="mb-1 flex items-start gap-2">
-              <input type="radio" name="kind" value={k} defaultChecked={i === 0} className="mt-1" />
-              <span>
-                <span className="font-bold">{t.newForm.kinds[k].name}</span> <span className="text-muted">{t.newForm.kinds[k].text}</span>
-              </span>
-            </label>
-          ))}
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(Object.keys(KINDS) as (keyof typeof KINDS)[]).map((k, i) => (
+              <label
+                key={k}
+                className="sheet relative grid cursor-pointer content-start gap-2 p-4 hover:bg-hover has-checked:border-accent has-checked:ring-3 has-checked:ring-accent-soft has-focus-visible:outline-2 has-focus-visible:outline-accent"
+              >
+                <span className="flex items-center gap-2">
+                  <input type="radio" name="kind" value={k} defaultChecked={i === 0} className="accent-accent" />
+                  <span className="font-bold">{t.newForm.kinds[k].name}</span>
+                </span>
+                <span className="text-[14px] text-muted">{t.newForm.kinds[k].text}</span>
+                <span className="flex flex-wrap gap-1">
+                  <span className="sr-only">{t.newForm.startsWith}</span>
+                  {KINDS[k].states.map((st) => (
+                    <span key={st.name} className={`badge ${stateTone(st.name, KINDS[k].states)} text-[12px]`}>
+                      {stateLabel(st.name)}
+                    </span>
+                  ))}
+                </span>
+              </label>
+            ))}
+          </div>
         </fieldset>
       </ActionForm>
     </div>

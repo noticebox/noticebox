@@ -16,14 +16,14 @@ export { actorOf, publicUrl } from "./auth";
 export type { Config, Field, Form, GitHub, State, Target } from "./config";
 export type { Event, Grant } from "./db";
 export type { RawForm } from "./forms";
-export type { ListFilter, Outcome, Submission } from "./db";
+export type { Figures, ListFilter, Outcome, Submission } from "./db";
 export { issueDraft, issueUrl, type Draft } from "./github";
 export { healthRoute } from "./health";
 export { intakePreflight, intakeRoute } from "./intake";
 export { KINDS, stateOf, type KindName } from "./kinds";
 export { linkFor } from "./links";
 export { mcpRoute } from "./mcp";
-export { boxPath, formPath, submissionPath, submissionsPath } from "./paths";
+export { boxPath, casePath, formPath, submissionPath, submissionsPath } from "./paths";
 export {
   authServerRoute,
   authorizeRoute,
