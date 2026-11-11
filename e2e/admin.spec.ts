@@ -106,3 +106,29 @@ test("an empty form is removed, and an empty box too", async ({ page }) => {
   await expect(page).toHaveURL(/\/forms\/report$/);
   await expect(page.getByRole("complementary").first().getByText("scratch box")).toHaveCount(0);
 });
+
+test("an API token made in Your settings reads the REST API, is refused a change, and stops when revoked", async ({ page, playwright }) => {
+  await page.goto("/settings");
+  await page.getByLabel("Name").fill("e2e script");
+  await page.getByRole("button", { name: "Make a token" }).click();
+  const shown = page.getByRole("status").filter({ hasText: "not shown again" });
+  await expect(shown).toBeVisible();
+  const token = (await shown.locator("code").textContent())!.trim();
+  expect(token).toMatch(/^nbx_/);
+  await expect(page.getByText("e2e script")).toBeVisible();
+
+  // A script has no session: only the token.
+  const script = await playwright.request.newContext({ baseURL: "http://localhost:3300", storageState: { cookies: [], origins: [] } });
+  const auth = { authorization: `Bearer ${token}` };
+  expect((await script.get("/api/v1/forms")).status()).toBe(401);
+  const forms = await script.get("/api/v1/forms", { headers: auth });
+  expect(forms.status()).toBe(200);
+  expect(((await forms.json()) as { forms: { name: string }[] }).forms.map((f) => f.name)).toContain("report");
+  expect((await script.post("/api/v1/boxes", { headers: auth, data: { name: "nope" } })).status()).toBe(403);
+  expect((await script.get("/api/v1/openapi.json")).ok()).toBeTruthy();
+
+  await page.getByRole("listitem").filter({ hasText: "e2e script" }).getByRole("button", { name: "Revoke" }).click();
+  await expect(page.getByText("e2e script")).toBeHidden();
+  expect((await script.get("/api/v1/forms", { headers: auth })).status()).toBe(401);
+  await script.dispose();
+});

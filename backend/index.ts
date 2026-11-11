@@ -15,7 +15,7 @@ export {
 } from "./admin";
 export { safeNext, signInMethods } from "./accounts";
 export { actorOf, personOf, publicUrl, type Person } from "./auth";
-export { authRoute, authServerMetadataRoute, clientNameFor, openIdConfigRoute, refusedSignIn, type RefusedSignIn } from "./signin";
+export { apiResourceMetadataRoute, authRoute, authServerMetadataRoute, clientNameFor, openIdConfigRoute, refusedSignIn, type RefusedSignIn } from "./signin";
 export type { Config, Field, Form, GitHub, State, Target } from "./config";
 export type { Event } from "./db";
 export type { RawForm } from "./forms";
@@ -27,5 +27,7 @@ export { KINDS, stateOf, type KindName } from "./kinds";
 export { linkFor } from "./links";
 export { mcpRoute } from "./mcp";
 export { boxPath, casePath, formPath, submissionPath, submissionsPath } from "./paths";
+export { restRoute } from "./rest";
 export { runtime, sweepNow, type Runtime } from "./runtime";
+export { createApiToken, listApiTokens, revokeApiToken, type ApiToken, type Scope } from "./tokens";
 export { summaryOf } from "./summary";

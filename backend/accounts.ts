@@ -5,10 +5,12 @@
 //     NOTICEBOX_ALLOWED_EMAILS gets in; an empty list lets nobody in.
 //   - A person is one account with one username, taken from the first sign-in's claim (preferred_username, GitHub's
 //     login), so the name an Authentik login recorded before stays the same. Events record that username as text.
-//   - MCP clients sign in through OAuth (@better-auth/mcp), with access tokens bound to /mcp.
+//   - MCP clients sign in through OAuth (@better-auth/mcp), with access tokens bound to /mcp; scripts likewise, with
+//     tokens bound to /api/v1, or with an API token (@better-auth/api-key) that works on /api/v1 only (tokens.ts).
 // Where this differs from Better Auth's defaults: codes and links are stored hashed; no bearer plugin; telemetry off.
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomBytes } from "node:crypto";
+import { apiKey } from "@better-auth/api-key";
 import { cimd } from "@better-auth/cimd";
 import { fetchClientMetadataResource } from "@better-auth/cimd/node";
 import { defineRequestState, getCurrentAdapter } from "@better-auth/core/context";
@@ -40,6 +42,12 @@ export type SignInSettings = {
 
 /** Seconds an MCP access token lives: a JWT can't be revoked before it expires, so it is short and the client refreshes it. */
 export const ACCESS_TOKEN_SECONDS = 600;
+
+/** Days an API token lives unless its maker chooses otherwise, and the most they may choose (ADR 0002). */
+export const API_TOKEN_DAYS = { default: 90, max: 365 };
+
+/** API tokens start with this, so a bearer is told apart from an OAuth access token at a glance (and by a scanner). */
+export const API_TOKEN_PREFIX = "nbx_";
 
 /** Intake records its events as `form`; no person may have that name. */
 const RESERVED = new Set(["form"]);
@@ -154,6 +162,9 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        // API tokens are made, listed and revoked only through noticebox (tokens.ts), with its checks of name, scope and
+        // lifetime: the plugin's own endpoints answer server-side calls only, never a request from outside.
+        if (ctx.path.startsWith("/api-key/") && ctx.request) throw new APIError("NOT_FOUND");
         if ((ctx.body as { oauth_query?: unknown } | undefined)?.oauth_query) await oauthSignIn.set(true);
       }),
     },
@@ -203,6 +214,10 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
         loginPage: "/login",
         consentPage: "/consent",
         resource: `${s.baseUrl}/mcp`,
+        // The REST API is a second resource: a script registers for it (`resources`) and asks for a token with
+        // resource=<base>/api/v1, which is then bound to that alone. An /mcp token is refused there, and the reverse.
+        resources: [`${s.baseUrl}/api/v1`],
+        clientRegistrationAllowedResources: [`${s.baseUrl}/api/v1`],
         accessTokenExpiresIn: ACCESS_TOKEN_SECONDS,
         // Tokens only ever stand for a person: no client_credentials grant, whose tokens name nobody.
         grantTypes: ["authorization_code", "refresh_token"],
@@ -211,6 +226,18 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
         allowUnauthenticatedClientRegistration: true,
       }),
       cimd({ fetchClientMetadataResource, metadataProfile: "mcp-2026-07-28" }),
+      // API tokens: stored hashed, with a name, a scope (`inbox: read` or `inbox: read, write`) and an expiry. A key never
+      // stands for a session (enableSessionForAPIKeys stays off), and only /api/v1 reads it, from the Authorization header.
+      apiKey({
+        defaultPrefix: API_TOKEN_PREFIX,
+        requireName: true,
+        // tokens.ts always passes the lifetime itself (90 days unless chosen); null there must mean none, which the
+        // plugin only honours when its own default is none.
+        keyExpiration: { defaultExpiresIn: null, maxExpiresIn: API_TOKEN_DAYS.max },
+        // Its default is ten requests a day per key; noticebox's own limits apply instead.
+        rateLimit: { enabled: false },
+        permissions: { defaultPermissions: { inbox: ["read"] } },
+      }),
       // Codes and links are stored hashed: auth.sqlite holds no usable code or link.
       emailOTP({
         storeOTP: "hashed",

@@ -32,16 +32,6 @@ items:
       - { label: "#27", url: "https://github.com/noticebox/noticebox/issues/27" }
       - { label: "V7", url: "https://noticebox.github.io/noticebox/values/#v7" }
 
-  - id: rest-api
-    status: later
-    when: Later
-    icon: api
-    title: A REST API with tokens
-    summary: The same actions under /api/v1, with an OpenAPI description and API tokens that work on REST only.
-    links:
-      - { label: "#47", url: "https://github.com/noticebox/noticebox/issues/47" }
-      - { label: "V7", url: "https://noticebox.github.io/noticebox/values/#v7" }
-
   - id: delete-after
     status: later
     when: Later
@@ -53,6 +43,17 @@ items:
       - { label: "V2", url: "https://noticebox.github.io/noticebox/values/#v2" }
 
   # ---- done ------------------------------------------------------------------------------------------------------------
+  - id: rest-api
+    status: done
+    date: 2026-11-11
+    icon: api
+    title: A REST API with tokens
+    summary: The same actions under /api/v1, with an OpenAPI description and API tokens that work on REST only.
+    links:
+      - { label: "#47", url: "https://github.com/noticebox/noticebox/issues/47" }
+      - { label: "#96", url: "https://github.com/noticebox/noticebox/pull/96" }
+      - { label: "V7", url: "https://noticebox.github.io/noticebox/values/#v7" }
+
   - id: sign-in
     status: done
     date: 2026-11-11

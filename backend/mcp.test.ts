@@ -58,6 +58,7 @@ test("tools act in the name of the person who allowed the client, and the trail 
   const tools = (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string }[];
   expect(tools.map((t) => t.name).sort()).toEqual([
     "add_note",
+    "create_api_token",
     "create_box",
     "decide",
     "delete_box",
@@ -65,11 +66,13 @@ test("tools act in the name of the person who allowed the client, and the trail 
     "export",
     "get_form",
     "get_submission",
+    "list_api_tokens",
     "list_connections",
     "list_forms",
     "list_submissions",
     "put_form",
     "rename_box",
+    "revoke_api_token",
     "revoke_connection",
   ]);
 
@@ -230,7 +233,8 @@ test("every tool's result says what to do next", async () => {
   const other = await connect(rt, "marcel", "Other");
   const grant = (await connections(rt, other.personId)).find((c) => c.client_name === "Other")!.id;
   // One valid call per tool, in an order where each finds what it needs.
-  const calls: [string, Record<string, unknown>][] = [
+  let tokenId = "";
+  const calls: [string, Record<string, unknown> | (() => Record<string, unknown>)][] = [
     ["list_forms", {}],
     ["get_form", { name: "report" }],
     ["put_form", { name: "spare", form: { kind: "message" } }],
@@ -244,11 +248,15 @@ test("every tool's result says what to do next", async () => {
     ["delete_form", { name: "spare" }],
     ["list_connections", {}],
     ["revoke_connection", { id: grant }],
+    ["create_api_token", { name: "backup script" }],
+    ["list_api_tokens", {}],
+    ["revoke_api_token", () => ({ id: tokenId })],
     ["export", {}],
   ];
   expect(calls.map(([n]) => n).sort()).toEqual((await tools()).map((t) => t.name).sort());
   for (const [name, args] of calls) {
-    const r = await call(name, args);
+    const r = await call(name, typeof args === "function" ? args() : args);
+    if (name === "create_api_token") tokenId = r.structuredContent.id;
     expect(r.isError, `${name}: ${r.content?.[0]?.text}`).toBeFalsy();
     expect(r.structuredContent.next.length, name).toBeGreaterThan(0);
     for (const line of r.structuredContent.next) expect(typeof line).toBe("string");

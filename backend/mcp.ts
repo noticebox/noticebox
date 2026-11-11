@@ -6,12 +6,11 @@ import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotoco
 import * as z from "zod";
 import { publicUrl } from "./auth";
 import type { Event, Submission } from "./db";
-import { issueUrl } from "./github";
-import { linkFor } from "./links";
 import { boxPath, endpointPath, formPath, submissionPath } from "./paths";
 import { clientName, connected, connections, createBox, deleteBox, deleteForm, exportSubmissions, putForm, renameBox, revokeConnection } from "./admin";
 import type { Runtime } from "./runtime";
-import { summaryOf } from "./summary";
+import { createApiToken, listApiTokens, revokeApiToken } from "./tokens";
+import { formsView, formView, fullView, SCHEMAS, summaryView } from "./views";
 
 // Every result carries `next`: what to do now, built from what the call did. Guidance that matters only after a call
 // lives there, not in the tool descriptions. Every result that names a box, form or submission carries its URL.
@@ -22,28 +21,9 @@ const ok = <T extends object>(body: T, next: string[]) => {
 const refuse = (message: string) => ({ isError: true as const, content: [{ type: "text" as const, text: message }] });
 const withNext = <T extends z.ZodRawShape>(shape: T) => z.object({ ...shape, next: z.array(z.string()) });
 
-const EVENT = z.object({ at: z.string(), actor: z.string(), from_state: z.string().nullable(), to_state: z.string().nullable(), reason: z.string() });
-const SUMMARY = {
-  id: z.string(),
-  form: z.string(),
-  kind: z.string(),
-  state: z.string(),
-  received_at: z.string(),
-  closed_at: z.string().nullable(),
-  url: z.string(),
-  link: z.string().nullable(),
-  summary: z.string(),
-};
+const { SUMMARY, FULL, API_TOKEN, CONNECTION } = SCHEMAS;
 const Summary = z.object(SUMMARY);
-const FULL = {
-  ...SUMMARY,
-  fields: z.record(z.string(), z.string()),
-  github_issue_url: z.string().nullable(),
-  purged_at: z.string().nullable(),
-  events: z.array(EVENT),
-};
 const Full = z.object(FULL);
-const CONNECTION = z.object({ id: z.string(), client_name: z.string(), created_at: z.string(), current: z.boolean() });
 
 const DAY = 86400000;
 const day = (iso: string, days: number) => new Date(new Date(iso).getTime() + days * DAY).toISOString().slice(0, 10);
@@ -55,26 +35,8 @@ function server(rt: Runtime, who: Who): McpServer {
   const { actor, person, base } = who;
   const s = new McpServer({ name: "noticebox", version: "0.1.0" });
   const formUrl = (name: string) => base + formPath(name);
-  const summary = (x: Submission) => ({
-    id: x.id,
-    form: x.form,
-    kind: x.kind,
-    state: x.state,
-    received_at: x.received_at,
-    closed_at: x.closed_at,
-    url: base + submissionPath(x.form, x.id),
-    link: linkFor(rt.config.forms[x.form], x)?.url ?? null,
-    summary: summaryOf(rt.config.forms[x.form], x, 120),
-  });
-  const event = ({ at, actor, from_state, to_state, reason }: Event) => ({ at, actor, from_state, to_state, reason });
-  /** A submission with its fields and history; `history` when the caller has already read it (the export). */
-  const full = (x: Submission, history: Event[] = rt.store.events(x.id)) => ({
-    ...summary(x),
-    fields: x.fields,
-    github_issue_url: issueUrl(rt.config.forms[x.form], x, base),
-    purged_at: x.purged_at,
-    events: history.map(event),
-  });
+  const summary = (x: Submission) => summaryView(rt, base, x);
+  const full = (x: Submission, history?: Event[]) => fullView(rt, base, x, history);
 
   /** What follows from a submission's state: how to move it on, and what retention will do to it. */
   const afterSubmission = (x: Submission): string[] => {
@@ -101,40 +63,14 @@ function server(rt: Runtime, who: Who): McpServer {
       description:
         "The forms this inbox takes, each with its box and states: a submission starts in the first; a state flagged closed counts as done; one flagged reason needs a written reason to enter.",
       inputSchema: z.object({}),
-      outputSchema: withNext({
-        boxes: z.array(z.object({ name: z.string(), url: z.string() })),
-        forms: z.array(
-          z.object({
-            name: z.string(),
-            box: z.string(),
-            title: z.string(),
-            kind: z.string(),
-            url: z.string(),
-            states: z.array(z.object({ name: z.string(), closed: z.boolean(), reason: z.boolean() })),
-            retention_days: z.number(),
-            delete_after_days: z.number().nullable(),
-          }),
-        ),
-      }),
+      outputSchema: withNext(SCHEMAS.FORMS),
       annotations: { readOnlyHint: true },
     },
     async () => {
-      const forms = Object.values(rt.config.forms);
+      const view = formsView(rt, base);
       return ok(
-        {
-          boxes: rt.config.boxes.map((name) => ({ name, url: base + boxPath(name) })),
-          forms: forms.map((f) => ({
-            name: f.name,
-            box: f.box,
-            title: f.title,
-            kind: f.kind,
-            url: formUrl(f.name),
-            states: f.states,
-            retention_days: f.retentionDays,
-            delete_after_days: f.deleteAfterDays,
-          })),
-        },
-        forms.length
+        view,
+        view.forms.length
           ? ["See what waits with list_submissions (form=<name> for one form).", "Read a form's whole settings with get_form before changing it with put_form."]
           : ["There are no forms yet. Create one with put_form; create_box first if it belongs in a new box."],
       );
@@ -147,41 +83,17 @@ function server(rt: Runtime, who: Who): McpServer {
       description:
         "One form as the forms file has it: box, kind, title, fields, strict, origins, redirect, retentionDays, deleteAfterDays, notify, link, github, states. `${VAR}` references stay as written, never expanded.",
       inputSchema: z.object({ name: z.string() }),
-      outputSchema: withNext({
-        name: z.string(),
-        url: z.string(),
-        endpoint: z.string(),
-        form: z.record(z.string(), z.unknown()),
-        figures: z.object({
-          open: z.number(),
-          open_by_state: z.array(z.object({ state: z.string(), n: z.number() })),
-          oldest_open: z.object({ id: z.string(), received_at: z.string(), url: z.string() }).nullable(),
-          days: z.number(),
-          closed: z.number(),
-          closed_by_state: z.array(z.object({ state: z.string(), n: z.number() })),
-          next_erase: z.object({ day: z.string(), n: z.number() }).nullable(),
-        }),
-      }),
+      outputSchema: withNext(SCHEMAS.FORM),
       annotations: { readOnlyHint: true },
     },
     async ({ name }) => {
-      const form = rt.forms.rawForm(name);
-      const parsed = rt.config.forms[name];
-      if (!form || !parsed) return refuse(`no form called "${name}"`);
-      const f = rt.store.figures(parsed, rt.now());
-      const figures = {
-        open: f.open,
-        open_by_state: f.openByState,
-        oldest_open: f.oldestOpen && { ...f.oldestOpen, url: base + submissionPath(name, f.oldestOpen.id) },
-        days: f.days,
-        closed: f.closed,
-        closed_by_state: f.closedByState,
-        next_erase: f.nextErase,
-      };
-      return ok({ name, url: formUrl(name), endpoint: base + endpointPath(name), form, figures }, [
+      const view = formView(rt, base, name);
+      if (!view) return refuse(`no form called "${name}"`);
+      const oldest = view.figures.oldest_open;
+      return ok(view, [
         "To change it, edit this object and send all of it back with put_form; leave `${VAR}` references as they are.",
-        `Pages post to ${base + endpointPath(name)}.`,
-        ...(f.oldestOpen ? [`The oldest open submission waits since ${f.oldestOpen.received_at}: read it with get_submission (id ${f.oldestOpen.id}).`] : []),
+        `Pages post to ${view.endpoint}.`,
+        ...(oldest ? [`The oldest open submission waits since ${oldest.received_at}: read it with get_submission (id ${oldest.id}).`] : []),
       ]);
     },
   );
@@ -397,6 +309,61 @@ function server(rt: Runtime, who: Who): McpServer {
           ? ["This was the current connection: the next call fails. Connecting again needs the user to allow it in the browser."]
           : ["That connection's tokens stopped working. Connecting it again needs the user to allow it in the browser."],
       );
+    },
+  );
+
+  s.registerTool(
+    "create_api_token",
+    {
+      description:
+        "Make an API token for the user's scripts: it works on the REST API (/api/v1) only, as the user, never on MCP. Only when the user asks for one: the token passes through this chat.",
+      inputSchema: z.object({
+        name: z.string().min(1).max(60).describe("what it is for, e.g. the script's name"),
+        scope: z.enum(["read", "read+write"]).default("read"),
+        days: z.number().int().min(1).max(365).nullable().optional().describe("how long it works; default 90; null for no expiry, only when the user asks"),
+      }),
+      outputSchema: withNext({ token: z.string(), ...API_TOKEN.shape }),
+      annotations: { destructiveHint: false },
+    },
+    async ({ name, scope, days }) => {
+      const r = await createApiToken(rt, person, { name, scope, days });
+      if ("error" in r) return refuse(r.error);
+      return ok(r, [
+        "Give the token to the user now, once, and don't repeat it or write it anywhere else: it is not shown again.",
+        `It goes in the Authorization header: Bearer <token>, on ${base}/api/v1. The API is described at ${base}/api/v1/openapi.json.`,
+        r.expires_at ? `It stops working on ${r.expires_at.slice(0, 10)}.` : "It has no expiry: revoke it with revoke_api_token when it is no longer needed.",
+        `The user sees and revokes it at ${base}/settings.`,
+      ]);
+    },
+  );
+
+  s.registerTool(
+    "list_api_tokens",
+    {
+      description: "The user's API tokens for the REST API, newest first: name, scope, expiry and last use; never the tokens themselves.",
+      inputSchema: z.object({}),
+      outputSchema: withNext({ tokens: z.array(API_TOKEN) }),
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      const tokens = await listApiTokens(rt, person);
+      return ok({ tokens }, [
+        tokens.length ? "Revoke one that is no longer used with revoke_api_token." : "There are none. create_api_token makes one when the user asks.",
+      ]);
+    },
+  );
+
+  s.registerTool(
+    "revoke_api_token",
+    {
+      description: "Revoke one of the user's API tokens (see list_api_tokens). Destructive: a script using it is refused from the next request on.",
+      inputSchema: z.object({ id: z.string() }),
+      outputSchema: withNext({ id: z.string(), revoked: z.boolean() }),
+      annotations: { destructiveHint: true },
+    },
+    async ({ id }) => {
+      const r = await revokeApiToken(rt, person, id);
+      return r.ok ? ok({ id, revoked: true }, ["The token stopped working. A script that still needs access needs a new one."]) : refuse(r.error);
     },
   );
 

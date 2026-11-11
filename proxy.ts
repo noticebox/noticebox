@@ -2,13 +2,13 @@ import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 import { t } from "@/app/_lib/copy";
 
-// The public side: the hosted forms and their endpoint, the health check, MCP, Better Auth's own endpoints and the
+// The public side: the hosted forms and their endpoint, the health check, MCP, the REST API, Better Auth's own endpoints and the
 // OAuth metadata (each checks its credentials itself), and the sign-in page. Everything else is the inbox, which needs
 // a Better Auth session: without its cookie, a request gets 401, with a link to the sign-in page for a browser. Only
 // the cookie's presence is checked here; the pages check the session itself (personOf), so a forged cookie gets nowhere.
 // A header a proxy in front might set (X-Authentik-Username) counts for nothing.
 const FORM = /^\/f\/([a-z0-9][a-z0-9_-]{0,39})$/;
-const PUBLIC = /^\/(f\/|api\/f\/|api\/auth\/|health$|mcp$|login$|\.well-known\/|(icon\.svg|apple-icon\.png|opengraph-image\.png)$)/;
+const PUBLIC = /^\/(f\/|api\/f\/|api\/auth\/|api\/v1\/|health$|mcp$|login$|\.well-known\/|(icon\.svg|apple-icon\.png|opengraph-image\.png)$)/;
 
 const escape = (s: string) => s.replace(/[&<>"]/g, (c) => `&${{ "&": "amp", "<": "lt", ">": "gt", '"': "quot" }[c]};`);
 

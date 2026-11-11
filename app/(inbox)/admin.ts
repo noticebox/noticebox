@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
+  createApiToken,
   createBox as createBoxIn,
   createForm as createFormIn,
   deleteBox as deleteBoxIn,
@@ -11,6 +12,7 @@ import {
   formPath,
   personOf,
   renameBox as renameBoxIn,
+  revokeApiToken,
   revokeConnection,
   runtime,
   updateForm as updateFormIn,
@@ -20,7 +22,8 @@ import { t } from "@/app/_lib/copy";
 
 // The settings pages' actions: thin adapters over backend/admin.ts, which the MCP tools call too. Every action needs
 // the signed-in person, and Next checks the request's origin before any server action runs.
-export type AdminState = { error?: string; n?: number };
+// `secret` is a value shown once (a new API token), never stored by the page.
+export type AdminState = { error?: string; n?: number; secret?: string };
 
 const str = (data: FormData, k: string) => String(data.get(k) ?? "").trim();
 
@@ -103,6 +106,31 @@ export async function revokeGrant(prev: AdminState, data: FormData): Promise<Adm
   const person = await signedIn();
   if (!person) return { error: t.common.signInFirst, n };
   const r = await revokeConnection(runtime(), person, str(data, "id"));
+  if (!r.ok) return { error: r.error, n };
+  revalidatePath("/settings");
+  return { n };
+}
+
+export async function createToken(prev: AdminState, data: FormData): Promise<AdminState> {
+  const n = (prev.n ?? 0) + 1;
+  const person = await signedIn();
+  if (!person) return { error: t.common.signInFirst, n };
+  const days = str(data, "days");
+  const r = await createApiToken(runtime(), person, {
+    name: str(data, "name"),
+    scope: str(data, "scope") === "read+write" ? "read+write" : "read",
+    days: days === "none" ? null : Number(days),
+  });
+  if ("error" in r) return { error: r.error, n };
+  revalidatePath("/settings");
+  return { n, secret: r.token };
+}
+
+export async function revokeToken(prev: AdminState, data: FormData): Promise<AdminState> {
+  const n = (prev.n ?? 0) + 1;
+  const person = await signedIn();
+  if (!person) return { error: t.common.signInFirst, n };
+  const r = await revokeApiToken(runtime(), person, str(data, "id"));
   if (!r.ok) return { error: r.error, n };
   revalidatePath("/settings");
   return { n };
