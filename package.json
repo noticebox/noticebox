@@ -46,5 +46,8 @@
   },
   "allowScripts": {
     "better-sqlite3": false
+  },
+  "overrides": {
+    "minimatch@>=7": "^11.0.1"
   }
 }
