@@ -13,3 +13,5 @@ playwright-report/
 .venv-docs/
 site/
 .e2e/
+# Local design sketches (Open Design); the shipped design lives in app/.
+.open-design/
