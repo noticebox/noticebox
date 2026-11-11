@@ -6,7 +6,8 @@ on:
   pull_request:
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Pinned: on ubuntu-latest (26.04) Playwright's apt install can't resolve the Ubuntu mirrors (#85). Back to latest once it can.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
