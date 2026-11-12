@@ -1,6 +1,6 @@
 // The MCP endpoint: POST /mcp, the tools over the same store, forms and admin functions the pages use. The bearer is
 // an access token Better Auth issued for /mcp (accounts.ts), so every action is done in the name of the person who
-// allowed the client, and the audit trail says so: "<username> via <client>".
+// allowed the client, and the audit trail says so: "<email> via <client>".
 import { requireMcpAuth } from "@better-auth/mcp";
 import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotocol/server";
 import * as z from "zod";
@@ -451,10 +451,10 @@ const rpcErrorFor = (base: string) => (message: string) =>
  * connection stops its tokens at the next call. A string says why not.
  */
 export async function whoFor(rt: Runtime, personId: string, clientId: string, base: string): Promise<Who | string> {
-  const user = (await (await (await rt.auth()).$context).internalAdapter.findUserById(personId)) as { username?: string | null; email: string } | null;
+  const user = (await (await (await rt.auth()).$context).internalAdapter.findUserById(personId)) as { email: string } | null;
   if (!user) return "this person no longer exists";
   if (!(await connected(rt, personId, clientId))) return "this connection was revoked";
-  return { actor: `${user.username || user.email} via ${await clientName(rt, clientId)}`, person: personId, clientId, base };
+  return { actor: `${user.email} via ${await clientName(rt, clientId)}`, person: personId, clientId, base };
 }
 
 /** Answers one MCP request for `who`; the caller has checked who that is (mcpRoute, or a test through whoFor). */

@@ -12,7 +12,7 @@ export default async function SettingsPage() {
   const rt = runtime();
   const h = await headers();
   const person = await personOf(h, rt);
-  const actor = person?.username ?? "";
+  const actor = person?.email ?? "";
   const grants = person ? await connections(rt, person.id) : [];
   const base = publicUrl(h, rt);
   return (

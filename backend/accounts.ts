@@ -3,8 +3,8 @@
 //   - People sign in with a code mailed to them (with a link to sign in by in the same mail, outside an MCP sign-in)
 //     or through the OAuth/OIDC providers NOTICEBOX_OIDC_<NAME>_* names. Only a verified email on
 //     NOTICEBOX_ALLOWED_EMAILS gets in; an empty list lets nobody in.
-//   - A person is one account with one username, taken from the first sign-in's claim (preferred_username, GitHub's
-//     login), so the name an Authentik login recorded before stays the same. Events record that username as text.
+//   - A person is one account, named by its verified email address: events record that address as text. Nothing a
+//     provider claims about a username counts, so no two providers can name one person differently.
 //   - MCP clients sign in through OAuth (@better-auth/mcp), with access tokens bound to /mcp.
 // Where this differs from Better Auth's defaults: codes and links are stored hashed; no bearer plugin; telemetry off.
 import { AsyncLocalStorage } from "node:async_hooks";
@@ -41,21 +41,9 @@ export type SignInSettings = {
 /** Seconds an MCP access token lives: a JWT can't be revoked before it expires, so it is short and the client refreshes it. */
 export const ACCESS_TOKEN_SECONDS = 600;
 
-/** Intake records its events as `form`; no person may have that name. */
-const RESERVED = new Set(["form"]);
-
 export function emailAllowed(allowed: string[], email: string): boolean {
   const e = email.trim().toLowerCase();
   return allowed.some((a) => (a.startsWith("@") ? e.endsWith(a) : e === a));
-}
-
-/** A username from a claim: lowercase letters, digits, `.`, `_` and `-`, up to 40 characters. */
-function slug(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
-    .replace(/^[-._]+|[-._]+$/g, "")
-    .slice(0, 40);
 }
 
 /** Only a path of this instance: never another host (`//evil`), so a link can't lead off the inbox. */
@@ -67,11 +55,6 @@ export function safeNext(next: unknown): string {
 // browser client adds it to every request from that page). The body the endpoints see has it stripped, so a hook notes it.
 const oauthSignIn = defineRequestState(() => false);
 
-// The username a provider claims for the person (preferred_username, GitHub's login), from its profile to the hook
-// that creates the user. `username` can't travel in the mapped profile itself: it is not an input field, so nobody can
-// set or change it through Better Auth's API, and Better Auth drops it from the profile for that reason.
-const claimedUsername = defineRequestState((): string | null => null);
-
 /** A request state's value, or `fallback` outside a request (a server-side call, such as the e2e setup's). */
 async function stateOr<T>(state: { get(): Promise<T> }, fallback: T): Promise<T> {
   try {
@@ -79,11 +62,6 @@ async function stateOr<T>(state: { get(): Promise<T> }, fallback: T): Promise<T>
   } catch {
     return fallback;
   }
-}
-
-async function claim(name: unknown): Promise<Record<string, never>> {
-  if (typeof name === "string" && name) await claimedUsername.set(name);
-  return {};
 }
 
 // A sign-in link is made only while a code mail is being written, and goes into that mail: the link plugin's own endpoint,
@@ -142,14 +120,11 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
         if (!/has a different type in the database/.test(message)) s.log(`better-auth ${level}: ${message}`);
       },
     },
-    user: { additionalFields: { username: { type: "string" as const, required: false, input: false, unique: true } } },
     // A second sign-in joins an account only when its provider says the address is verified. A provider listed in
     // trustedProviders would join even without that, so none is listed.
     account: { accountLinking: { enabled: true, trustedProviders: [] as string[] } },
     socialProviders: {
-      ...(github
-        ? { github: { clientId: github.clientId, clientSecret: github.clientSecret, mapProfileToUser: (p: { login?: string }) => claim(p.login) } }
-        : {}),
+      ...(github ? { github: { clientId: github.clientId, clientSecret: github.clientSecret } } : {}),
       ...(google ? { google: { clientId: google.clientId, clientSecret: google.clientSecret } } : {}),
     },
     hooks: {
@@ -160,34 +135,31 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
     databaseHooks: {
       user: {
         create: {
-          // Who may sign in, and the one username a person keeps: from the claim, else the address, never one taken.
+          // Who may sign in: a verified address on the list, whichever way it arrives (a provider that doesn't say the
+          // address is verified is refused).
           // `false` refuses: Better Auth then sends a provider sign-in back to the sign-in page with an error code,
           // where a thrown error would end on a bare JSON answer.
-          before: async (user: { email: string; emailVerified: boolean }, ctx: unknown) => {
+          before: async (user: { email: string; emailVerified: boolean }) => {
             if (!emailAllowed(s.allowed, user.email) || !user.emailVerified) {
               s.log(
                 `sign-in: refused a new account (${emailAllowed(s.allowed, user.email) ? "address not verified" : "address not on NOTICEBOX_ALLOWED_EMAILS"})`,
               );
               return false;
             }
-            const adapter = await adapterIn(ctx);
-            const base = slug((await stateOr(claimedUsername, null)) || user.email.split("@")[0]!) || "person";
-            let username = base;
-            for (let n = 2; RESERVED.has(username) || (await adapter?.findOne({ model: "user", where: [{ field: "username", value: username }] })); n++)
-              username = `${base}-${n}`;
-            return { data: { ...user, username } };
+            return { data: user };
           },
         },
       },
       session: {
         create: {
-          // The allowlist holds at every sign-in, not only the first: an address taken off the list can't sign in again.
+          // The allowlist and the verified address hold at every sign-in, not only the first: an address taken off the
+          // list can't sign in again.
           // Better Auth writes the client's address and browser into every session; nothing reads them, so neither is stored.
           before: async (session: Record<string, unknown>, ctx: unknown) => {
             const adapter = await adapterIn(ctx);
             const user = adapter ? await adapter.findOne({ model: "user", where: [{ field: "id", value: String(session.userId) }] }) : null;
-            if (adapter && (!user || !emailAllowed(s.allowed, String(user.email)))) {
-              s.log("sign-in: refused a session (address no longer on NOTICEBOX_ALLOWED_EMAILS)");
+            if (adapter && (!user || !user.emailVerified || !emailAllowed(s.allowed, String(user.email)))) {
+              s.log(`sign-in: refused a session (${user?.emailVerified ? "address no longer on NOTICEBOX_ALLOWED_EMAILS" : "address not verified"})`);
               return false;
             }
             return { data: { ...session, ...UNTRACKED } };
@@ -242,7 +214,6 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
             clientSecret: p.clientSecret || undefined,
             scopes: ["openid", "email", "profile"],
             pkce: true,
-            mapProfileToUser: (profile: Record<string, unknown>) => claim(profile.preferred_username),
           })),
       }),
     ],

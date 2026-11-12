@@ -1,5 +1,5 @@
-// Sign-in end to end, over HTTP as a browser and claude.ai do it: email codes and links, the allowlist, usernames from
-// an OIDC provider's claims, linking a second provider, and an MCP client's whole OAuth dance down to a recorded
+// Sign-in end to end, over HTTP as a browser and claude.ai do it: email codes and links, the allowlist, the verified address
+// every person is named by, linking a second provider, and an MCP client's whole OAuth dance down to a recorded
 // event. Better Auth runs for real over an in-memory auth.sqlite; only the mail is caught, and the OIDC providers are
 // stand-ins served by the same test server.
 import { createHash, randomBytes } from "node:crypto";
@@ -150,7 +150,7 @@ test("only a verified address on the list signs in; nobody else even gets a mail
   const signed = await signIn("ada@example.com");
   expect(signed.status).toBe(200);
   const person = await personOf(new Headers({ cookie: cookieOf(signed) }), rt);
-  expect(person?.username).toBe("ada");
+  expect(person?.email).toBe("ada@example.com");
 
   expect(await sendCode("eve@example.com")).toBeUndefined();
   expect((await signIn("eve@example.com")).ok).toBe(false);
@@ -177,7 +177,7 @@ test("outside an MCP sign-in the mail holds a link too; it signs in once, and ne
   const opened = await fetch(link, { redirect: "manual" });
   expect(opened.status).toBe(302);
   expect(opened.headers.get("location")).toBe(`${base}/forms/report`);
-  expect(await actorOf(new Headers({ cookie: cookieOf(opened) }), rt)).toBe("ada");
+  expect(await actorOf(new Headers({ cookie: cookieOf(opened) }), rt)).toBe("ada@example.com");
   const again = await fetch(link, { redirect: "manual" });
   expect(cookieOf(again)).not.toContain("session_token=");
 
@@ -186,28 +186,25 @@ test("outside an MCP sign-in the mail holds a link too; it signs in once, and ne
   expect(new URL(off!.link!).searchParams.get("callbackURL")).toBe("/");
 });
 
-test("a provider's preferred_username becomes the username events record; a second provider joins only on a verified address", async () => {
-  const first = await viaProvider("fake", { sub: "u-1", email: "marcel@example.com", email_verified: true, preferred_username: "marcel" });
+test("the verified address is the name events record, whatever a provider claims; a second provider joins only on a verified address", async () => {
+  const first = await viaProvider("fake", { sub: "u-1", email: "marcel@example.com", email_verified: true, preferred_username: "mallory" });
   expect(first.status).toBe(302);
   const cookie = cookieOf(first);
   const me = (await personOf(new Headers({ cookie }), rt))!;
-  expect(me.username).toBe("marcel");
+  expect(me.email).toBe("marcel@example.com");
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
   rt.store.note(id, (await actorOf(new Headers({ cookie }), rt))!, "Seen.", new Date());
-  expect(rt.store.events(id).at(-1)!.actor).toBe("marcel");
+  expect(rt.store.events(id).at(-1)!.actor).toBe("marcel@example.com");
 
-  // The same verified address through another provider is the same person, with the same name.
-  const second = await viaProvider("other", { sub: "o-9", email: "marcel@example.com", email_verified: true, preferred_username: "mbruckner" });
+  // The same verified address through another provider is the same person.
+  const second = await viaProvider("other", { sub: "o-9", email: "marcel@example.com", email_verified: true });
   expect(await personOf(new Headers({ cookie: cookieOf(second) }), rt)).toEqual(me);
   // Unverified, it is refused: an address someone merely typed at a provider doesn't open another's account.
-  const forged = await viaProvider("other", { sub: "o-10", email: "marcel@example.com", email_verified: false, preferred_username: "mallory" });
+  const forged = await viaProvider("other", { sub: "o-10", email: "marcel@example.com", email_verified: false });
   expect(cookieOf(forged)).not.toContain("session_token=");
-
-  // A name that is taken, or `form`, gets a suffix: no two people, and nobody, records as intake.
-  const taken = await viaProvider("fake", { sub: "u-2", email: "other@team.example", email_verified: true, preferred_username: "marcel" });
-  expect((await personOf(new Headers({ cookie: cookieOf(taken) }), rt))!.username).toBe("marcel-2");
-  const intake = await viaProvider("fake", { sub: "u-3", email: "intake@team.example", email_verified: true, preferred_username: "form" });
-  expect((await personOf(new Headers({ cookie: cookieOf(intake) }), rt))!.username).toBe("form-2");
+  // A provider that leaves email_verified out doesn't vouch for the address either.
+  const silent = await viaProvider("fake", { sub: "u-2", email: "silent@team.example" });
+  expect(cookieOf(silent)).not.toContain("session_token=");
 });
 
 const V = "2026-07-28";
@@ -230,7 +227,7 @@ const rpc = (method: string, params: Record<string, unknown>, headers: Record<st
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: { ...params, _meta: META } }),
   });
 
-test("an MCP client signs the person in, acts as '<username> via <client>', and stops at once when revoked", async () => {
+test("an MCP client signs the person in, acts as '<email> via <client>', and stops at once when revoked", async () => {
   const bare = await rpc("tools/list", {});
   expect(bare.status).toBe(401);
   expect(bare.headers.get("www-authenticate") ?? "").toContain(`${base}/.well-known/oauth-protected-resource/mcp`);
@@ -305,7 +302,7 @@ test("an MCP client signs the person in, acts as '<username> via <client>', and 
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
   const noted = await (await rpc("tools/call", { name: "add_note", arguments: { id, text: "Checked." } }, bearer)).json();
   expect(noted.result.isError).toBeUndefined();
-  expect(rt.store.events(id).at(-1)).toMatchObject({ actor: "ada via Claude", reason: "Checked." });
+  expect(rt.store.events(id).at(-1)).toMatchObject({ actor: "ada@example.com via Claude", reason: "Checked." });
   expect((await rpc("tools/list", {}, { authorization: `Bearer ${tokens.access_token.slice(0, -4)}AAAA` })).status).toBe(401);
 
   // Revoked on the settings page: the very next call fails, and the refresh token is gone with it.

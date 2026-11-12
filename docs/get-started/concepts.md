@@ -33,7 +33,7 @@ The path of one submission: the checks come first, so a refused post stores noth
 
 **History.** Every step a submission took: received, moved from one state to another, or a note added; by whom, when, with what reason. The history is append-only; nothing in it is ever changed or removed.
 
-**Actor.** The person who took a step, by the username they [signed in](../self-hosting/login.md#one-person-one-name) with. A step taken by an assistant through MCP is recorded as *name via client*.
+**Actor.** The person who took a step, by the email address they [signed in](../self-hosting/login.md#one-person-one-address) with. A step taken by an assistant through MCP is recorded as *address via client*.
 
 **Retention.** A submission closed longer ago than its form's `retentionDays` loses its personal fields: free text, addresses, anything not marked `personal: false`. The ids, the chosen category, the states and the history stay, unless the form also sets `deleteAfterDays`: after that, the whole submission is deleted.
 

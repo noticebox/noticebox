@@ -43,7 +43,7 @@ async function connect(rt: TestRuntime, user = "marcel", clientName = "Claude"):
   const now = new Date();
   const email = `${user}@test.example`;
   const found = (await ctx.internalAdapter.findUserByEmail(email))?.user;
-  const person = found ?? (await a.create({ model: "user", data: { email, name: user, username: user, emailVerified: true, createdAt: now, updatedAt: now } }));
+  const person = found ?? (await a.create({ model: "user", data: { email, name: user, emailVerified: true, createdAt: now, updatedAt: now } }));
   const clientId = randomBytes(8).toString("hex");
   await a.create({ model: "oauthClient", data: { clientId, name: clientName, redirectUris: ["http://localhost:4567/cb"], createdAt: now, updatedAt: now } });
   await a.create({ model: "oauthConsent", data: { clientId, userId: person.id, scopes: ["openid"], createdAt: now, updatedAt: now } });
@@ -103,7 +103,11 @@ test("tools act in the name of the person who allowed the client, and the trail 
   ]);
 
   const noted = (await (await rpc(rt, "tools/call", { name: "add_note", arguments: { id, text: "Looks like a genuine complaint." } }, auth)).json()).result;
-  expect(noted.structuredContent.events.at(-1)).toMatchObject({ actor: "marcel via Claude", to_state: null, reason: "Looks like a genuine complaint." });
+  expect(noted.structuredContent.events.at(-1)).toMatchObject({
+    actor: "marcel@test.example via Claude",
+    to_state: null,
+    reason: "Looks like a genuine complaint.",
+  });
 
   const refused = (await (await rpc(rt, "tools/call", { name: "decide", arguments: { id, to: "acted_on" } }, auth)).json()).result;
   expect(refused.isError).toBe(true);
@@ -112,7 +116,12 @@ test("tools act in the name of the person who allowed the client, and the trail 
   const decided = (await (await rpc(rt, "tools/call", { name: "decide", arguments: { id, to: "acted_on", reason: "Removed the note." } }, auth)).json()).result
     .structuredContent;
   expect(decided.state).toBe("acted_on");
-  expect(decided.events.at(-1)).toMatchObject({ actor: "marcel via Claude", from_state: "open", to_state: "acted_on", reason: "Removed the note." });
+  expect(decided.events.at(-1)).toMatchObject({
+    actor: "marcel@test.example via Claude",
+    from_state: "open",
+    to_state: "acted_on",
+    reason: "Removed the note.",
+  });
   expect(rt.store.get(id)!.closed_at).toBeTruthy();
 
   const got = (await (await rpc(rt, "tools/call", { name: "get_submission", arguments: { id: "nope" } }, auth)).json()).result;
@@ -346,7 +355,7 @@ test("export gives the submissions with their histories, by form and state", asy
   expect(one[0]).toMatchObject({ id: a.id, fields: REPORT, url: `${BASE}/forms/report/submissions/${a.id}` });
   expect(one[0].events.map((e: { actor: string; to_state: string }) => [e.actor, e.to_state])).toEqual([
     ["form", "open"],
-    ["marcel via Claude", "rejected"],
+    ["marcel@test.example via Claude", "rejected"],
   ]);
   const byState = (await call("export", { form: "contact", state: "new" })).structuredContent;
   expect(byState.submissions).toHaveLength(1);

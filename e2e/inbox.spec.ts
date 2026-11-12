@@ -128,13 +128,13 @@ test("a report goes from a page's form through the inbox to a recorded decision"
   await expect(pane.getByRole("link", { name: "Open the note" })).toHaveAttribute("href", "https://notes.test/r/r1/n1");
   await expect(row).toHaveAttribute("aria-current", "true"); // the table stays, the open one marked
   const history = pane.getByRole("list").filter({ hasText: "received it as" });
-  await expect(history.getByRole("listitem").filter({ hasText: "Address blurred" })).toContainText("marcel moved it from open to acted on");
+  await expect(history.getByRole("listitem").filter({ hasText: "Address blurred" })).toContainText("marcel@example.org moved it from open to acted on");
   await pane.locator("[data-hydrated]").waitFor();
   await pane.getByRole("button", { name: "Add a note" }).click();
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Add a note" })).toBeVisible();
   await page.getByRole("dialog").getByLabel("Note").fill("Reporter said thanks.");
   await page.getByRole("dialog").getByRole("button", { name: "Add a note" }).click();
-  await expect(history.getByRole("listitem").filter({ hasText: "Reporter said thanks." })).toContainText("marcel noted");
+  await expect(history.getByRole("listitem").filter({ hasText: "Reporter said thanks." })).toContainText("marcel@example.org noted");
   await expect(pane.getByRole("button", { name: "State: acted on" })).toBeVisible();
   // The same submission on a page of its own, and back beside the table.
   await pane.getByRole("link", { name: "Open on a page of its own" }).click();
