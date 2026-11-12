@@ -1,6 +1,6 @@
 # Sign-in
 
-noticebox signs people in itself, with [Better Auth](https://better-auth.com): a code by email, and any OAuth or OpenID Connect providers you configure. Only the addresses you list get in. The name a person signs in with is the actor of every step they take in the history ([ADR 0002](https://github.com/noticebox/noticebox/blob/main/docs/adr/0002-sign-in-with-better-auth.md)).
+noticebox signs people in itself, with [Better Auth](https://better-auth.com): a code by email, and any OAuth or OpenID Connect providers you configure. Only the addresses you list get in. The address a person signs in with is the actor of every step they take in the history ([ADR 0002](https://github.com/noticebox/noticebox/blob/main/docs/adr/0002-sign-in-with-better-auth.md)).
 
 ## Who may sign in
 
@@ -35,17 +35,19 @@ NOTICEBOX_OIDC_GITHUB_CLIENT_SECRET=...
 
 The sign-in page shows a button for each provider. A provider that refuses a sign-in sends the person back with its error code, which the page shows and the log records. The start fails when there is no way to sign in at all: no SMTP and no provider.
 
-## One person, one name
+## One person, one address
 
-The first sign-in sets the person's username, and the history records that name. It comes from the provider's `preferred_username` claim (GitHub: the login). Without that claim, it is the part of the address before the `@`. A name that is taken gets a number (`marcel-2`), and `form`, the name intake records under, is never given out.
+A person is their verified email address, and the history records that address. What a provider says about a username (`preferred_username`, a GitHub login) counts for nothing, so two providers can't name one person differently.
+
+The address must be verified at every sign-in: by the code mailed to it, or by a provider that sends `email_verified: true`. A provider that sends `false`, or leaves the claim out, gets nobody in. In Authentik, check that the `email` scope mapping sends `email_verified` as true for your users.
 
 A second provider joins the same account only when it reports the same address as verified. Otherwise it is refused, so an address someone typed at a provider never opens another person's account. The history is never rewritten.
 
 ## Coming from the login proxy (up to 0.16)
 
-Up to 0.16, a reverse proxy with forward authentication signed people in and passed their name in a header. That header now counts for nothing. To keep the names the history already records, make the first sign-in come from the same source:
+Up to 0.16, a reverse proxy with forward authentication signed people in and passed their name in a header. That header now counts for nothing. Steps recorded before the change keep the name the header carried (`marcel`); steps from now on record the address (`marcel@example.org`). The history is never rewritten. To switch:
 
-1. In Authentik, add an OAuth2/OpenID provider for noticebox with the redirect URI `https://inbox.example.org/api/auth/callback/authentik`, and set the `NOTICEBOX_OIDC_AUTHENTIK_*` variables above. Authentik's `preferred_username` is the username the header carried, so `marcel` stays `marcel`.
+1. In Authentik, add an OAuth2/OpenID provider for noticebox with the redirect URI `https://inbox.example.org/api/auth/callback/authentik`, and set the `NOTICEBOX_OIDC_AUTHENTIK_*` variables above. Or skip the provider and sign in by email code.
 2. List everyone's address in `NOTICEBOX_ALLOWED_EMAILS`.
 3. Remove the forward-auth from the proxy: noticebox is now proxied as a whole, with no paths public or private at the proxy.
 4. Remove `NOTICEBOX_USER_HEADER` and `NOTICEBOX_SIGN_OUT_URL` from `.env`.

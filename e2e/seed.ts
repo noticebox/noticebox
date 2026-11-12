@@ -5,7 +5,7 @@ import { Forms } from "../backend/forms";
 
 export const NTFY_URL = "http://127.0.0.1:3399/reports";
 
-/** The person the tests are signed in as (global-setup.ts); their username comes from the address: "marcel". */
+/** The person the tests are signed in as (global-setup.ts); events record them by this address. */
 export const PERSON = "marcel@example.org";
 
 /** The server's environment, which global-setup.ts reads too, so its sessions are signed with the server's secret. */

@@ -16,7 +16,7 @@ export default async function InboxLayout({ children }: { children: React.ReactN
   const boxes = new Map<string, Box>(rt.config.boxes.map((name) => [name, { name, forms: [] }]));
   for (const f of Object.values(rt.config.forms)) boxes.get(f.box)!.forms.push({ name: f.name, title: f.title, path: formPath(f.name), open: open(f) });
   return (
-    <Shell boxes={[...boxes.values()]} actor={person.username} canSignOut={!person.id.startsWith("dev:")}>
+    <Shell boxes={[...boxes.values()]} actor={person.email} canSignOut={!person.id.startsWith("dev:")}>
       {children}
     </Shell>
   );

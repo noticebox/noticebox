@@ -24,7 +24,7 @@ export default async function ConsentPage({ searchParams }: { searchParams: Prom
           {t.consent.wants[0]}
           <strong>{name}</strong>
           {t.consent.wants[1]}
-          <strong>{person.username}</strong>
+          <strong>{person.email}</strong>
           {t.consent.wants[2]}
         </p>
         <p className="mb-6 text-sm text-muted">{t.consent.recorded}</p>

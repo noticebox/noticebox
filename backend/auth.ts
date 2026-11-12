@@ -2,19 +2,19 @@
 // cookie (accounts.ts); nothing else counts, a header a proxy might set included. /mcp checks its own tokens (mcp.ts).
 import type { Runtime } from "./runtime";
 
-/** A signed-in person: Better Auth's user id, and the username the inbox shows and events record. */
-export type Person = { id: string; username: string };
+/** A signed-in person: Better Auth's user id, and the verified address the inbox shows and events record. */
+export type Person = { id: string; email: string };
 
 /** The person behind a page request's session cookie; NOTICEBOX_DEV_USER when there is none (development only). */
 export async function personOf(h: Headers, rt: Runtime): Promise<Person | null> {
   const s = await (await rt.auth()).api.getSession({ headers: h });
-  if (s) return { id: s.user.id, username: (s.user as { username?: string | null }).username || s.user.email };
-  return rt.devUser ? { id: `dev:${rt.devUser}`, username: rt.devUser } : null;
+  if (s) return { id: s.user.id, email: s.user.email };
+  return rt.devUser ? { id: `dev:${rt.devUser}`, email: rt.devUser } : null;
 }
 
-/** The name an action is recorded under: the signed-in person's username, or null without a session. */
+/** The name an action is recorded under: the signed-in person's address, or null without a session. */
 export async function actorOf(h: Headers, rt: Runtime): Promise<string | null> {
-  return (await personOf(h, rt))?.username ?? null;
+  return (await personOf(h, rt))?.email ?? null;
 }
 
 /** The instance's public URL: configured, or from the proxy's forwarded headers, or the request's own host. */

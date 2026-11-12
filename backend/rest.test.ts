@@ -10,12 +10,12 @@ import { BASE, REPORT, testRuntime, type TestRuntime } from "./testutil";
 
 type Adapter = { create(q: { model: string; data: Record<string, unknown> }): Promise<Record<string, unknown>> };
 
-async function person(rt: TestRuntime, username = "marcel"): Promise<string> {
+async function person(rt: TestRuntime, name = "marcel"): Promise<string> {
   const ctx = await (await rt.auth()).$context;
   const now = new Date();
   const u = await (ctx.adapter as unknown as Adapter).create({
     model: "user",
-    data: { email: `${username}@test.example`, name: username, username, emailVerified: true, createdAt: now, updatedAt: now },
+    data: { email: `${name}@test.example`, name, emailVerified: true, createdAt: now, updatedAt: now },
   });
   return String(u.id);
 }
@@ -62,7 +62,7 @@ test("every MCP tool has its REST operation, and nothing else is there", async (
     }),
   });
   const tools = (
-    (await (await mcpAs(req, rt, { actor: "marcel via t", person: me, clientId: "t", base: BASE })).json()).result.tools as { name: string }[]
+    (await (await mcpAs(req, rt, { actor: "marcel@test.example via t", person: me, clientId: "t", base: BASE })).json()).result.tools as { name: string }[]
   ).map((t) => t.name);
   expect(OPS.map((o) => o.tool).sort()).toEqual(tools.sort());
   expect(new Set(OPS.map((o) => o.operationId)).size).toBe(OPS.length);
@@ -91,7 +91,7 @@ test("an API token acts as its person on REST, within its scope; no token, a rev
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
   const decided = await api(rt, "POST", `/submissions/${id}/decisions`, write.token, { to: "rejected", reason: "Not spam." });
   expect(decided.status).toBe(200);
-  expect((await decided.json()).events.at(-1)).toMatchObject({ actor: "marcel", to_state: "rejected", reason: "Not spam." });
+  expect((await decided.json()).events.at(-1)).toMatchObject({ actor: "marcel@test.example", to_state: "rejected", reason: "Not spam." });
   expect((await api(rt, "POST", `/submissions/${id}/decisions`, write.token, { to: "acted_on" })).status).toBe(400);
   expect((await api(rt, "GET", "/submissions/nope", write.token)).status).toBe(404);
   expect((await api(rt, "PUT", "/forms/spare", write.token, { kind: "poll" })).status).toBe(400);

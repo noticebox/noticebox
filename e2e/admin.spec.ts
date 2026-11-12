@@ -85,7 +85,7 @@ test("a box and a form are made in the inbox, the form's settings are saved to t
   await page.getByRole("button", { name: /marcel/ }).click();
   await page.getByRole("menuitem", { name: "Your settings" }).click();
   await expect(page).toHaveURL(/\/settings$/);
-  await expect(page.getByText("Signed in as")).toContainText("marcel");
+  await expect(page.getByText("Signed in as")).toContainText("marcel@example.org");
   await expect(page.getByText("No assistant is connected.")).toBeVisible();
 });
 

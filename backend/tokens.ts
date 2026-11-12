@@ -116,6 +116,6 @@ export async function restCaller(req: Request, rt: Runtime): Promise<RestCaller 
     }
   }
   if (!person) return null;
-  const user = (await (await auth.$context).internalAdapter.findUserById(person)) as { username?: string | null; email: string } | null;
-  return user ? { person, actor: user.username || user.email, scope } : null;
+  const user = (await (await auth.$context).internalAdapter.findUserById(person)) as { email: string } | null;
+  return user ? { person, actor: user.email, scope } : null;
 }
