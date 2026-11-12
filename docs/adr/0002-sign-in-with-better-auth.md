@@ -19,7 +19,7 @@ Option 3.
 
 - **Providers** come from env vars, one set per provider: `NOTICEBOX_OIDC_<NAME>_CLIENT_ID`, `_CLIENT_SECRET`, `_ISSUER` for a generic OIDC provider, and an optional `_LABEL`, as the Better Auth convention names them. `GITHUB` and `GOOGLE` use Better Auth's built-in providers and need no issuer.
 - **Who may sign in** is `NOTICEBOX_ALLOWED_EMAILS`, a list of addresses and `@domain` entries. An empty list lets nobody in. A provider like GitHub lets anyone finish a sign-in, so the provider can't decide this.
-- **A person is one account, named by its verified email address.** Events record that address as text; no provider's username claim counts, so two providers can't name one person differently. The address must be verified at every sign-in (the mailed code, or the provider's `email_verified`). A further provider joins an account only with the same verified address. History is never rewritten: steps recorded before the change keep the header's name. (Changed during implementation, in #95: the first draft took the username from the first provider's claim.)
+- **A person is one account, named by its verified email address.** Events record that address as text; no provider's username claim counts, so two providers can't name one person differently. The address must be verified at every sign-in (the mailed code, or the provider's `email_verified`). A further provider joins an account only with the same verified address. Steps recorded before the change keep the header's name, unless the operator renames them once with `scripts/rename-actor.mjs` (only the actor's text changes). (Changed during implementation, in #95: the first draft took the username from the first provider's claim.)
 - **Forward-auth is no longer needed.** `proxy.ts` checks for a Better Auth session and still fails closed. `NOTICEBOX_USER_HEADER` and `NOTICEBOX_SIGN_OUT_URL` go away.
 - **MCP clients** sign in through `@better-auth/mcp`, with tokens bound to `/mcp`.
 - **API tokens** exist from the start, rather than when the first headless script appears. Each belongs to a person and has:
@@ -41,5 +41,5 @@ Option 3.
 - Bad: every MCP client must reconnect once, because the old grants can't be carried over.
 - Bad: the allowlist is one more thing to configure, and a typo locks a person out.
 - Bad: an API token created over MCP passes through the chat, the one place the Secrets convention otherwise keeps credentials out of. The person chooses that when they ask for it, and can revoke the token at any time.
-- Bad: the history switches from names to addresses: steps before the change say `marcel`, steps after it `marcel@example.org`. In exchange the actor no longer depends on which provider a person signed in with first.
+- Bad: the history switches from names to addresses: steps before the change say `marcel`, steps after it `marcel@example.org`, until the operator runs the one-off rename. In exchange the actor no longer depends on which provider a person signed in with first.
 - Bad: a provider that doesn't send `email_verified: true` can't sign anyone in.

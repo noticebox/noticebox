@@ -55,6 +55,24 @@ export function safeNext(next: unknown): string {
 // browser client adds it to every request from that page). The body the endpoints see has it stripped, so a hook notes it.
 const oauthSignIn = defineRequestState(() => false);
 
+/**
+ * Why noticebox refused a sign-in, in place of Better Auth's "unable to create user": the sign-in page tells the person
+ * (and whoever sets up the provider) what is wrong. `email_not_verified` is the one that is hard to find otherwise: a
+ * provider that doesn't send `email_verified: true` signs nobody in.
+ */
+export type Refusal = "email_not_verified" | "email_not_allowed";
+const refusal = defineRequestState((): Refusal | null => null);
+
+async function refuse(why: Refusal, what: string, log: (line: string) => void): Promise<false> {
+  await refusal.set(why).catch(() => {});
+  log(
+    why === "email_not_verified"
+      ? `sign-in: refused ${what}: the provider did not send email_verified: true for the address (in Authentik: the email scope mapping)`
+      : `sign-in: refused ${what}: the address is not on NOTICEBOX_ALLOWED_EMAILS`,
+  );
+  return false;
+}
+
 /** A request state's value, or `fallback` outside a request (a server-side call, such as the e2e setup's). */
 async function stateOr<T>(state: { get(): Promise<T> }, fallback: T): Promise<T> {
   try {
@@ -131,6 +149,18 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
       before: createAuthMiddleware(async (ctx) => {
         if ((ctx.body as { oauth_query?: unknown } | undefined)?.oauth_query) await oauthSignIn.set(true);
       }),
+      // A provider's callback that a hook below refused goes back to the sign-in page with the reason as its error code.
+      after: createAuthMiddleware(async (ctx) => {
+        const why = await stateOr(refusal, null);
+        if (!why) return;
+        const returned = ctx.context.returned as { headers?: Headers } | undefined;
+        const location = returned?.headers?.get("location") ?? ctx.context.responseHeaders?.get("location");
+        if (!location) return;
+        const to = new URL(location, s.baseUrl);
+        if (!to.searchParams.has("error")) return;
+        to.searchParams.set("error", why);
+        throw ctx.redirect(to.origin === new URL(s.baseUrl).origin ? to.pathname + to.search : to.toString());
+      }),
     },
     databaseHooks: {
       user: {
@@ -140,12 +170,8 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
           // `false` refuses: Better Auth then sends a provider sign-in back to the sign-in page with an error code,
           // where a thrown error would end on a bare JSON answer.
           before: async (user: { email: string; emailVerified: boolean }) => {
-            if (!emailAllowed(s.allowed, user.email) || !user.emailVerified) {
-              s.log(
-                `sign-in: refused a new account (${emailAllowed(s.allowed, user.email) ? "address not verified" : "address not on NOTICEBOX_ALLOWED_EMAILS"})`,
-              );
-              return false;
-            }
+            if (!emailAllowed(s.allowed, user.email)) return refuse("email_not_allowed", "a new account", s.log);
+            if (!user.emailVerified) return refuse("email_not_verified", "a new account", s.log);
             return { data: user };
           },
         },
@@ -158,10 +184,8 @@ function options(s: SignInSettings, database: BetterSqlite3.Database, self: () =
           before: async (session: Record<string, unknown>, ctx: unknown) => {
             const adapter = await adapterIn(ctx);
             const user = adapter ? await adapter.findOne({ model: "user", where: [{ field: "id", value: String(session.userId) }] }) : null;
-            if (adapter && (!user || !user.emailVerified || !emailAllowed(s.allowed, String(user.email)))) {
-              s.log(`sign-in: refused a session (${user?.emailVerified ? "address no longer on NOTICEBOX_ALLOWED_EMAILS" : "address not verified"})`);
-              return false;
-            }
+            if (adapter && (!user || !emailAllowed(s.allowed, String(user.email)))) return refuse("email_not_allowed", "a session", s.log);
+            if (adapter && !user!.emailVerified) return refuse("email_not_verified", "a session", s.log);
             return { data: { ...session, ...UNTRACKED } };
           },
         },

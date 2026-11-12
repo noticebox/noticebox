@@ -29,6 +29,9 @@ test("without a session the inbox is closed, whatever header a proxy sets; the p
   await page.goto("/forms/report");
   await expect(page).toHaveURL(/\/login\?next=%2Fforms%2Freport$/);
   await expect(page.getByRole("button", { name: "Send a sign-in code" })).toBeVisible();
+  // A provider that didn't vouch for the address: the page says what to set, not just that it failed.
+  await page.goto("/login?error=email_not_verified");
+  await expect(page.getByRole("alert").filter({ hasText: "didn't confirm" })).toContainText("email_verified: true");
   expect((await page.goto("/f/report/thanks"))?.status()).toBe(200);
   await anonymous.close();
   expect((await request.get("/health")).status()).toBe(200);
