@@ -10,7 +10,8 @@ import { emailAllowed, signInFromEnv, type SignInSettings } from "./accounts";
 import { connections } from "./admin";
 import { actorOf, personOf } from "./auth";
 import { mcpRoute } from "./mcp";
-import { authRoute, authServerMetadataRoute } from "./signin";
+import { restRoute } from "./rest";
+import { apiResourceMetadataRoute, authRoute, authServerMetadataRoute } from "./signin";
 import { REPORT, testRuntime, type TestRuntime } from "./testutil";
 
 let server: Server;
@@ -41,6 +42,8 @@ function provider(name: string, path: string): Response | null {
 async function route(req: Request): Promise<Response> {
   const path = new URL(req.url).pathname;
   if (path === "/mcp") return mcpRoute(req, rt);
+  if (path.startsWith("/api/v1/")) return restRoute(req, rt, path.slice("/api/v1/".length).split("/"));
+  if (path === "/.well-known/oauth-protected-resource/api/v1") return apiResourceMetadataRoute(rt);
   for (const name of ["fake", "other"]) {
     const found = provider(name, path);
     if (found) return found;
@@ -353,4 +356,80 @@ test("start-up refuses a dev user in production and an instance nobody can sign 
     { id: "github", label: "GitHub", clientId: "gh", clientSecret: "ghs", issuer: null },
   ]);
   expect(signInFromEnv({ NOTICEBOX_DEV_USER: "dev" }, ":memory:", quiet).baseUrl).toBe("http://localhost:3000");
+});
+
+/** The whole OAuth dance for `resource` as a script does it, signed in as `email`: the token response. */
+async function oauthFor(resource: string, email: string) {
+  const meta = await (await fetch(`${base}/.well-known/oauth-authorization-server/api/auth`)).json();
+  const redirect = "https://script.example/cb";
+  const reg = await fetch(meta.registration_endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      client_name: "Script",
+      redirect_uris: [redirect],
+      token_endpoint_auth_method: "none",
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+      resources: [resource],
+    }),
+  });
+  expect(reg.status).toBe(201);
+  const { client_id } = await reg.json();
+  const verifier = randomBytes(32).toString("base64url");
+  const authorize = new URL(meta.authorization_endpoint);
+  for (const [k, v] of Object.entries({
+    response_type: "code",
+    client_id,
+    redirect_uri: redirect,
+    scope: "openid offline_access",
+    state: "st",
+    code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+    code_challenge_method: "S256",
+    resource,
+  }))
+    authorize.searchParams.set(k, v);
+  const toLogin = await fetch(authorize, { redirect: "manual", headers: { accept: "text/html" } });
+  const login = new URL(toLogin.status === 302 ? toLogin.headers.get("location")! : (await toLogin.json()).url, base);
+  const signed = await signIn(email, login.search.slice(1));
+  const consent = new URL((await signed.json()).url, base);
+  const consented = await fetch(`${base}/api/auth/oauth2/consent`, json({ accept: true, oauth_query: consent.search.slice(1) }, { cookie: cookieOf(signed) }));
+  const back = new URL((await consented.json()).url);
+  const token = await fetch(meta.token_endpoint, {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code: back.searchParams.get("code")!,
+      redirect_uri: redirect,
+      client_id,
+      code_verifier: verifier,
+      resource,
+    }),
+  });
+  expect(token.status).toBe(200);
+  return (await token.json()) as { access_token: string };
+}
+
+test("each surface takes only its own tokens: /api/v1 OAuth tokens on REST, /mcp ones on MCP, API tokens on REST", async () => {
+  const meta = await (await fetch(`${base}/.well-known/oauth-protected-resource/api/v1`)).json();
+  expect(meta).toMatchObject({ resource: `${base}/api/v1`, authorization_servers: [`${base}/api/auth`] });
+
+  const forApi = { authorization: `Bearer ${(await oauthFor(`${base}/api/v1`, "ada@example.com")).access_token}` };
+  const forms = await fetch(`${base}/api/v1/forms`, { headers: forApi });
+  expect(forms.status).toBe(200);
+  expect((await rpc("tools/list", {}, forApi)).status).toBe(401);
+
+  const forMcp = { authorization: `Bearer ${(await oauthFor(`${base}/mcp`, "ada@example.com")).access_token}` };
+  expect((await rpc("tools/list", {}, forMcp)).status).toBe(200);
+  const refused = await fetch(`${base}/api/v1/forms`, { headers: forMcp });
+  expect(refused.status).toBe(401);
+  expect(refused.headers.get("www-authenticate")).toContain(`${base}/.well-known/oauth-protected-resource/api/v1`);
+
+  // The session cookie counts on neither, and Better Auth's own API-key endpoints are closed to the outside: tokens are
+  // made only through noticebox's checks.
+  const cookie = cookieOf(await signIn("ada@example.com"));
+  expect((await fetch(`${base}/api/v1/forms`, { headers: { cookie } })).status).toBe(401);
+  expect((await fetch(`${base}/api/auth/api-key/create`, json({ name: "x" }, { cookie }))).status).toBe(404);
+  expect((await fetch(`${base}/api/auth/api-key/list`, { headers: { cookie } })).status).toBe(404);
 });

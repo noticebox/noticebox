@@ -2,7 +2,7 @@
 
 An inbox for the forms on static pages. A page points its form at `https://inbox.example.org/f/<form>`; what comes in lands in one SQLite file and in an inbox where each submission is walked through its states, with every step, who took it and why, kept as an audit trail. Reports about content and contact messages are the two kinds it knows. The page with the form stays yours: noticebox hosts no forms, only the endpoint, the inbox and a thank-you page.
 
-One container, no database server. People sign in with a code by email or through the providers you configure, and only the addresses you list get in. Notifications say that something arrived, never what it says; closed submissions lose their personal fields after a retention period. An MCP endpoint, behind OAuth 2.1, lets an assistant do in the inbox what the person who allowed it can do, recorded in their name.
+One container, no database server. People sign in with a code by email or through the providers you configure, and only the addresses you list get in. Notifications say that something arrived, never what it says; closed submissions lose their personal fields after a retention period. An MCP endpoint, behind OAuth 2.1, lets an assistant do in the inbox what the person who allowed it can do, recorded in their name; a REST API with API tokens does the same for scripts.
 
 **Documentation: https://noticebox.github.io/noticebox/** — what it does, how to post to it from a page, the configuration, sign-in, MCP.
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useRef } from "react";
+import { t } from "@/app/_lib/copy";
 import type { AdminState } from "./admin";
 
 // A small form around one admin action: the fields are the children, the error is shown, the button waits. React
@@ -31,6 +32,11 @@ export function ActionForm({
       {state.error && (
         <p role="alert" className="mt-2 text-error">
           {state.error}
+        </p>
+      )}
+      {state.secret && (
+        <p role="status" className="mt-2">
+          {t.you.tokenOnce} <code className="break-all select-all">{state.secret}</code>
         </p>
       )}
       <button type="submit" disabled={pending} className={danger ? "btn mt-3 justify-self-start text-error" : "btn-primary mt-3 justify-self-start"}>

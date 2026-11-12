@@ -28,6 +28,8 @@ test("the public paths need no session", () => {
     "/api/auth/sign-in/email-otp",
     "/api/auth/oauth2/token",
     "/api/auth/jwks",
+    "/api/v1/forms",
+    "/api/v1/openapi.json",
     "/.well-known/oauth-protected-resource/mcp",
     "/.well-known/oauth-authorization-server/api/auth",
     "/icon.svg",

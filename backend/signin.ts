@@ -1,6 +1,6 @@
 // The route handlers of sign-in, thin over Better Auth (accounts.ts): everything under /api/auth, the OAuth metadata
 // it can't serve from under its own base path, and what the sign-in and consent pages need to know.
-import { oauthProviderAuthServerMetadata, oauthProviderOpenIdConfigMetadata } from "@better-auth/oauth-provider";
+import { metadataResponse, oauthProviderAuthServerMetadata, oauthProviderOpenIdConfigMetadata } from "@better-auth/oauth-provider";
 import type { Runtime } from "./runtime";
 
 /** Everything under /api/auth, and the protected-resource metadata of /mcp: Better Auth answers. */
@@ -11,6 +11,15 @@ export const authServerMetadataRoute = async (req: Request, rt: Runtime): Promis
 
 /** /.well-known/openid-configuration/api/auth, likewise. */
 export const openIdConfigRoute = async (req: Request, rt: Runtime): Promise<Response> => oauthProviderOpenIdConfigMetadata(await rt.auth())(req);
+
+/** RFC 9728 metadata of /api/v1: where a script finds the authorization server that issues tokens for this API. */
+export const apiResourceMetadataRoute = (rt: Runtime): Response =>
+  metadataResponse({
+    resource: `${rt.signIn.baseUrl}/api/v1`,
+    authorization_servers: [`${rt.signIn.baseUrl}/api/auth`],
+    bearer_methods_supported: ["header"],
+    resource_name: "noticebox API",
+  });
 
 /** The name of the OAuth client a consent page asks about; null when it isn't known. */
 export async function clientNameFor(headers: Headers, clientId: string, rt: Runtime): Promise<string | null> {

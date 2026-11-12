@@ -32,6 +32,9 @@ MCP is noticebox's main interface: everything the inbox can do, an assistant can
 | `list_connections` | Your connected assistants, the current one marked |
 | `revoke_connection` | Ends one of your connections at once (destructive) |
 | `export` | Every submission with its history, or one form's or state's, up to 1000: the same as `/export.json` |
+| `create_api_token` | Makes an [API token](api.md#tokens) for your scripts, when you ask for one: shown once, in the chat |
+| `list_api_tokens` | Your API tokens: name, scope, expiry and last use, never the tokens themselves |
+| `revoke_api_token` | Revokes one; a script using it is refused from the next request on |
 
 The tools call the same functions as the inbox's pages, through the same validation; secrets such as an ntfy topic go in as `${VAR}` references that the container's environment must provide.
 
