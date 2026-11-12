@@ -4,7 +4,7 @@ A submission can become an issue in a GitHub repository: a report about a broken
 
 ## Setting it up
 
-Name the repository on the form: on its *Settings* tab under *GitHub issues*, over MCP with `put_form`, or in the forms file:
+Name the repository on the form: on its *Settings* tab under *GitHub issues*, or over MCP with `put_form`, as part of the form's JSON:
 
 ```json
 "github": { "repo": "example/site", "labels": ["report"] }

@@ -1,5 +1,6 @@
-// The forms: one JSON file. Strings may contain `${VAR}`, filled from the environment, so secrets such as an ntfy
-// topic stay out of the file.
+// What a form is, and how one is read from the JSON it is written as (stored in the database, or in the forms file
+// that older releases read and that is now imported once, forms.ts). Strings may contain `${VAR}`, filled from the
+// environment when the forms are loaded, so secrets such as an ntfy topic stay out of the database.
 import { readFileSync } from "node:fs";
 import { isKind, parseStates, type KindName, type State } from "./kinds";
 export type { KindName, State };
@@ -37,7 +38,7 @@ export type Form = {
 
 export type GitHub = { repo: string; labels: string[] }; // repo is owner/name
 
-export type Target = { type: "ntfy" | "webhook"; url: string };
+export type Target = { type: "ntfy" | "webhook"; url: string; unset?: string }; // `unset`: the variable the URL needs and the environment lacks
 
 export type Config = { boxes: string[]; forms: Record<string, Form> }; // `boxes` lists every box, also those without a form yet
 
@@ -68,13 +69,42 @@ export function loadConfig(path: string, env: Env = process.env): Config {
   return parseConfig(raw);
 }
 
-/** Replaces `${VAR}` with the variable's value, escaped for its place inside a JSON string. */
-export function expand(text: string, env: Env): string {
+/**
+ * Replaces `${VAR}` with the variable's value, escaped for its place inside a JSON string. An unset variable throws,
+ * unless `missing` says what to put in its place.
+ */
+export function expand(text: string, env: Env, missing?: (name: string) => string): string {
   return text.replace(/\$\{([A-Z][A-Z0-9_]*)\}/g, (_, name: string) => {
-    const value = env[name];
+    const value = env[name] ?? missing?.(name);
     if (value === undefined) throw new Error(`\${${name}} is not set in the environment`);
     return JSON.stringify(value).slice(1, -1);
   });
+}
+
+/** Stands in for an unset variable when stored forms are loaded: still a valid URL, and recognisable afterwards. */
+const UNSET = "https://unset.invalid/";
+
+/**
+ * Parses stored forms without failing on a variable the environment lacks: a form that worked when it was saved keeps
+ * working after a restart without that variable. A notification target that needs one is marked `unset` and skipped
+ * (notify.ts logs it); `missing` lists every such variable, for the start-up log.
+ */
+export function parseStoredConfig(raw: unknown, env: Env): { config: Config; missing: string[] } {
+  const missing = new Set<string>();
+  const config = parseConfig(
+    JSON.parse(
+      expand(JSON.stringify(raw), env, (name) => {
+        missing.add(name);
+        return UNSET + name;
+      }),
+    ),
+  );
+  for (const f of Object.values(config.forms))
+    for (const t of f.notify) {
+      const name = t.url.match(/https:\/\/unset\.invalid\/([A-Z][A-Z0-9_]*)/)?.[1];
+      if (name) t.unset = name;
+    }
+  return { config, missing: [...missing] };
 }
 
 export function parseConfig(raw: unknown): Config {

@@ -36,17 +36,6 @@ items:
     details: |
       A forged header no longer opens the inbox, and every action has a signed-in person behind it. Existing MCP connections reconnect once.
 
-  - id: forms-in-the-database
-    status: next
-    when: Next
-    icon: form-select
-    title: Forms in the database
-    summary: Boxes and forms move from the JSON file into the database; an existing file is imported once.
-    links:
-      - { label: "#51", url: "https://github.com/noticebox/noticebox/issues/51" }
-      - { label: "ADR 0004", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0004-forms-live-in-the-database.md" }
-      - { label: "V8", url: "https://noticebox.github.io/noticebox/values/#v8" }
-
   - id: mcp-covers-everything
     status: next
     when: Next
@@ -78,6 +67,20 @@ items:
       - { label: "V2", url: "https://noticebox.github.io/noticebox/values/#v2" }
 
   # ---- done ------------------------------------------------------------------------------------------------------------
+  - id: forms-in-the-database
+    status: done
+    date: 2026-11-11
+    icon: form-select
+    title: Forms in the database
+    summary: Boxes and forms move from the JSON file into the database; an existing file is imported once.
+    links:
+      - { label: "#51", url: "https://github.com/noticebox/noticebox/issues/51" }
+      - { label: "#94", url: "https://github.com/noticebox/noticebox/pull/94" }
+      - { label: "ADR 0004", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0004-forms-live-in-the-database.md" }
+      - { label: "V8", url: "https://noticebox.github.io/noticebox/values/#v8" }
+    details: |
+      One source and one backup: an edit in the inbox can no longer be undone by a deploy. An existing forms file is imported at the first start and then no longer read; `NOTICEBOX_CONFIG` is deprecated.
+
   - id: github-issue-links
     status: done
     date: 2026-11-06

@@ -73,7 +73,7 @@ The page can say what noticebox should know about its fields, in hidden fields n
 | `_label_<field>` | The label the inbox shows for `<field>` |
 | `_next` | Where the browser goes after a plain post, instead of the form's `redirect`; only an address on one of the form's `origins` is taken |
 
-What a page says about a field is written into the forms file the first time that field arrives, and shown on the form's *Settings* tab. It never changes a description that is already there, so a post cannot talk a form out of what you set; and a strict form learns nothing. Underscore fields are never stored.
+What a page says about a field is saved with the form the first time that field arrives, and shown on the form's *Settings* tab. It never changes a description that is already there, so a post cannot talk a form out of what you set; and a strict form learns nothing. Underscore fields are never stored.
 
 ## Carrying ids into a form
 

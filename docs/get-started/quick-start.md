@@ -1,33 +1,10 @@
 # Quick start
 
-This runs noticebox on your machine with one form, posts a submission to it and shows it in the inbox. It takes a few minutes.
+This runs noticebox on your machine, makes one form, posts a submission to it and shows it in the inbox. It takes a few minutes.
 
-## 1. The forms file
+## 1. Run it
 
-noticebox reads its forms from one JSON file. Save this as `data/noticebox.json`:
-
-```json
-{
-  "forms": {
-    "contact": {
-      "box": "example.org",
-      "kind": "message",
-      "title": "Contact",
-      "fields": {
-        "name": { "label": "Name", "required": true },
-        "email": { "type": "email", "label": "Email", "required": true },
-        "message": { "type": "textarea", "label": "Message", "required": true }
-      }
-    }
-  }
-}
-```
-
-A form has a name (`contact`), belongs to a box (the sidebar groups forms by it), has a kind (`message` or `report`) and fields. Everything else has a default; [Configuration](../self-hosting/configuration.md) lists all of it. You can also start without the file: noticebox creates an empty one, and *Add new* in the inbox makes boxes and forms.
-
-## 2. Run it
-
-Next to the `data` folder, save the repository's [`compose.yaml`](https://github.com/noticebox/noticebox/blob/main/compose.yaml):
+In a new folder, save the repository's [`compose.yaml`](https://github.com/noticebox/noticebox/blob/main/compose.yaml):
 
 ```yaml
 # compose.yaml
@@ -48,7 +25,6 @@ and a `.env` with the settings; [`.env.example`](https://github.com/noticebox/no
 ```sh
 # .env
 NOTICEBOX_BASE_URL=http://localhost:3000
-NOTICEBOX_CONFIG=/data/noticebox.json
 # Only for trying it out: in production the login proxy says who is signed in.
 NOTICEBOX_DEV_USER=you
 ```
@@ -58,6 +34,12 @@ docker compose up -d
 ```
 
 `NOTICEBOX_DEV_USER` stands in for the login. Without it, and without the header a login proxy sets, the inbox answers 401 to everyone; that is how it is meant to run, see [The login in front](../self-hosting/login.md).
+
+## 2. Make a form
+
+Open [http://localhost:3000](http://localhost:3000). A fresh instance has no forms. Choose **Add new**, then *Form*: name it `contact`, put it in a new box `example.org`, choose the kind *Message* and the title *Contact*, and create it.
+
+A form has a name (its endpoint, `/f/contact`), belongs to a box (the sidebar groups forms by it), has a kind (`message` or `report`) and fields. It starts without fields: the first submission brings them. Everything else has a default, changed on the form's *Settings* tab; [Configuration](../self-hosting/configuration.md#forms-are-managed-in-the-inbox) lists all of it. An assistant can make the same form over [MCP](../integrations/mcp.md) with `put_form`.
 
 ## 3. Post a submission
 
@@ -80,7 +62,7 @@ The answer is `201` with `{"id": "..."}`.
 
 ## 4. See it in the inbox
 
-Open [http://localhost:3000](http://localhost:3000). The sidebar lists the box `example.org` with the form *Contact* and one open message. *Submissions* shows the message; its state badge is a dropdown: choose **Mark as answered**, write a note, confirm. The history on the submission's page records who did it, when and what they wrote.
+Back in the inbox, the sidebar lists the box `example.org` with the form *Contact* and one open message. *Submissions* shows the message; its state badge is a dropdown: choose **Mark as answered**, write a note, confirm. The history on the submission's page records who did it, when and what they wrote.
 
 ## What next
 
