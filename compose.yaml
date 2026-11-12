@@ -1,6 +1,6 @@
 # noticebox: one container, one SQLite file in ./data. Every setting is in .env (a filled-in copy of .env.example);
-# nothing is listed here, so a new setting never touches this file. The reverse proxy in front does the login for
-# everything except the public paths (see docs/self-hosting/login.md).
+# nothing is listed here, so a new setting never touches this file. noticebox signs people in itself: the reverse proxy
+# in front only passes everything through (see docs/self-hosting/login.md).
 #
 #   cp .env.example .env && chmod 600 .env   # then fill it in
 #   docker compose pull && docker compose up -d

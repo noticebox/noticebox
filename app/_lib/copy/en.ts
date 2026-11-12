@@ -315,20 +315,53 @@ export const en = {
   you: {
     title: "Your settings",
     you: "You",
-    signedInAs: ["Signed in as ", ". The name comes from the login in front of noticebox; every step you take is recorded under it."] as [string, string],
+    signedInAs: ["Signed in as ", ". The name comes from your first sign-in; every step you take is recorded under it."] as [string, string],
     assistants: "Connected assistants",
-    mcpOff: "MCP is off on this instance: no NOTICEBOX_SECRET is set.",
     none: "No assistant is connected. What you allow appears here and can be revoked.",
-    allowed: (created: string, used: string) => `allowed ${created}, last used ${used}`,
+    allowed: (created: string) => `allowed ${created}`,
     revoke: "Revoke",
     connect: "To connect Claude Code:",
     recordedAs: [". What an assistant does is recorded as ", " via its name", "."] as [string, string, string],
   },
 
-  authorize: {
+  consent: {
+    title: "Allow an assistant",
     wants: ["", " wants to read and decide submissions as ", "."] as [string, string, string],
-    recorded: (host: string) => `Everything it does is recorded in your name, marked as done through it. Afterwards you are sent to ${host}.`,
+    unknownClient: "An assistant",
+    recorded: "Everything it does is recorded in your name, marked as done through it. You can revoke it in Your settings at any time.",
     allow: "Allow",
+    deny: "Deny",
+    failed: "That didn't work. Start connecting the assistant again.",
+  },
+
+  signIn: {
+    title: "Sign in",
+    intro: "Sign in to the inbox.",
+    forAssistant: "Sign in to allow the assistant that sent you here.",
+    with: (label: string) => `Sign in with ${label}`,
+    or: "or",
+    email: "Email",
+    sendCode: "Send a sign-in code",
+    sent: (email: string) => `If ${email} may sign in, a code is on its way to it.`,
+    sentLink: " The mail also has a link that signs you in.",
+    code: "Code",
+    signIn: "Sign in",
+    otherAddress: "Use another address",
+    failed: "That didn't work. Check the code, or ask for a new one.",
+    refused: (provider: string | null, code: string) => {
+      const via = provider ?? "The provider";
+      if (code === "email_not_verified" || code === "account_not_linked")
+        return `${via} didn't confirm that your email address is verified, so noticebox can't sign you in through it. Whoever runs ${provider ?? "the provider"} has to send email_verified: true for your address (in Authentik: the email scope mapping). Until then, sign in with a code by email.`;
+      if (code === "email_not_allowed") return "This address may not sign in here. Ask whoever runs noticebox to add it to NOTICEBOX_ALLOWED_EMAILS.";
+      return `${provider ?? "The sign-in"} refused it: ${code}.`;
+    },
+    none: "No way to sign in is set up on this instance.",
+  },
+
+  closed: {
+    title: "Sign in first",
+    text: "The inbox needs you to sign in.",
+    link: "Sign in",
   },
 };
 

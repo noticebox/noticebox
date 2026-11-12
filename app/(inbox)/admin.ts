@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import {
-  actorOf,
   createBox as createBoxIn,
   createForm as createFormIn,
   deleteBox as deleteBoxIn,
   deleteForm as deleteFormIn,
   formPath,
+  personOf,
   renameBox as renameBoxIn,
   revokeConnection,
   runtime,
@@ -25,7 +25,7 @@ export type AdminState = { error?: string; n?: number };
 const str = (data: FormData, k: string) => String(data.get(k) ?? "").trim();
 
 async function signedIn(): Promise<string | null> {
-  return actorOf(await headers(), runtime());
+  return (await personOf(await headers(), runtime()))?.id ?? null;
 }
 
 export async function createBox(prev: AdminState, data: FormData): Promise<AdminState> {
@@ -100,9 +100,9 @@ export async function deleteForm(prev: AdminState, data: FormData): Promise<Admi
 
 export async function revokeGrant(prev: AdminState, data: FormData): Promise<AdminState> {
   const n = (prev.n ?? 0) + 1;
-  const actor = await signedIn();
-  if (!actor) return { error: t.common.signInFirst, n };
-  const r = revokeConnection(runtime(), actor, str(data, "id"));
+  const person = await signedIn();
+  if (!person) return { error: t.common.signInFirst, n };
+  const r = await revokeConnection(runtime(), person, str(data, "id"));
   if (!r.ok) return { error: r.error, n };
   revalidatePath("/settings");
   return { n };

@@ -73,7 +73,8 @@ jobs:
           tags: noticebox:smoke
       - name: The image starts and answers
         run: |
-          docker run -d --name smoke -p 127.0.0.1:3000:3000 noticebox:smoke
+          docker run -d --name smoke -p 127.0.0.1:3000:3000 -e NOTICEBOX_BASE_URL=http://127.0.0.1:3000 \
+            -e NOTICEBOX_SECRET="$(openssl rand -hex 32)" -e NOTICEBOX_SMTP_URL=smtp://127.0.0.1:2525 noticebox:smoke
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:3000/health && break; sleep 1; done
           curl -sf http://127.0.0.1:3000/health
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/)" = 401

@@ -2,15 +2,16 @@
 // process, kept on globalThis so a dev server's reloads reuse the open database. Tests build their own.
 //   NOTICEBOX_DB           the SQLite file (default data/noticebox.sqlite); it holds the boxes and forms too
 //   NOTICEBOX_CONFIG       deprecated: the forms file of releases before 0.16, imported once (default noticebox.json)
-//   NOTICEBOX_BASE_URL     the public URL of the inbox, for links and as the OAuth issuer (else taken from the request)
-//   NOTICEBOX_USER_HEADER  the header the login proxy sets (default X-Authentik-Username)
-//   NOTICEBOX_DEV_USER     a fixed user when running without a proxy; never set this in production
-//   NOTICEBOX_SECRET       signs the OAuth tokens for MCP (32+ characters); unset, there is no MCP
+//   NOTICEBOX_BASE_URL     the public URL of the inbox: links, sign-in, and the OAuth issuer for MCP
+//   NOTICEBOX_SECRET       Better Auth's secret (32+ characters)
+//   NOTICEBOX_ALLOWED_EMAILS, NOTICEBOX_SMTP_URL, NOTICEBOX_SMTP_FROM, NOTICEBOX_OIDC_<NAME>_*: who signs in, and how (accounts.ts)
+//   NOTICEBOX_DEV_USER     a fixed user without signing in, for development; refused when NODE_ENV=production
 //   NOTICEBOX_TRUST_PROXY  0 to take client addresses from the socket instead of X-Forwarded-For
 //   NOTICEBOX_RATE_LIMIT   submissions per client and form in ten minutes (default 10; 0 switches the limit off)
-//   NOTICEBOX_SIGN_OUT_URL where "Sign out" goes (default the Authentik outpost's /outpost.goauthentik.io/sign_out)
+import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
+import { openAuth, signInFromEnv, type Auth, type SignInSettings } from "./accounts";
 import type { Config } from "./config";
 import { Forms } from "./forms";
 import { Store } from "./db";
@@ -39,20 +40,19 @@ export type Runtime = {
   forms: Forms; // the boxes and forms, editable
   readonly config: Config; // what they are now
   store: Store;
-  signOutUrl: string | null; // where "Sign out" goes (the login proxy's sign-out); null without a proxy
+  signIn: SignInSettings;
+  auth: () => Promise<Auth>; // Better Auth, opened on first use
   rate: Rate;
   baseUrl: string | null;
-  userHeader: string;
   devUser: string | null;
   trustProxy: boolean;
-  secret: string | null;
   bodyLimit: number;
   now: () => Date;
   fetch: Fetch;
   log: (line: string) => void;
 };
 
-export function makeRuntime(o: Partial<Omit<Runtime, "config">> & { forms?: Forms; config?: Config; store: Store }): Runtime {
+export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { forms?: Forms; config?: Config; store: Store }): Runtime {
   const forms = o.forms ?? new Forms(o.store, {}, o.log);
   if (!o.forms && o.config) {
     const r = forms.replace(toRaw(o.config));
@@ -60,23 +60,44 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config">> & { forms?: Form
   }
   const { config: _ignored, ...rest } = o;
   void _ignored;
+  const log = o.log ?? ((line: string) => console.error(line));
+  const signIn: SignInSettings = o.signIn ?? {
+    secret: randomBytes(32).toString("hex"),
+    baseUrl: o.baseUrl ?? "http://localhost:3000",
+    file: ":memory:",
+    jwksUrl: "http://127.0.0.1:3000/api/auth/jwks",
+    allowed: [],
+    providers: [],
+    smtp: null,
+    log,
+  };
+  let opened: Promise<Auth> | undefined;
   return {
     rate: new Rate(10),
-    signOutUrl: null,
     baseUrl: null,
     devUser: null,
     trustProxy: true,
-    secret: null,
     bodyLimit: 64 * 1024,
     now: () => new Date(),
     fetch,
     log: (line) => console.error(line),
     ...rest,
+    signIn,
+    // A failed open is not remembered, so the next request tries again.
+    auth: () => {
+      if (!opened) {
+        const p = openAuth(signIn);
+        opened = p;
+        p.catch(() => {
+          if (opened === p) opened = undefined;
+        });
+      }
+      return opened;
+    },
     forms,
     get config() {
       return forms.config;
     },
-    userHeader: (o.userHeader ?? "x-authentik-username").toLowerCase(),
   };
 }
 
@@ -93,22 +114,22 @@ function toRaw(c: Config): { boxes: string[]; forms: Record<string, Record<strin
 function fromEnv(env: Record<string, string | undefined>): Runtime {
   const dbPath = env.NOTICEBOX_DB ?? "data/noticebox.sqlite";
   mkdirSync(dirname(dbPath), { recursive: true });
+  const log = (line: string) => console.error(line);
+  // Sign-in data lives in its own file next to the inbox's database, so a backup or export of the inbox holds none of it.
+  const signIn = signInFromEnv(env, join(dirname(dbPath), "auth.sqlite"), log);
   const store = new Store(dbPath);
   const forms = new Forms(store, env);
   forms.importFile(env.NOTICEBOX_CONFIG ?? "noticebox.json");
-  const secret = env.NOTICEBOX_SECRET ?? null;
-  if (secret !== null && secret.length < 32) throw new Error("NOTICEBOX_SECRET must have at least 32 characters");
-  if (env.NOTICEBOX_DEV_USER) console.error(`warning: NOTICEBOX_DEV_USER is set, everyone reaching the inbox is "${env.NOTICEBOX_DEV_USER}"`);
+  if (env.NOTICEBOX_DEV_USER) log(`warning: NOTICEBOX_DEV_USER is set, everyone reaching the inbox is "${env.NOTICEBOX_DEV_USER}"`);
   return makeRuntime({
     forms,
     store,
-    signOutUrl: env.NOTICEBOX_DEV_USER ? null : (env.NOTICEBOX_SIGN_OUT_URL ?? "/outpost.goauthentik.io/sign_out"),
+    signIn,
     rate: new Rate(env.NOTICEBOX_RATE_LIMIT === undefined ? 10 : Number(env.NOTICEBOX_RATE_LIMIT)),
-    baseUrl: env.NOTICEBOX_BASE_URL?.replace(/\/$/, "") ?? null,
-    userHeader: env.NOTICEBOX_USER_HEADER,
+    baseUrl: signIn.baseUrl,
     devUser: env.NOTICEBOX_DEV_USER || null,
     trustProxy: env.NOTICEBOX_TRUST_PROXY !== "0",
-    secret,
+    log,
   });
 }
 

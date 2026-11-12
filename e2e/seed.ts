@@ -5,6 +5,22 @@ import { Forms } from "../backend/forms";
 
 export const NTFY_URL = "http://127.0.0.1:3399/reports";
 
+/** The person the tests are signed in as (global-setup.ts); events record them by this address. */
+export const PERSON = "marcel@example.org";
+
+/** The server's environment, which global-setup.ts reads too, so its sessions are signed with the server's secret. */
+export const E2E_ENV: Record<string, string> = {
+  NOTICEBOX_DB: ".e2e/e2e.sqlite",
+  NOTICEBOX_BASE_URL: "http://localhost:3300",
+  NOTICEBOX_SECRET: "4f0c9a7e2b61d8335e9a0c17b2f4d6e8a1c3b5d7f9e0a2c4b6d8f1e3a5c7b9d0",
+  NOTICEBOX_ALLOWED_EMAILS: PERSON,
+  // Sign-in by email is on, so the instance has a way in; the tests never send a mail.
+  NOTICEBOX_SMTP_URL: "smtp://127.0.0.1:2525",
+  NOTICEBOX_RATE_LIMIT: "0",
+  PORT: "3300",
+  NTFY_URL,
+};
+
 const FORMS = {
   forms: {
     report: {

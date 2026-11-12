@@ -85,7 +85,7 @@ nav:
       - GitHub issues: integrations/github.md
   - Self-hosting:
       - Configuration: self-hosting/configuration.md
-      - The login in front: self-hosting/login.md
+      - Sign-in: self-hosting/login.md
       - Notifications: self-hosting/notifications.md
       - Retention, export and backups: self-hosting/retention.md
       - Upgrading: self-hosting/upgrading.md

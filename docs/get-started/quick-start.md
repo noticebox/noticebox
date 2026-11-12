@@ -4,20 +4,22 @@ This runs noticebox on your machine, makes one form, posts a submission to it an
 
 ## 1. Run it
 
-In a new folder, save the repository's [`compose.yaml`](https://github.com/noticebox/noticebox/blob/main/compose.yaml):
+In a new folder, save this `compose.yaml`: noticebox, and [Mailpit](https://mailpit.axllent.org/), which catches the sign-in mail on your machine instead of sending it:
 
 ```yaml
 # compose.yaml
 services:
   noticebox:
     image: ghcr.io/noticebox/noticebox:main
-    container_name: noticebox
-    restart: unless-stopped
     env_file: .env
     volumes:
       - ./data:/data
     ports:
       - "127.0.0.1:3000:3000"
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - "127.0.0.1:8025:8025"
 ```
 
 and a `.env` with the settings; [`.env.example`](https://github.com/noticebox/noticebox/blob/main/.env.example) lists them all:
@@ -25,19 +27,22 @@ and a `.env` with the settings; [`.env.example`](https://github.com/noticebox/no
 ```sh
 # .env
 NOTICEBOX_BASE_URL=http://localhost:3000
-# Only for trying it out: in production the login proxy says who is signed in.
-NOTICEBOX_DEV_USER=you
+# Fill in 32 or more random characters: openssl rand -base64 48
+NOTICEBOX_SECRET=
+NOTICEBOX_ALLOWED_EMAILS=you@example.org
+NOTICEBOX_SMTP_URL=smtp://mailpit:1025
+NOTICEBOX_SMTP_FROM=noticebox <inbox@example.org>
 ```
 
 ```sh
 docker compose up -d
 ```
 
-`NOTICEBOX_DEV_USER` stands in for the login. Without it, and without the header a login proxy sets, the inbox answers 401 to everyone; that is how it is meant to run, see [The login in front](../self-hosting/login.md).
+Open [http://localhost:3000](http://localhost:3000) and sign in as `you@example.org`. The code, and a link that signs you in, are in the mail at [http://localhost:8025](http://localhost:8025). Only the addresses in `NOTICEBOX_ALLOWED_EMAILS` get in: see [Sign-in](../self-hosting/login.md).
 
 ## 2. Make a form
 
-Open [http://localhost:3000](http://localhost:3000). A fresh instance has no forms. Choose **Add new**, then *Form*: name it `contact`, put it in a new box `example.org`, choose the kind *Message* and the title *Contact*, and create it.
+A fresh instance has no forms. Choose **Add new**, then *Form*: name it `contact`, put it in a new box `example.org`, choose the kind *Message* and the title *Contact*, and create it.
 
 A form has a name (its endpoint, `/f/contact`), belongs to a box (the sidebar groups forms by it), has a kind (`message` or `report`) and fields. It starts without fields: the first submission brings them. Everything else has a default, changed on the form's *Settings* tab; [Configuration](../self-hosting/configuration.md#forms-are-managed-in-the-inbox) lists all of it. An assistant can make the same form over [MCP](../integrations/mcp.md) with `put_form`.
 
@@ -67,5 +72,5 @@ Back in the inbox, the sidebar lists the box `example.org` with the form *Contac
 ## What next
 
 - Put a form on a real page and name the page's origin in the form's `origins`: [Posting from a page](../integrations/forms.md).
-- Put the login proxy in front and drop `NOTICEBOX_DEV_USER`: [The login in front](../self-hosting/login.md).
+- Mail sign-in codes through a real SMTP server, or add a provider such as GitHub: [Sign-in](../self-hosting/login.md).
 - Get a ping when something arrives: [Notifications](../self-hosting/notifications.md).

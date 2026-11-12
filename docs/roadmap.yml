@@ -22,20 +22,6 @@ items:
       - { label: "ADR 0003", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0003-better-sqlite3-and-kysely.md" }
       - { label: "V4", url: "https://noticebox.github.io/noticebox/values/#v4" }
 
-  - id: sign-in
-    status: next
-    when: Next
-    icon: account-key
-    title: Sign-in of its own
-    summary: Magic links and your OAuth providers through Better Auth, an email allowlist, and no login proxy needed in front.
-    links:
-      - { label: "#28", url: "https://github.com/noticebox/noticebox/issues/28" }
-      - { label: "ADR 0002", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0002-sign-in-with-better-auth.md" }
-      - { label: "V3", url: "https://noticebox.github.io/noticebox/values/#v3" }
-      - { label: "V4", url: "https://noticebox.github.io/noticebox/values/#v4" }
-    details: |
-      A forged header no longer opens the inbox, and every action has a signed-in person behind it. Existing MCP connections reconnect once.
-
   - id: mcp-covers-everything
     status: next
     when: Next
@@ -67,6 +53,21 @@ items:
       - { label: "V2", url: "https://noticebox.github.io/noticebox/values/#v2" }
 
   # ---- done ------------------------------------------------------------------------------------------------------------
+  - id: sign-in
+    status: done
+    date: 2026-11-11
+    icon: account-key
+    title: Sign-in of its own
+    summary: Magic links and your OAuth providers through Better Auth, an email allowlist, and no login proxy needed in front.
+    links:
+      - { label: "#28", url: "https://github.com/noticebox/noticebox/issues/28" }
+      - { label: "#95", url: "https://github.com/noticebox/noticebox/pull/95" }
+      - { label: "ADR 0002", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0002-sign-in-with-better-auth.md" }
+      - { label: "V3", url: "https://noticebox.github.io/noticebox/values/#v3" }
+      - { label: "V4", url: "https://noticebox.github.io/noticebox/values/#v4" }
+    details: |
+      A forged header no longer opens the inbox, and every action has a signed-in person behind it. Existing MCP connections reconnect once.
+
   - id: forms-in-the-database
     status: done
     date: 2026-11-11

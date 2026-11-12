@@ -10,9 +10,9 @@ In Claude Code:
 claude mcp add --transport http noticebox https://inbox.example.org/mcp
 ```
 
-The client registers itself, the browser opens the authorize page, which is behind the same login as the inbox, and *Allow* sends the client its token. Tokens are signed with `NOTICEBOX_SECRET`; without that setting the endpoint does not exist.
+The client registers itself and opens the browser. You sign in as you do for the inbox, and *Allow* sends the client its token.
 
-Each *Allow* is a connection, listed under *Your settings* with the client's name, when it was allowed and last used. *Revoke* ends it at once: every token of that connection stops working, and the client has to be allowed again.
+Each *Allow* is a connection, listed under *Your settings* with the client's name and when it was allowed. *Revoke* ends it at once: the next call with any of its tokens fails, its refresh token is gone, and the client has to be allowed again.
 
 ## Tools
 
@@ -43,20 +43,18 @@ Every result carries `next`: short instructions built from what the call did, su
 sequenceDiagram
   participant C as MCP client
   participant NB as noticebox
-  actor P as you, signed in at the proxy
+  actor P as you, in the browser
   C->>NB: POST /mcp without a token
   NB-->>C: 401, pointing at /.well-known/oauth-protected-resource/mcp
-  C->>NB: read the metadata, POST /oauth/register
+  C->>NB: read the metadata, register at /api/auth/oauth2/register
   NB-->>C: a client id
-  C->>P: open /oauth/authorize in the browser (PKCE challenge)
-  P->>NB: Allow (behind the login proxy)
+  C->>P: open /api/auth/oauth2/authorize in the browser (PKCE challenge)
+  P->>NB: sign in (a mailed code, or a provider) and Allow
   NB-->>C: redirect with a code
-  C->>NB: POST /oauth/token with the code and the PKCE verifier
-  NB-->>C: access token (1 hour) and refresh token (30 days)
+  C->>NB: POST /api/auth/oauth2/token with the code and the PKCE verifier
+  NB-->>C: access token (10 minutes) and refresh token
   C->>NB: POST /mcp with the access token
-  Note over NB: each call checks the token's audience and that its connection is not revoked
+  Note over NB: each call checks the token and that you still allow the client
 ```
 
-Only the *Allow* step needs the login proxy; everything else is public and checks the client for itself.
-
-noticebox is its own authorization server: RFC 8414 and RFC 9728 metadata under `/.well-known/`, dynamic client registration at `/oauth/register`, the code flow with PKCE at `/oauth/authorize` and `/oauth/token`, rotating refresh tokens. Access tokens last an hour, refresh tokens thirty days, every token is bound to this instance's `/mcp` as its audience, and every token names the connection it belongs to, which is checked on each call. The authorize page is the only step that needs the login proxy; the rest checks for itself and must be public, see [The login in front](../self-hosting/login.md).
+The OAuth server is Better Auth's (`@better-auth/mcp`), with the issuer `<NOTICEBOX_BASE_URL>/api/auth`. It publishes RFC 8414 and RFC 9728 metadata under `/.well-known/` and accepts dynamic client registration and client metadata documents. It runs the code flow with PKCE and rotates refresh tokens. Access tokens are signed JWTs bound to this instance's `/mcp` and live ten minutes. A session cookie is no MCP token. The sign-in page sends only a code by email during this flow, never a link ([Sign-in](../self-hosting/login.md)).

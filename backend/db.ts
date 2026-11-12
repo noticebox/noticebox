@@ -35,16 +35,6 @@ export type Event = {
 export type ListFilter = { form?: string; state?: string; open?: boolean; limit?: number };
 export type Outcome = { ok: true } | { ok: false; error: string };
 
-export type Grant = {
-  id: string;
-  actor: string;
-  client_hash: string;
-  client_name: string;
-  created_at: string;
-  last_used_at: string;
-  revoked_at: string | null;
-};
-
 /** The tables as the migrations leave them. */
 export type Tables = {
   submissions: {
@@ -59,7 +49,6 @@ export type Tables = {
     origin: string | null;
   };
   events: { id: Generated<number>; submission_id: string; at: string; actor: string; from_state: string | null; to_state: string | null; reason: string };
-  grants: Grant;
   boxes: { name: string; position: number };
   forms: { name: string; box: string; definition: string; position: number };
   settings: { key: string; value: string };
@@ -308,41 +297,6 @@ export class Store {
       })();
     }
     return deleted;
-  }
-
-  /** An MCP client the person allowed: the grant every token of that connection names. */
-  grant(actor: string, clientHash: string, clientName: string, now: Date): Grant {
-    const g: Grant = {
-      id: newId(),
-      actor,
-      client_hash: clientHash,
-      client_name: clientName,
-      created_at: now.toISOString(),
-      last_used_at: now.toISOString(),
-      revoked_at: null,
-    };
-    this.run(q.insertInto("grants").values(g));
-    return g;
-  }
-
-  /** The grant behind a token, if it still stands; `touch` records the use. */
-  grantOk(id: string, touch: Date | null = null): boolean {
-    const g = this.first(q.selectFrom("grants").select("revoked_at").where("id", "=", id));
-    if (!g || g.revoked_at !== null) return false;
-    if (touch) this.run(q.updateTable("grants").set({ last_used_at: touch.toISOString() }).where("id", "=", id));
-    return true;
-  }
-
-  grants(actor: string): Grant[] {
-    return this.all(q.selectFrom("grants").selectAll().where("actor", "=", actor).where("revoked_at", "is", null).orderBy("created_at", "desc"));
-  }
-
-  /** Revokes one of the person's own grants: every token of that connection stops working at once. */
-  revokeGrant(id: string, actor: string, now: Date = new Date()): Outcome {
-    const changed = this.run(
-      q.updateTable("grants").set({ revoked_at: now.toISOString() }).where("id", "=", id).where("actor", "=", actor).where("revoked_at", "is", null),
-    );
-    return changed ? { ok: true } : { ok: false, error: "no such connection" };
   }
 
   /** Every box (also those a form names) and every form, each in its stored order. */

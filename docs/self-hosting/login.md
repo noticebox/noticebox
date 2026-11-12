@@ -1,53 +1,111 @@
-# The login in front
+# Sign-in
 
-noticebox has no accounts. A reverse proxy with forward authentication puts the login in front of the inbox and tells noticebox, in a header, who is signed in. That name is the actor of every step in the history.
+noticebox signs people in itself, with [Better Auth](https://better-auth.com): a code by email, and any OAuth or OpenID Connect providers you configure. Only the addresses you list get in. The address a person signs in with is the actor of every step they take in the history ([ADR 0002](https://github.com/noticebox/noticebox/blob/main/docs/adr/0002-sign-in-with-better-auth.md)).
 
-## What must be public
+## Who may sign in
 
-The endpoint, the thank-you page, the health check, the MCP endpoint and its OAuth paths check for themselves and must bypass the login:
+`NOTICEBOX_ALLOWED_EMAILS` is a comma-separated list of addresses and `@domain` entries:
 
+```sh
+NOTICEBOX_ALLOWED_EMAILS=marcel@example.org,@team.example.org
 ```
-/f/*   /health   /mcp   /oauth/token   /oauth/register   /.well-known/*
+
+Only an address on the list gets in, and only when it is verified: by the code mailed to it, or by a provider that says `email_verified`. An empty list lets nobody in, and the log says so at start. Taking an address off the list stops its next sign-in. A session that is already open runs until it ends or the person signs out.
+
+## Ways to sign in
+
+**By email.** With `NOTICEBOX_SMTP_URL` and `NOTICEBOX_SMTP_FROM` set, the sign-in page asks for an address and mails a code. The same mail also has a link that signs in once. Codes and links are stored only as hashes. An address that is not on the list gets no mail, so nobody can use noticebox to send mail to strangers. When an MCP client is signing in, the mail holds only the code: a link would sign in whichever browser opened it, not the one the client is waiting in.
+
+```sh
+NOTICEBOX_SMTP_URL=smtps://inbox%40example.org:app-password@smtp.example.org:465
+NOTICEBOX_SMTP_FROM=noticebox <inbox@example.org>
 ```
 
-Everything else, the inbox and the OAuth authorize page included, must go through the login, and the proxy must pass the person's name in the header named by `NOTICEBOX_USER_HEADER` (`X-Authentik-Username` by default).
+**Through a provider.** For each provider, set `NOTICEBOX_OIDC_<NAME>_CLIENT_ID` and `_CLIENT_SECRET`. A generic OpenID Connect provider (Authentik, Keycloak, …) also needs `_ISSUER`, its discovery base. `GITHUB` and `GOOGLE` are built in and need no issuer. `_LABEL` names the button. The provider's callback URL is `<NOTICEBOX_BASE_URL>/api/auth/callback/<name>`, with the name in lowercase.
 
-## Fails closed
+```sh
+NOTICEBOX_OIDC_AUTHENTIK_CLIENT_ID=noticebox
+NOTICEBOX_OIDC_AUTHENTIK_CLIENT_SECRET=...
+NOTICEBOX_OIDC_AUTHENTIK_ISSUER=https://auth.example.org/application/o/noticebox
+NOTICEBOX_OIDC_AUTHENTIK_LABEL=Example login
 
-Without the header, noticebox answers `401` to everything that is not public. A deployment that forgot the proxy, or a proxy that forgot the header, shows nothing rather than everything. The proxy must also drop that header when a client sends it itself, so nobody can claim a name.
+NOTICEBOX_OIDC_GITHUB_CLIENT_ID=...
+NOTICEBOX_OIDC_GITHUB_CLIENT_SECRET=...
+```
 
-## Caddy and Authentik
+The sign-in page shows a button for each provider. A provider that refuses a sign-in sends the person back with its error code, which the page shows and the log records. The start fails when there is no way to sign in at all: no SMTP and no provider.
 
-With Caddy and an Authentik proxy outpost (a forward-auth provider in *forward single* mode whose external host is the inbox's name):
+## One person, one address
+
+A person is their verified email address, and the history records that address. What a provider says about a username (`preferred_username`, a GitHub login) counts for nothing, so two providers can't name one person differently.
+
+The address must be verified at every sign-in: by the code mailed to it, or by a provider that sends `email_verified: true`. A provider that sends `false`, or leaves the claim out, gets nobody in. This is the setting a new provider most often lacks, so noticebox says it plainly: the sign-in page tells the person that the provider didn't confirm their address and what to set, and the log has a line naming `email_verified`. An address that isn't on `NOTICEBOX_ALLOWED_EMAILS` gets its own message too.
+
+### Authentik
+
+Since 2025.10, Authentik's default `email` scope mapping sends `email_verified: false`, so it signs nobody in to noticebox. Give the noticebox provider a mapping that says which addresses are verified ([Authentik: verify email address](https://docs.goauthentik.io/add-secure-apps/providers/oauth2/verify-email-address/)):
+
+1. Under **Customization → Property Mappings**, create a **Scope Mapping** named `noticebox email`, with scope name `email` and this expression:
+
+    ```python
+    email = request.user.email
+    verified = request.user.attributes.get("email_verified_address")
+    return {"email": email, "email_verified": bool(email and verified == email)}
+    ```
+
+2. For each person who signs in to noticebox, add to their user's **Attributes**: `email_verified_address: marcel@example.org` (their address, once you know it is theirs). Changing their address later turns the claim false until you update the attribute too.
+3. In the noticebox provider's **Advanced protocol settings → Scopes**, remove `authentik default OAuth Mapping: OpenID 'email'` and add `noticebox email`. Keep `openid` and `profile`.
+
+The provider's other settings: client type *Confidential*, redirect URI `https://inbox.example.org/api/auth/callback/authentik` (strict), and the client id and secret into `NOTICEBOX_OIDC_AUTHENTIK_CLIENT_ID` and `_CLIENT_SECRET`. `NOTICEBOX_OIDC_AUTHENTIK_ISSUER` is the provider's *OpenID Configuration Issuer*, such as `https://auth.example.org/application/o/noticebox/` (a trailing slash is fine).
+
+A second provider joins the same account only when it reports the same address as verified. Otherwise it is refused, so an address someone typed at a provider never opens another person's account.
+
+## Coming from the login proxy (up to 0.16)
+
+Up to 0.16, a reverse proxy with forward authentication signed people in and passed their name in a header. That header now counts for nothing. Steps recorded before the change keep the name the header carried (`marcel`); steps from now on record the address (`marcel@example.org`). To switch:
+
+1. In Authentik, add an OAuth2/OpenID provider for noticebox as [above](#authentik), and set the `NOTICEBOX_OIDC_AUTHENTIK_*` variables. Or skip the provider and sign in by email code.
+2. List everyone's address in `NOTICEBOX_ALLOWED_EMAILS`.
+3. Remove the forward-auth from the proxy: noticebox is now proxied as a whole, with no paths public or private at the proxy.
+4. Remove `NOTICEBOX_USER_HEADER` and `NOTICEBOX_SIGN_OUT_URL` from `.env`.
+
+With Caddy, that leaves:
 
 ```caddyfile
 inbox.example.org {
-    @public path /f/* /health /mcp /oauth/token /oauth/register /.well-known/*
-    handle @public {
-        request_header -X-Authentik-Username
-        reverse_proxy noticebox:3000
-    }
-    handle {
-        request_header -X-Authentik-Username
-        reverse_proxy /outpost.goauthentik.io/* authentik-server:9000
-        forward_auth authentik-server:9000 {
-            uri /outpost.goauthentik.io/auth/caddy
-            copy_headers X-Authentik-Username
-        }
-        reverse_proxy noticebox:3000
-    }
+    reverse_proxy noticebox:3000
 }
 ```
 
-!!! note "The outpost must know the provider"
-    A new proxy provider is answered by Authentik's embedded outpost only when it is in that outpost's list of providers. Without it the host answers `404` instead of sending to the login.
+Every MCP client connects once more, because the connections of the old OAuth server can't be carried over.
 
-Any other forward-auth setup works the same way: one public set of paths, the rest behind the login, a header with the name.
+To have the old steps say the address too, rename each person once. This is the one time the history's text changes: only the actor, `marcel` and `marcel via Claude` alike, nothing else. Without `--yes` it only counts.
+
+```sh
+docker compose stop noticebox
+docker compose run --rm noticebox node scripts/rename-actor.mjs marcel marcel@example.org
+docker compose run --rm noticebox node scripts/rename-actor.mjs marcel marcel@example.org --yes
+docker compose start noticebox
+```
+
+## Fails closed
+
+Without a session, noticebox answers `401` to everything that isn't public: a browser gets a link to the sign-in page with it. The public paths check their own credentials, or need none:
+
+```
+/f/*   /api/f/*   /health   /mcp   /login   /api/auth/*   /.well-known/*
+```
+
+A header such as `X-Authentik-Username` that a proxy or a client sends counts for nothing.
+
+## Where the sign-in data lives
+
+Accounts, sessions and the MCP clients' tokens are in `auth.sqlite`, next to the inbox's database (`/data/auth.sqlite` in the image). Exports and backups of the inbox's database hold none of them. Back it up as well if you want sessions and MCP connections to survive a restore. Without it, everyone just signs in again.
 
 ## Signing out
 
-*Sign out* in the user menu goes to `NOTICEBOX_SIGN_OUT_URL`, the Authentik outpost's `/outpost.goauthentik.io/sign_out` by default, which the proxy serves on the inbox's host. Another forward-auth setup names its own sign-out there.
+*Sign out* in the user menu ends the session.
 
 ## Development
 
-`NOTICEBOX_DEV_USER=you` stands in for the proxy and makes every request that person. It is for a machine of your own and must never be set in production.
+`NOTICEBOX_DEV_USER=you` makes every request that person, without signing in. It is for a machine of your own: the app refuses to start with it when `NODE_ENV=production`, which the image sets.

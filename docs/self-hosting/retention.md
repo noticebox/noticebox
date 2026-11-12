@@ -30,4 +30,4 @@ docker exec noticebox node -e '
   new Database("/data/noticebox.sqlite").exec("VACUUM INTO \x27/data/backup.sqlite\x27")'
 ```
 
-or stop the container and copy the three files. The boxes and forms are in the same file, so the backup has them too.
+or stop the container and copy the three files. The boxes and forms are in the same file, so the backup has them too. Accounts, sessions and MCP connections are in `auth.sqlite` beside it and not in this backup: copy that the same way if a restore should keep them, or everyone signs in again ([Sign-in](login.md#where-the-sign-in-data-lives)).
