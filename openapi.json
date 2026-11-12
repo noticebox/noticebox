@@ -1095,6 +1095,49 @@
                         "type": "string"
                       }
                     },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "field": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "number"
+                          },
+                          "picture": {
+                            "type": "boolean"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "api_url": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "field",
+                          "name",
+                          "type",
+                          "size",
+                          "picture",
+                          "url",
+                          "api_url"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "github_issue_url": {
                       "type": [
                         "string",
@@ -1156,11 +1199,80 @@
                     "link",
                     "summary",
                     "fields",
+                    "files",
                     "github_issue_url",
                     "purged_at",
                     "events"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No valid API token or OAuth access token for this API (`unauthorized`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such thing (`not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/submissions/{id}/files/{file}": {
+      "get": {
+        "operationId": "getFile",
+        "summary": "A file that came with a submission, as a download",
+        "description": "The REST counterpart of the MCP tool `get_file`.",
+        "tags": [
+          "Submissions"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "The id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "file",
+            "in": "path",
+            "required": true,
+            "description": "The file's id, from the submission's `files`",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The file's bytes, as `application/octet-stream` with its name in `Content-Disposition`",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
                 }
               }
             }
@@ -1282,6 +1394,49 @@
                         "type": "string"
                       }
                     },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "field": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "number"
+                          },
+                          "picture": {
+                            "type": "boolean"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "api_url": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "field",
+                          "name",
+                          "type",
+                          "size",
+                          "picture",
+                          "url",
+                          "api_url"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "github_issue_url": {
                       "type": [
                         "string",
@@ -1343,6 +1498,7 @@
                     "link",
                     "summary",
                     "fields",
+                    "files",
                     "github_issue_url",
                     "purged_at",
                     "events"
@@ -1492,6 +1648,49 @@
                         "type": "string"
                       }
                     },
+                    "files": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "field": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "number"
+                          },
+                          "picture": {
+                            "type": "boolean"
+                          },
+                          "url": {
+                            "type": "string"
+                          },
+                          "api_url": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "field",
+                          "name",
+                          "type",
+                          "size",
+                          "picture",
+                          "url",
+                          "api_url"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "github_issue_url": {
                       "type": [
                         "string",
@@ -1553,6 +1752,7 @@
                     "link",
                     "summary",
                     "fields",
+                    "files",
                     "github_issue_url",
                     "purged_at",
                     "events"
@@ -1691,6 +1891,49 @@
                               "type": "string"
                             }
                           },
+                          "files": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "field": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "type": {
+                                  "type": "string"
+                                },
+                                "size": {
+                                  "type": "number"
+                                },
+                                "picture": {
+                                  "type": "boolean"
+                                },
+                                "url": {
+                                  "type": "string"
+                                },
+                                "api_url": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "field",
+                                "name",
+                                "type",
+                                "size",
+                                "picture",
+                                "url",
+                                "api_url"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
                           "github_issue_url": {
                             "type": [
                               "string",
@@ -1752,6 +1995,7 @@
                           "link",
                           "summary",
                           "fields",
+                          "files",
                           "github_issue_url",
                           "purged_at",
                           "events"

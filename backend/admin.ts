@@ -1,7 +1,7 @@
 // Administration of boxes, forms, connections and the export: what the inbox's settings pages and the MCP tools both
 // do. The rules that need the store as well as the forms file (a form with submissions stays; a state that
 // submissions are in stays) live here once, so neither the server actions nor the tools hold any of them.
-import type { Event, ListFilter, Outcome, Submission } from "./db";
+import type { Event, ListFilter, Outcome, StoredFile, Submission } from "./db";
 import { isKind, KINDS, type KindName } from "./kinds";
 import type { RawForm } from "./forms";
 import type { Runtime } from "./runtime";
@@ -113,9 +113,9 @@ export async function revokeConnection(rt: Runtime, personId: string, id: string
   return { ok: true };
 }
 
-export type Exported = Submission & { events: Event[] };
+export type Exported = Submission & { files: StoredFile[]; events: Event[] }; // the files without their bytes: those stay in the inbox
 
 /** Every submission, or one form's or state's, with its history, newest first, up to 1000: the audit export. */
 export function exportSubmissions(rt: Runtime, filter: Pick<ListFilter, "form" | "state"> = {}): Exported[] {
-  return rt.store.list({ ...filter, limit: 1000 }).map((s) => ({ ...s, events: rt.store.events(s.id) }));
+  return rt.store.list({ ...filter, limit: 1000 }).map((s) => ({ ...s, files: rt.store.files(s.id), events: rt.store.events(s.id) }));
 }

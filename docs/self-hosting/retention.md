@@ -2,7 +2,7 @@
 
 ## What is removed, and when
 
-A submission is closed when it reaches a closed state: `acted_on` or `rejected` for a report, `answered` for a message. `retentionDays` after that, its personal fields are removed: every field marked `personal`, which free text, textareas and email addresses are by default. What stays is the ids and other fields marked `personal: false`, the chosen category of a `select`, the states, the history with every reason, and the time of the removal. The submission's page says *Personal fields removed* with the date.
+A submission is closed when it reaches a closed state: `acted_on` or `rejected` for a report, `answered` for a message. `retentionDays` after that, its personal fields are removed: every field marked `personal`, which free text, textareas and email addresses are by default, and the files of every `file` field marked `personal`, which they are by default. What stays is the ids and other fields marked `personal: false`, the chosen category of a `select`, the states, the history with every reason, and the time of the removal. The submission's page says *Personal fields removed* with the date.
 
 The sweep runs at start and every six hours. A report reopened before the sweep keeps its fields until it is closed again and the days have passed again.
 
@@ -18,7 +18,7 @@ If you need a copy beyond that period, keep one with the [export](#export) befor
 
 ## Export
 
-`/export.json`, behind the login, returns every submission with its history, newest first, up to 1000; `?form=<name>` limits it to one form. It is the audit export and the way out.
+`/export.json`, behind the login, returns every submission with its history, newest first, up to 1000; `?form=<name>` limits it to one form. It is the audit export and the way out. Files are listed by name, kind and size without their bytes; they are in the database, and in its backups.
 
 ## Backups
 

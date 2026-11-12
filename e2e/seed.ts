@@ -90,6 +90,15 @@ const FORMS = {
       redirect: "https://example.org/thanks",
       retentionDays: 30,
     },
+    order: {
+      kind: "message",
+      title: "Print order",
+      fields: {
+        name: { label: "Name", required: true },
+        model: { type: "file", label: "Model", required: true, accept: [".stl", "image/*"], maxFiles: 2, maxMegabytes: 1 },
+      },
+      retentionDays: 30,
+    },
   },
 };
 

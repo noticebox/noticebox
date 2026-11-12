@@ -106,7 +106,14 @@ function toRaw(c: Config): { boxes: string[]; forms: Record<string, Record<strin
   const entries = Object.entries(c.forms).map(([n, f]) => {
     const { name, ...rest } = f;
     void name;
-    return [n, rest];
+    // A parsed file field keeps its limits in `files`; written out, they are the keys a form is written with.
+    const fields = Object.fromEntries(
+      Object.entries(f.fields).map(([k, { files, ...field }]) => [
+        k,
+        files ? { ...field, accept: files.accept, maxFiles: files.maxFiles, maxMegabytes: files.maxBytes / 1024 / 1024 } : field,
+      ]),
+    );
+    return [n, { ...rest, fields }];
   });
   return { boxes: c.boxes, forms: Object.fromEntries(entries) };
 }

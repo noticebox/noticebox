@@ -84,15 +84,20 @@ The key is the field's name as the page posts it: lowercase letters, digits and 
 
 | Key | Default | Meaning |
 |---|---|---|
-| `type` | `text` | `text`, `textarea`, `select`, `email` or `hidden` |
+| `type` | `text` | `text`, `textarea`, `select`, `email`, `hidden` or `file` |
 | `label` | the name | How the inbox labels it |
 | `required` | `false` | A post without it is refused |
 | `max` | 500 text, 10 000 textarea, 254 email, 200 select and hidden | Longest accepted value, in characters |
 | `options` | required for `select` | The allowed values |
-| `personal` | `true` for text, textarea and email; `false` otherwise. An undescribed field is always personal | Removed by retention once the submission is closed and past `retentionDays` |
+| `personal` | `true` for text, textarea, email and file; `false` otherwise. An undescribed field is always personal | Removed by retention once the submission is closed and past `retentionDays` |
 | `help` | none | A sentence for the person filling the form |
+| `accept` | any | A `file` field's kinds: extensions (`.stl`) or media types (`image/png`, `image/*`) |
+| `maxFiles` | `1` | How many files a `file` field takes in one post, at most 10 |
+| `maxMegabytes` | `10` | How large each file may be, at most 25 |
 
 Values are trimmed, line ends normalised, control characters dropped; a value of any type but `textarea` is folded onto one line.
+
+A `file` field has no text: `max` doesn't apply, and `accept`, `maxFiles` and `maxMegabytes` belong to it alone. Files are kept in the database with their submission; see [Files](../integrations/forms.md#files) for posting them and [Retention](retention.md) for when they go.
 
 ### Link
 

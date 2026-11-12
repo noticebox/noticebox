@@ -4,5 +4,7 @@ export const endpointPath = (form: string): string => `/f/${encodeURIComponent(f
 export const formPath = (form: string): string => `/forms/${encodeURIComponent(form)}`;
 export const submissionsPath = (form: string): string => `${formPath(form)}/submissions`;
 export const submissionPath = (form: string, id: string): string => `${submissionsPath(form)}/${encodeURIComponent(id)}`;
+/** A file that came with a submission, in the inbox (signed in); `?inline=1` shows a picture instead of downloading it. */
+export const filePath = (id: string): string => `/files/${encodeURIComponent(id)}`;
 /** The same submission on a page of its own, without the table beside it. */
 export const casePath = (form: string, id: string): string => `${formPath(form)}/case/${encodeURIComponent(id)}`;

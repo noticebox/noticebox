@@ -2,12 +2,25 @@
 // built once here so the two can't drift. Each names its URL in the inbox. What a tool adds for an assistant (`next`)
 // stays in mcp.ts; REST answers plain data.
 import * as z from "zod";
-import type { Event, Submission } from "./db";
+import type { Event, StoredFile, Submission } from "./db";
+import { isPicture } from "./files";
 import { issueUrl } from "./github";
 import { linkFor } from "./links";
-import { boxPath, endpointPath, formPath, submissionPath } from "./paths";
+import { boxPath, endpointPath, filePath, formPath, submissionPath } from "./paths";
 import type { Runtime } from "./runtime";
 import { summaryOf } from "./summary";
+
+/** A file without its bytes: its name, kind and size, and where to get it in the inbox and through the API. */
+export const fileView = (base: string, f: StoredFile) => ({
+  id: f.id,
+  field: f.field,
+  name: f.name,
+  type: f.type,
+  size: f.size,
+  picture: isPicture(f),
+  url: base + filePath(f.id),
+  api_url: `${base}/api/v1/submissions/${encodeURIComponent(f.submission_id)}/files/${encodeURIComponent(f.id)}`,
+});
 
 export const eventView = ({ at, actor, from_state, to_state, reason }: Event) => ({ at, actor, from_state, to_state, reason });
 
@@ -31,6 +44,7 @@ export function fullView(rt: Runtime, base: string, x: Submission, history: Even
   return {
     ...summaryView(rt, base, x),
     fields: x.fields,
+    files: rt.store.files(x.id).map((f) => fileView(base, f)),
     github_issue_url: issueUrl(rt.config.forms[x.form], x, base),
     purged_at: x.purged_at,
     events: history.map(eventView),
@@ -78,6 +92,16 @@ export function formView(rt: Runtime, base: string, name: string) {
 }
 
 // The shapes above as schemas: MCP's output schemas and the REST API's description (openapi.json) are built from them.
+const FILE = z.object({
+  id: z.string(),
+  field: z.string(),
+  name: z.string(),
+  type: z.string(),
+  size: z.number(),
+  picture: z.boolean(),
+  url: z.string(),
+  api_url: z.string(),
+});
 const EVENT = z.object({ at: z.string(), actor: z.string(), from_state: z.string().nullable(), to_state: z.string().nullable(), reason: z.string() });
 const SUMMARY = {
   id: z.string(),
@@ -93,6 +117,7 @@ const SUMMARY = {
 const FULL = {
   ...SUMMARY,
   fields: z.record(z.string(), z.string()),
+  files: z.array(FILE),
   github_issue_url: z.string().nullable(),
   purged_at: z.string().nullable(),
   events: z.array(EVENT),
@@ -141,4 +166,4 @@ const API_TOKEN = z.object({
 });
 const CONNECTION = z.object({ id: z.string(), client_name: z.string(), created_at: z.string(), current: z.boolean() });
 
-export const SCHEMAS = { EVENT, SUMMARY, FULL, STATE, BOX, FORMS, FORM, API_TOKEN, CONNECTION };
+export const SCHEMAS = { FILE, EVENT, SUMMARY, FULL, STATE, BOX, FORMS, FORM, API_TOKEN, CONNECTION };

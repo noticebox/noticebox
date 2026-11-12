@@ -5,7 +5,7 @@ import { randomBytes } from "node:crypto";
 import { expect, test } from "vitest";
 import { revokeConnection, connections } from "./admin";
 import { mcpAs, mcpRoute, whoFor } from "./mcp";
-import { BASE, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
+import { BASE, fileConfig, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
 
 const V = "2026-07-28";
 const META = { "io.modelcontextprotocol/clientInfo": { name: "t", version: "0" }, "io.modelcontextprotocol/clientCapabilities": {} };
@@ -64,6 +64,7 @@ test("tools act in the name of the person who allowed the client, and the trail 
     "delete_box",
     "delete_form",
     "export",
+    "get_file",
     "get_form",
     "get_submission",
     "list_api_tokens",
@@ -239,6 +240,9 @@ test("every tool's result says what to do next", async () => {
   const rt = testRuntime();
   const { call, tools } = await caller(rt);
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
+  const withFile = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date(), [
+    { field: "file", name: "shot.png", type: "image/png", data: new Uint8Array([1]) },
+  ]);
   const other = await connect(rt, "marcel", "Other");
   const grant = (await connections(rt, other.personId)).find((c) => c.client_name === "Other")!.id;
   // One valid call per tool, in an order where each finds what it needs.
@@ -249,6 +253,7 @@ test("every tool's result says what to do next", async () => {
     ["put_form", { name: "spare", form: { kind: "message" } }],
     ["list_submissions", {}],
     ["get_submission", { id }],
+    ["get_file", () => ({ id: withFile.id, file: rt.store.files(withFile.id)[0]!.id })],
     ["add_note", { id, text: "Checked." }],
     ["decide", { id, to: "rejected", reason: "Fine." }],
     ["create_box", { name: "shop" }],
@@ -368,4 +373,33 @@ test("export gives the submissions with their histories, by form and state", asy
   const byState = (await call("export", { form: "contact", state: "new" })).structuredContent;
   expect(byState.submissions).toHaveLength(1);
   expect(byState.next[0]).toContain(`${BASE}/export.json?form=contact&state=new`);
+});
+
+test("get_file hands over a submission's file: a picture as an image, anything else as a resource, never another submission's", async () => {
+  const rt = testRuntime({ config: fileConfig() });
+  const { access } = await connect(rt);
+  const auth = { authorization: `Bearer ${access}` };
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+  const s = rt.store.receive(rt.config.forms.order!, { name: "Ann" }, null, new Date(), [
+    { field: "model", name: "part.stl", type: "model/stl", data: new TextEncoder().encode("solid part") },
+    { field: "model", name: "photo.png", type: "image/png", data: png },
+  ]);
+  const other = rt.store.receive(rt.config.forms.order!, { name: "Bob" }, null, new Date());
+  const got = (await (await rpc(rt, "tools/call", { name: "get_submission", arguments: { id: s.id } }, auth)).json()).result.structuredContent;
+  expect(got.files.map((f: { name: string; picture: boolean }) => [f.name, f.picture])).toEqual([
+    ["part.stl", false],
+    ["photo.png", true],
+  ]);
+  expect(got.next.join(" ")).toMatch(/get_file/);
+  const [stl, photo] = got.files as { id: string }[];
+
+  const asResource = (await (await rpc(rt, "tools/call", { name: "get_file", arguments: { id: s.id, file: stl!.id } }, auth)).json()).result;
+  expect(asResource.structuredContent).toMatchObject({ name: "part.stl", size: 10 });
+  expect(asResource.content[1]).toMatchObject({ type: "resource", resource: { mimeType: "model/stl", blob: Buffer.from("solid part").toString("base64") } });
+
+  const asImage = (await (await rpc(rt, "tools/call", { name: "get_file", arguments: { id: s.id, file: photo!.id } }, auth)).json()).result;
+  expect(asImage.content[1]).toEqual({ type: "image", mimeType: "image/png", data: Buffer.from(png).toString("base64") });
+
+  const wrong = (await (await rpc(rt, "tools/call", { name: "get_file", arguments: { id: other.id, file: photo!.id } }, auth)).json()).result;
+  expect(wrong.isError).toBe(true);
 });

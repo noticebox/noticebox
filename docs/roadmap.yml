@@ -43,6 +43,16 @@ items:
       - { label: "V2", url: "https://noticebox.github.io/noticebox/values/#v2" }
 
   # ---- done ------------------------------------------------------------------------------------------------------------
+  - id: file-uploads
+    status: done
+    date: 2026-11-12
+    icon: paperclip
+    title: Files on forms
+    summary: A form takes files through `file` fields, kept with the submission in the database, shown in the inbox, handed over by MCP and the API, and removed by retention.
+    links:
+      - { label: "#101", url: "https://github.com/noticebox/noticebox/issues/101" }
+      - { label: "ADR 0007", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0007-files-in-the-database.md" }
+
   - id: rest-api
     status: done
     date: 2026-11-11

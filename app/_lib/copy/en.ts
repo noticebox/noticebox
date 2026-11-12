@@ -226,6 +226,9 @@ export const en = {
     keptUntilClosed: (days: number) => `Personal fields are removed ${days} ${plural(days, "day", "days")} after this is closed. The history stays.`,
     removedOn: (day: string) => `Personal fields are removed on ${day}. The history stays.`,
     appendOnly: "only added to, never changed",
+    files: "Files",
+    download: (name: string) => `Download ${name}`,
+    size: (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${Math.round((bytes / 1024 / 1024) * 10) / 10} MB`),
   },
 
   settings: {
@@ -251,6 +254,9 @@ export const en = {
     moveDown: "Move down",
     removeField: (name: string) => `Remove field ${name}`,
     options: "Options, separated by commas",
+    accept: "Accepted kinds, separated by commas: extensions or media types (empty: any)",
+    maxFiles: "Files",
+    maxMegabytes: "MB each",
     required: "required",
     personal: "personal",
     byType: "by type",

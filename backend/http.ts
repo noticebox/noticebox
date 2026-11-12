@@ -33,12 +33,25 @@ export const mediaType = (h: Headers): string => (h.get("content-type") ?? "").s
 
 /** The fields of a urlencoded or multipart body, first value per name. */
 export async function parseFields(bytes: Uint8Array, h: Headers): Promise<Record<string, string>> {
+  return (await parseForm(bytes, h)).fields;
+}
+
+/**
+ * A urlencoded or multipart body: the text fields (first value per name) and the files (every one per name). A file
+ * input left empty still sends a part, with no name and no bytes; it is not a file.
+ */
+export async function parseForm(bytes: Uint8Array, h: Headers): Promise<{ fields: Record<string, string>; files: Record<string, File[]> }> {
   const type = mediaType(h);
-  if (type === "application/x-www-form-urlencoded") return Object.fromEntries(new URLSearchParams(new TextDecoder().decode(bytes)));
+  if (type === "application/x-www-form-urlencoded") return { fields: Object.fromEntries(new URLSearchParams(new TextDecoder().decode(bytes))), files: {} };
   const fd = await new Response(bytes as BodyInit, { headers: { "content-type": h.get("content-type") ?? "" } }).formData();
-  const out: Record<string, string> = {};
-  for (const [k, v] of fd) if (typeof v === "string" && !(k in out)) out[k] = v;
-  return out;
+  const fields: Record<string, string> = {};
+  const files: Record<string, File[]> = {};
+  for (const [k, v] of fd) {
+    if (typeof v === "string") {
+      if (!(k in fields)) fields[k] = v;
+    } else if (v.size > 0 || v.name) (files[k] ??= []).push(v);
+  }
+  return { fields, files };
 }
 
 export function seeOther(location: string, headers: Record<string, string> = {}): Response {
