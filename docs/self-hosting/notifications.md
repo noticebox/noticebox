@@ -22,6 +22,10 @@ A JSON post:
 { "form": "contact", "kind": "message", "id": "kemGIkDjIh9Y", "received_at": "2026-10-10T14:20:11.000Z", "url": "https://inbox.example.org/forms/contact/submissions/kemGIkDjIh9Y" }
 ```
 
+## Test posts
+
+A post with the [`_test` hint](../integrations/forms.md#a-plain-form) is stored and announced like any other, so a site can check in CI that its form reaches the inbox and the phone. Its announcement says it is a test: the ntfy title starts with *Test:*, the priority is 1 (no sound or vibration) and the tag a test tube; a webhook's body carries `"test": true`.
+
 Any number of targets can be set on a form, on its *Settings* tab or in the file. A notification that fails is logged and never delays or fails the submission: the answer to the poster goes out first.
 
 ## Certificates

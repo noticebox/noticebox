@@ -160,8 +160,9 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
   // What the page says about fields it is the first to send is written into the forms file: a label, whether the
   // field is personal, whether it is required. What the file already says is never changed by a post.
   if (!form.strict) learn(rt, form, fields, hints);
-  // The notification goes out after the answer is on its way; a slow ntfy never slows the reporter.
-  void notify(form, s, publicBase(h, rt), rt.fetch, rt.log);
+  // The notification goes out after the answer is on its way; a slow ntfy never slows the reporter. A test post
+  // (`_test`) is announced as one.
+  void notify(form, s, publicBase(h, rt), rt.fetch, rt.log, Boolean(data._test));
   return res;
 }
 

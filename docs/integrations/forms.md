@@ -16,6 +16,7 @@ A page posts to `https://<your noticebox>/f/<form>`. noticebox hosts no form pag
 
 - Any field name a page posts is taken (lowercase letters, digits and `_`, up to 50 fields, 10 000 characters each), unless the form is **strict**, which refuses fields the form does not describe. A field the form describes is checked as described: required, a select's options, an email address, a length.
 - `_gotcha` is the honeypot: a bot that fills the field nobody sees gets the same answer as everyone and nothing is stored.
+- `_test` (any value) marks a test post, a site's own check that its form still gets through. It is checked, stored and announced like any other post, but announced as a test: quietly and labelled, see [Notifications](../self-hosting/notifications.md#test-posts). Close it afterwards, by hand or through the [REST API](api.md).
 - After a post the browser goes to the form's `redirect`, or to the small thank-you page noticebox serves at `/f/<form>/thanks` when there is none. Set `redirect` to a page of your site.
 - A refused post (a required field missing, a value too long, an address that is not one) sends the browser back to the page it came from, with `?error=…` for each problem and the typed values as query parameters, so the page can show both. This happens only when the page's origin is one the form accepts; otherwise the answer is `400` with the problems as text.
 

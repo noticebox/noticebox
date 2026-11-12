@@ -80,7 +80,7 @@ The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 cha
 
 ### A field
 
-The key is the field's name as the page posts it: lowercase letters, digits and `_`, up to 32 characters; `_gotcha` is reserved for the honeypot.
+The key is the field's name as the page posts it: lowercase letters, digits and `_`, up to 32 characters; `_gotcha` is reserved for the honeypot and `_test` for test posts.
 
 | Key | Default | Meaning |
 |---|---|---|
