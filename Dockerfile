@@ -13,6 +13,8 @@ WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 NOTICEBOX_DB=/data/noticebox.sqlite NOTICEBOX_CONFIG=/app/noticebox.json
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
+# The one-off rename of an actor in the history (docs/self-hosting/login.md, coming from the login proxy).
+COPY --from=build --chown=node:node /app/scripts/rename-actor.mjs ./scripts/
 # The server needs neither npm nor corepack, which bring their own dependencies (and their advisories) into the image;
 # the base's packages are brought up to their fixed versions.
 RUN apk upgrade --no-cache && apk add --no-cache su-exec ca-certificates && mkdir /data && chown node:node /data \

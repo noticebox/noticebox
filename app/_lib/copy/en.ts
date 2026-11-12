@@ -362,7 +362,13 @@ export const en = {
     signIn: "Sign in",
     otherAddress: "Use another address",
     failed: "That didn't work. Check the code, or ask for a new one.",
-    refused: (provider: string | null, code: string) => `${provider ?? "The sign-in"} refused it: ${code}.`,
+    refused: (provider: string | null, code: string) => {
+      const via = provider ?? "The provider";
+      if (code === "email_not_verified" || code === "account_not_linked")
+        return `${via} didn't confirm that your email address is verified, so noticebox can't sign you in through it. Whoever runs ${provider ?? "the provider"} has to send email_verified: true for your address (in Authentik: the email scope mapping). Until then, sign in with a code by email.`;
+      if (code === "email_not_allowed") return "This address may not sign in here. Ask whoever runs noticebox to add it to NOTICEBOX_ALLOWED_EMAILS.";
+      return `${provider ?? "The sign-in"} refused it: ${code}.`;
+    },
     none: "No way to sign in is set up on this instance.",
   },
 

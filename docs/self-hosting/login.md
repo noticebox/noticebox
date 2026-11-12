@@ -39,15 +39,32 @@ The sign-in page shows a button for each provider. A provider that refuses a sig
 
 A person is their verified email address, and the history records that address. What a provider says about a username (`preferred_username`, a GitHub login) counts for nothing, so two providers can't name one person differently.
 
-The address must be verified at every sign-in: by the code mailed to it, or by a provider that sends `email_verified: true`. A provider that sends `false`, or leaves the claim out, gets nobody in. In Authentik, check that the `email` scope mapping sends `email_verified` as true for your users.
+The address must be verified at every sign-in: by the code mailed to it, or by a provider that sends `email_verified: true`. A provider that sends `false`, or leaves the claim out, gets nobody in. This is the setting a new provider most often lacks, so noticebox says it plainly: the sign-in page tells the person that the provider didn't confirm their address and what to set, and the log has a line naming `email_verified`. An address that isn't on `NOTICEBOX_ALLOWED_EMAILS` gets its own message too.
 
-A second provider joins the same account only when it reports the same address as verified. Otherwise it is refused, so an address someone typed at a provider never opens another person's account. The history is never rewritten.
+### Authentik
+
+Since 2025.10, Authentik's default `email` scope mapping sends `email_verified: false`, so it signs nobody in to noticebox. Give the noticebox provider a mapping that says which addresses are verified ([Authentik: verify email address](https://docs.goauthentik.io/add-secure-apps/providers/oauth2/verify-email-address/)):
+
+1. Under **Customization → Property Mappings**, create a **Scope Mapping** named `noticebox email`, with scope name `email` and this expression:
+
+    ```python
+    email = request.user.email
+    verified = request.user.attributes.get("email_verified_address")
+    return {"email": email, "email_verified": bool(email and verified == email)}
+    ```
+
+2. For each person who signs in to noticebox, add to their user's **Attributes**: `email_verified_address: marcel@example.org` (their address, once you know it is theirs). Changing their address later turns the claim false until you update the attribute too.
+3. In the noticebox provider's **Advanced protocol settings → Scopes**, remove `authentik default OAuth Mapping: OpenID 'email'` and add `noticebox email`. Keep `openid` and `profile`.
+
+The provider's other settings: client type *Confidential*, redirect URI `https://inbox.example.org/api/auth/callback/authentik` (strict), and the client id and secret into `NOTICEBOX_OIDC_AUTHENTIK_CLIENT_ID` and `_CLIENT_SECRET`. `NOTICEBOX_OIDC_AUTHENTIK_ISSUER` is the provider's *OpenID Configuration Issuer*, such as `https://auth.example.org/application/o/noticebox/` (a trailing slash is fine).
+
+A second provider joins the same account only when it reports the same address as verified. Otherwise it is refused, so an address someone typed at a provider never opens another person's account.
 
 ## Coming from the login proxy (up to 0.16)
 
-Up to 0.16, a reverse proxy with forward authentication signed people in and passed their name in a header. That header now counts for nothing. Steps recorded before the change keep the name the header carried (`marcel`); steps from now on record the address (`marcel@example.org`). The history is never rewritten. To switch:
+Up to 0.16, a reverse proxy with forward authentication signed people in and passed their name in a header. That header now counts for nothing. Steps recorded before the change keep the name the header carried (`marcel`); steps from now on record the address (`marcel@example.org`). To switch:
 
-1. In Authentik, add an OAuth2/OpenID provider for noticebox with the redirect URI `https://inbox.example.org/api/auth/callback/authentik`, and set the `NOTICEBOX_OIDC_AUTHENTIK_*` variables above. Or skip the provider and sign in by email code.
+1. In Authentik, add an OAuth2/OpenID provider for noticebox as [above](#authentik), and set the `NOTICEBOX_OIDC_AUTHENTIK_*` variables. Or skip the provider and sign in by email code.
 2. List everyone's address in `NOTICEBOX_ALLOWED_EMAILS`.
 3. Remove the forward-auth from the proxy: noticebox is now proxied as a whole, with no paths public or private at the proxy.
 4. Remove `NOTICEBOX_USER_HEADER` and `NOTICEBOX_SIGN_OUT_URL` from `.env`.
@@ -61,6 +78,15 @@ inbox.example.org {
 ```
 
 Every MCP client connects once more, because the connections of the old OAuth server can't be carried over.
+
+To have the old steps say the address too, rename each person once. This is the one time the history's text changes: only the actor, `marcel` and `marcel via Claude` alike, nothing else. Without `--yes` it only counts.
+
+```sh
+docker compose stop noticebox
+docker compose run --rm noticebox node scripts/rename-actor.mjs marcel marcel@example.org
+docker compose run --rm noticebox node scripts/rename-actor.mjs marcel marcel@example.org --yes
+docker compose start noticebox
+```
 
 ## Fails closed
 

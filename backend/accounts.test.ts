@@ -130,7 +130,7 @@ async function signIn(email: string, oauthQuery?: string) {
 async function viaProvider(name: string, profile: Record<string, unknown>, cookie = "") {
   const start = await fetch(
     `${base}/api/auth/sign-in/social`,
-    json({ provider: name, callbackURL: "/", errorCallbackURL: "/login" }, cookie ? { cookie } : {}),
+    json({ provider: name, callbackURL: "/", errorCallbackURL: `/login?provider=${name}` }, cookie ? { cookie } : {}),
   );
   expect(start.status).toBe(200);
   const to = new URL((await start.json()).url);
@@ -158,11 +158,15 @@ test("only a verified address on the list signs in; nobody else even gets a mail
   expect(await sendCode("eve@example.com")).toBeUndefined();
   expect((await signIn("eve@example.com")).ok).toBe(false);
   const eve = await viaProvider("fake", { sub: "u-eve", email: "eve@example.com", email_verified: true });
-  expect(eve.headers.get("location")).toMatch(/^\/login\?error=/);
+  expect(new URL(eve.headers.get("location")!, base).searchParams.get("error")).toBe("email_not_allowed");
   expect(cookieOf(eve)).not.toContain("session_token=");
   // A provider that doesn't vouch for the address gets nobody in, even an allowed one.
   const unverified = await viaProvider("fake", { sub: "u-bob", email: "bob@team.example", email_verified: false });
-  expect(unverified.headers.get("location")).toMatch(/^\/login\?error=/);
+  // The sign-in page is told why, not just that it failed: this is the setting a provider is most often missing.
+  const back = new URL(unverified.headers.get("location")!, base);
+  expect(back.pathname).toBe("/login");
+  expect(back.searchParams.get("error")).toBe("email_not_verified");
+  expect(back.searchParams.get("provider")).toBe("fake");
   expect(cookieOf(unverified)).not.toContain("session_token=");
 });
 
@@ -205,9 +209,11 @@ test("the verified address is the name events record, whatever a provider claims
   // Unverified, it is refused: an address someone merely typed at a provider doesn't open another's account.
   const forged = await viaProvider("other", { sub: "o-10", email: "marcel@example.com", email_verified: false });
   expect(cookieOf(forged)).not.toContain("session_token=");
+  expect(new URL(forged.headers.get("location")!, base).searchParams.get("error")).toBe("account_not_linked");
   // A provider that leaves email_verified out doesn't vouch for the address either.
   const silent = await viaProvider("fake", { sub: "u-2", email: "silent@team.example" });
   expect(cookieOf(silent)).not.toContain("session_token=");
+  expect(new URL(silent.headers.get("location")!, base).searchParams.get("error")).toBe("email_not_verified");
 });
 
 const V = "2026-07-28";
