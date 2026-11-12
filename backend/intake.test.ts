@@ -20,6 +20,8 @@ test("a browser submission is stored, answered with a redirect, and announced wi
   const link = `${BASE}/forms/report/submissions/${s!.id}`;
   expect(ntfy.body).toBe(link);
   expect(ntfy.headers.title).toBe("New report: Report content");
+  expect(ntfy.headers.priority).toBe("4");
+  expect(ntfy.headers.tags).toBe("mailbox");
   expect(JSON.parse(hook.body)).toEqual({ form: "report", kind: "report", id: s!.id, received_at: s!.received_at, url: link });
   for (const h of rt.hits) expect(h.body + JSON.stringify(h.headers)).not.toMatch(/spam|example\.org/i);
 });
@@ -86,6 +88,24 @@ test("the honeypot swallows bots: same answer, nothing stored", async () => {
   expect(rt.store.list()).toHaveLength(0);
   await new Promise((r) => setTimeout(r, 30));
   expect(rt.hits).toHaveLength(0);
+});
+
+test("a test post is stored and announced like any other, but announced as a test", async () => {
+  const rt = testRuntime();
+  const res = await intakeRoute(jsonPost("/f/report", { ...REPORT, _test: "1" }), "report", rt);
+  expect(res.status).toBe(201);
+  const { id } = (await res.json()) as { id: string };
+  expect(rt.store.get(id)?.fields).toEqual({ ...REPORT, text: "This is spam.\nSecond line." });
+  await until(() => rt.hits.length === 2);
+  const ntfy = rt.hits.find((h) => h.url === "https://ntfy.test/topic")!;
+  expect(ntfy.headers.title).toBe("Test: New report: Report content");
+  expect(ntfy.headers.priority).toBe("1");
+  expect(ntfy.headers.tags).toBe("test_tube");
+  const hook = rt.hits.find((h) => h.url === "https://hook.test/in")!;
+  expect(JSON.parse(hook.body)).toMatchObject({ id, test: true });
+  // An invalid test post is refused like any other.
+  const bad = await intakeRoute(jsonPost("/f/report", { read_id: "r1", text: "only text", _test: "1" }), "report", rt);
+  expect(bad.status).toBe(400);
 });
 
 test("a form with origins takes submissions only from them, with CORS for scripts", async () => {
