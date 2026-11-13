@@ -16,7 +16,7 @@ Every page of a form starts with its box, its kind and its endpoint, its title, 
 
 ## Settings
 
-A form's third tab, with the list of its sections at the left on wide screens: title and box; the described fields (name, type, label, required, length, options of a select, whether personal, a help text) and, beside them, the fields seen in submissions that nobody described yet, one click away from being described; the *Strict* switch; the states with their two flags; where posts are accepted from and where the browser goes afterwards; the notification targets (any number of ntfy topics and webhooks); the retention and the link. *Save the settings*, in the bar that stays at the bottom, saves the form; a refused save says what is wrong and keeps what was typed. A form without submissions can be removed here.
+A form's third tab, with the list of its sections at the left on wide screens: title and box; the described fields (name, type, label, required, length, options of a select, the kinds, count and size a file field takes, whether personal, a help text) and, beside them, the fields seen in submissions that nobody described yet, one click away from being described; the *Strict* switch; the states with their two flags and, on a closed one, after how many minutes it deletes what reaches it; where posts are accepted from and where the browser goes afterwards; the notification targets (any number of ntfy topics and webhooks); the retention and the link. *Save the settings*, in the bar that stays at the bottom, saves the form; a refused save says what is wrong and keeps what was typed. A form without submissions can be removed here.
 
 ## Overview
 
@@ -48,6 +48,8 @@ A submission opens in a pane beside the table, which stays as it was, filters in
 The pane shows the first text as its title, when and from where it arrived, the state dropdown and *Add a note*, the link to what it is about and *Open GitHub issue* when the form has them. Then its fields as the form labelled them, the personal ones marked, and when their removal is due: so many days after closing while it is open, the day itself once it is closed. Then the history: received, each move from one state to another, each note; by whom and when, with the reason set apart, since it is what the box exists to keep.
 
 ![A submission: the fields, the state, the link to the note, and the history with the recorded reason](../assets/screenshot-detail.png)
+
+Files that came with it are listed under *Files*, each with its name and size: the common photo formats are shown as pictures, everything else is a download, and only for someone signed in. A line under the fields says when retention removes the personal fields, or, in a state that deletes after minutes, that the submission will be deleted entirely.
 
 When the personal fields have been removed by retention, the pane says so and shows what is left: the ids, the category, the states and the decisions.
 
