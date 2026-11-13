@@ -37,7 +37,12 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
         ] as RawTarget[])
       : [];
   const link = raw.link;
-  const states: StateRow[] = form.states.map((st) => ({ name: st.name, closed: st.closed, reason: st.reason }));
+  const states: StateRow[] = form.states.map((st) => ({
+    name: st.name,
+    closed: st.closed,
+    reason: st.reason,
+    deleteAfterMinutes: st.deleteAfterMinutes === null ? "" : String(st.deleteAfterMinutes),
+  }));
   const seen = rt.store.fieldsSeen(name).filter((n) => !fieldsRaw[n]);
   const counts = rt.store.counts().filter((c) => c.form === name);
   const inUse = states.map((st) => st.name).filter((n) => counts.some((c) => c.state === n && c.n > 0));

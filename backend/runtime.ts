@@ -152,7 +152,7 @@ export function runtime(): Runtime {
   return g.__noticebox;
 }
 
-/** Retention, run at start and then every six hours (instrumentation.ts). */
+/** Retention, run at start and then every minute (instrumentation.ts); a few small queries when nothing is due. */
 export function sweepNow(rt: Runtime = runtime()): { purged: number; deleted: number } {
   const purged = rt.store.sweep(rt.config, rt.now());
   const deleted = rt.store.expire(rt.config, rt.now());

@@ -70,7 +70,7 @@ The key is the form's name: lowercase letters, digits, `-` and `_`, up to 40 cha
 | `thanks` | a generic sentence | The text of the thank-you page at `/f/<name>/thanks` |
 | `fields` | none | The described fields, see below. A form takes undescribed fields too unless it is strict; a page can describe its own, see [Posting from a page](../integrations/forms.md#describing-fields-from-the-page) |
 | `strict` | `false` | Take only the described fields and refuse any other |
-| `states` | the kind's preset | The states, in order, the first being where a submission starts: names, or `{ "name": …, "closed": true, "reason": true }`; see [States, reasons and kinds](../using/kinds.md) |
+| `states` | the kind's preset | The states, in order, the first being where a submission starts: names, or `{ "name": …, "closed": true, "reason": true, "deleteAfterMinutes": 0 }`; see [States, reasons and kinds](../using/kinds.md) |
 | `origins` | none: posts from anywhere | Origins posts are accepted from, `https://example.org` each |
 | `redirect` | the thank-you page | Where the browser goes after a plain post |
 | `retentionDays` | `180` | Days after closing until the personal fields are removed |

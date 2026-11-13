@@ -40,6 +40,12 @@ A report's usual path, from left to right: the two closed states at the end need
 
 **Needs a reason** makes the reason the record of the decision: what was done, or why nothing was. The dialog refuses the move without one; the reason is shown large in the history.
 
+**Deleted after minutes** (`deleteAfterMinutes`, closed states only) deletes a submission that reaches the state that many minutes later, with its history and files, whatever the form's retention says; `0` deletes it at the next sweep, within a minute. It is meant for states such as `test` or `spam`, whose submissions are worth nothing once looked at, and keeps them out of the nightly backups too:
+
+```json
+"states": ["new", { "name": "answered", "closed": true }, { "name": "test", "closed": true, "deleteAfterMinutes": 0 }]
+```
+
 ## Notes
 
 *Add a note* records text without changing the state: what was found, who was asked, what the reporter said. Notes are part of the history and stay with the submission.

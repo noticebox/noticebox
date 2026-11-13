@@ -61,7 +61,7 @@ export function formsView(rt: Runtime, base: string) {
       title: f.title,
       kind: f.kind,
       url: base + formPath(f.name),
-      states: f.states,
+      states: f.states.map(({ name, closed, reason }) => ({ name, closed, reason })), // the published shape; deleteAfterMinutes shows in get_form
       retention_days: f.retentionDays,
       delete_after_days: f.deleteAfterDays,
     })),

@@ -1,5 +1,5 @@
 // Runs once when the server starts: loads the forms, opens the store and sign-in (a bad configuration stops the start), then
-// applies the retention now and every six hours.
+// applies the retention now and every minute.
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   const { runtime, sweepNow } = await import("@/backend");
@@ -8,5 +8,5 @@ export async function register(): Promise<void> {
   console.log(`noticebox: ${Object.keys(rt.config.forms).length} form(s); sign-in: ${ways.join(", ")}`);
   await rt.auth(); // opens auth.sqlite and brings Better Auth's tables up to date now, so a broken file stops the start
   sweepNow(rt);
-  setInterval(() => sweepNow(rt), 6 * 60 * 60 * 1000).unref();
+  setInterval(() => sweepNow(rt), 60 * 1000).unref(); // every minute: a state may delete what reaches it after minutes
 }
