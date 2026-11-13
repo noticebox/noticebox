@@ -6,7 +6,9 @@ import { t } from "@/app/_lib/copy";
 // OAuth metadata (each checks its credentials itself), and the sign-in page. Everything else is the inbox, which needs
 // a Better Auth session: without its cookie, a request gets 401, with a link to the sign-in page for a browser. Only
 // the cookie's presence is checked here; the pages check the session itself (personOf), so a forged cookie gets nowhere.
-// A header a proxy in front might set (X-Authentik-Username) counts for nothing.
+// A header a proxy in front might set (X-Authentik-Username) counts for nothing. A file with a signed link (`sig`, handed
+// out by MCP get_file) goes through to its route, which checks the signature and refuses a wrong or old one.
+const SIGNED_FILE = /^\/files\/[A-Za-z0-9_-]+$/;
 const FORM = /^\/f\/([a-z0-9][a-z0-9_-]{0,39})$/;
 const PUBLIC = /^\/(f\/|api\/f\/|api\/auth\/|api\/v1\/|health$|mcp$|login$|\.well-known\/|(icon\.svg|apple-icon\.png|opengraph-image\.png)$)/;
 
@@ -20,6 +22,7 @@ export function proxy(req: NextRequest) {
   if (m && req.method !== "GET" && req.method !== "HEAD") return NextResponse.rewrite(new URL(`/api/f/${m[1]}${search}`, req.url));
 
   if (PUBLIC.test(pathname)) return NextResponse.next();
+  if (SIGNED_FILE.test(pathname) && req.nextUrl.searchParams.has("sig")) return NextResponse.next();
 
   if (getSessionCookie(req) || process.env.NOTICEBOX_DEV_USER) {
     const res = NextResponse.next();
