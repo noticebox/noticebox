@@ -75,6 +75,29 @@ create table settings (
     name: "drop grants",
     sql: `drop table grants;`,
   },
+  {
+    // Files that came with a submission (ADR 0007): kept in the database like everything else, so a backup holds them
+    // and retention removes them in the same transaction as the fields they belong with. The bytes are in chunks of a
+    // megabyte, so a file of any size is written and read without holding all of it in memory.
+    name: "files",
+    sql: `
+create table files (
+  id text primary key,
+  submission_id text not null references submissions (id),
+  field text not null,
+  name text not null,
+  type text not null,
+  size integer not null
+);
+create index files_by_submission on files (submission_id, id);
+create table file_chunks (
+  file_id text not null references files (id),
+  seq integer not null,
+  data blob not null,
+  primary key (file_id, seq)
+) without rowid;
+`,
+  },
 ];
 
 /** What a migration needs of a connection: better-sqlite3 has it, and so does any other SQLite driver. */

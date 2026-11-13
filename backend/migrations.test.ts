@@ -31,7 +31,7 @@ const version = (path: string) => {
 test("a fresh database ends at the latest version with the expected tables", () => {
   const path = tempFile();
   new Store(path).close();
-  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "forms", "settings", "submissions"] });
+  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "file_chunks", "files", "forms", "settings", "submissions"] });
 });
 
 test("a database made by 0.10.0, before migrations, opens at the latest version and keeps its data", () => {
@@ -62,7 +62,7 @@ test("a database made by 0.10.0, before migrations, opens at the latest version 
   expect(store.get("s1")?.fields).toEqual(REPORT);
   expect(store.events("s1")).toHaveLength(1);
   store.close();
-  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "forms", "settings", "submissions"] });
+  expect(version(path)).toEqual({ v: MIGRATIONS.length, tables: ["boxes", "events", "file_chunks", "files", "forms", "settings", "submissions"] });
 });
 
 test("a database written by 0.11.1 (node:sqlite) opens and keeps its data", () => {

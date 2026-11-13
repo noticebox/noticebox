@@ -5,7 +5,10 @@ import { readFileSync } from "node:fs";
 import { isKind, parseStates, type KindName, type State } from "./kinds";
 export type { KindName, State };
 
-export type FieldType = "text" | "textarea" | "select" | "email" | "hidden";
+export type FieldType = "text" | "textarea" | "select" | "email" | "hidden" | "file";
+
+/** What a `file` field takes: which files (extensions such as `.stl`, or media types such as `image/*`), how many, how large each. */
+export type FileRule = { accept: string[]; maxFiles: number; maxBytes: number };
 
 export type Field = {
   type: FieldType;
@@ -15,6 +18,7 @@ export type Field = {
   options: string[];
   personal: boolean; // blanked once the submission is closed and past the form's retention
   help: string;
+  files: FileRule | null; // set for a `file` field only
 };
 
 export type Form = {
@@ -48,8 +52,10 @@ export const FIELD_NAME = /^[a-z][a-z0-9_]{0,31}$/;
 export const RESERVED_FIELDS = new Set(["_gotcha"]);
 const REPO = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9._-]{1,100}$/;
 export const PLACEHOLDER = /\{([a-z][a-z0-9_]{0,31})\}/g;
-const TYPES: FieldType[] = ["text", "textarea", "select", "email", "hidden"];
-const DEFAULT_MAX: Record<FieldType, number> = { text: 500, textarea: 10000, select: 200, email: 254, hidden: 200 };
+const TYPES: FieldType[] = ["text", "textarea", "select", "email", "hidden", "file"];
+// `max` is characters; a file field has no text, so its `max` is never checked (its limits are in `files`).
+const DEFAULT_MAX: Record<FieldType, number> = { text: 500, textarea: 10000, select: 200, email: 254, hidden: 200, file: 1 };
+const ACCEPT = /^(\.[a-z0-9]{1,10}|[a-z]+\/(\*|[a-z0-9.+-]+))$/;
 
 export type Env = Record<string, string | undefined>;
 
@@ -225,15 +231,33 @@ function parseField(at: string, raw: unknown): Field {
   if (t !== "select" && options.length > 0) throw new Error(`${at}: only a select has options`);
   const max = f.max === undefined ? DEFAULT_MAX[t] : f.max;
   if (typeof max !== "number" || !Number.isInteger(max) || max < 1 || max > 100000) throw new Error(`${at}.max: a whole number up to 100000`);
+  const files = parseFileRule(at, f, t);
   return {
     type: t,
     label: str(f.label, `${at}.label`, at.split(".").at(-1) ?? ""),
     required: bool(f.required, `${at}.required`, false),
     max,
     options,
-    personal: bool(f.personal, `${at}.personal`, t === "text" || t === "textarea" || t === "email"),
+    personal: bool(f.personal, `${at}.personal`, t === "text" || t === "textarea" || t === "email" || t === "file"),
     help: str(f.help, `${at}.help`, ""),
+    files,
   };
+}
+
+/** `accept`, `maxFiles` and `maxMegabytes` belong to a `file` field; elsewhere they are a mistake worth saying. */
+function parseFileRule(at: string, f: Record<string, unknown>, t: FieldType): FileRule | null {
+  if (t !== "file") {
+    for (const key of ["accept", "maxFiles", "maxMegabytes"]) if (f[key] !== undefined) throw new Error(`${at}: only a file field has ${key}`);
+    return null;
+  }
+  const accept = stringList(f.accept, `${at}.accept`).map((a) => a.trim().toLowerCase());
+  for (const a of accept) if (!ACCEPT.test(a)) throw new Error(`${at}.accept: "${a}" is neither an extension like .stl nor a media type like image/*`);
+  const maxFiles = f.maxFiles === undefined ? 1 : f.maxFiles;
+  if (typeof maxFiles !== "number" || !Number.isInteger(maxFiles) || maxFiles < 1) throw new Error(`${at}.maxFiles: a whole number, at least 1`);
+  const mb = f.maxMegabytes === undefined ? 10 : f.maxMegabytes;
+  const maxBytes = typeof mb === "number" && Number.isFinite(mb) ? Math.round(mb * 1024 * 1024) : NaN;
+  if (!(maxBytes > 0)) throw new Error(`${at}.maxMegabytes: a number more than 0`);
+  return { accept, maxFiles, maxBytes };
 }
 
 function record(x: unknown, at: string): Record<string, unknown> {

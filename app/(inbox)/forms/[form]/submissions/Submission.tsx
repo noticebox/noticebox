@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
-import { casePath, issueUrl, KINDS, linkFor, publicUrl, runtime, stateOf, submissionPath, submissionsPath, summaryOf } from "@/backend";
+import { casePath, filePath, isPicture, issueUrl, KINDS, linkFor, publicUrl, runtime, stateOf, submissionPath, submissionsPath, summaryOf } from "@/backend";
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../StateMenu";
 import { Icon } from "@/app/_lib/icons";
@@ -23,6 +23,7 @@ export async function Submission({ name, id, as }: { name: string; id: string; a
   const shown = names.filter((n) => s.fields[n]);
   const personal = (n: string) => form.fields[n]?.personal ?? true; // undescribed fields count as personal
   const events = rt.store.events(s.id);
+  const files = rt.store.files(s.id);
   const link = linkFor(form, s);
   const issue = issueUrl(form, s, publicUrl(await headers(), rt));
   const list = submissionsPath(form.name);
@@ -87,7 +88,7 @@ export async function Submission({ name, id, as }: { name: string; id: string; a
   const fieldsPart = (
     <section className="border-b border-rule p-5">
       <h3 className="label">{kind.label === "report" ? t.submission.theReport : t.submission.theMessage}</h3>
-      {shown.length === 0 ? (
+      {shown.length === 0 && files.length === 0 ? (
         <p className="text-muted">{t.submission.purgedFields}</p>
       ) : (
         <dl className="grid grid-cols-[6.5rem_minmax(0,1fr)] gap-x-4 gap-y-3">
@@ -101,6 +102,34 @@ export async function Submission({ name, id, as }: { name: string; id: string; a
             </div>
           ))}
         </dl>
+      )}
+      {files.length > 0 && (
+        // A stranger's files: pictures are shown (served sandboxed, never sniffed), everything else is only a download.
+        <div className="mt-4">
+          <h4 className="text-[13px] text-muted">
+            {t.submission.files} <span className="text-[12px] text-amber">{t.submission.personal}</span>
+          </h4>
+          <ul className="mt-2 grid gap-2">
+            {files.map((f) => (
+              <li key={f.id} className="rounded-lg border border-rule p-2">
+                {isPicture(f) && (
+                  // eslint-disable-next-line @next/next/no-img-element -- a stranger's upload, served by our own route, not an optimisable asset
+                  <img src={`${filePath(f.id)}?inline=1`} alt={f.name} className="mb-2 max-h-64 rounded object-contain" loading="lazy" />
+                )}
+                <a
+                  href={filePath(f.id)}
+                  download={f.name}
+                  className="flex items-center gap-2 [overflow-wrap:anywhere]"
+                  aria-label={t.submission.download(f.name)}
+                >
+                  <Icon name="download" />
+                  <span>{f.name}</span>
+                  <span className="ml-auto shrink-0 text-[13px] text-muted">{t.submission.size(f.size)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <p className="mt-4 rounded-lg border border-rule px-3 py-2 text-[13px] text-muted">{retention}</p>
     </section>

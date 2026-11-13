@@ -41,6 +41,25 @@ export function testConfig(ntfy: string | null = "https://ntfy.test/topic", webh
   });
 }
 
+/** A form that takes files: up to two models or photos of at most 1 MB, and an optional sketch that is not personal. */
+export function fileConfig(): Config {
+  return parseConfig({
+    forms: {
+      order: {
+        kind: "message",
+        fields: {
+          name: { required: true },
+          model: { type: "file", label: "Model", required: true, accept: [".stl", ".3mf", "image/*"], maxFiles: 2, maxMegabytes: 1 },
+          sketch: { type: "file", label: "Sketch", personal: false },
+        },
+        retentionDays: 30,
+        deleteAfterDays: 60,
+      },
+      strict: { kind: "message", strict: true, fields: { name: {} } },
+    },
+  });
+}
+
 export type TestRuntime = Runtime & { hits: Hit[] };
 
 export function testRuntime(o: Partial<Runtime> = {}): TestRuntime {

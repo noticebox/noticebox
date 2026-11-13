@@ -38,6 +38,7 @@ curl -H "Authorization: Bearer $NOTICEBOX_TOKEN" https://inbox.example.org/api/v
 | `DELETE /boxes/{name}` | `delete_box` |
 | `GET /submissions` | `list_submissions` |
 | `GET /submissions/{id}` | `get_submission` |
+| `GET /submissions/{id}/files/{file}` | `get_file`: the file's bytes, as a download |
 | `POST /submissions/{id}/notes` | `add_note` |
 | `POST /submissions/{id}/decisions` | `decide` |
 | `GET /export` | `export` |

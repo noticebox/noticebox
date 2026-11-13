@@ -6,6 +6,7 @@
 import * as z from "zod";
 import { connections, createBox, deleteBox, deleteForm, exportSubmissions, putForm, renameBox, revokeConnection } from "./admin";
 import type { Outcome } from "./db";
+import { fileResponse } from "./files";
 import { boxPath, formPath } from "./paths";
 import type { Runtime } from "./runtime";
 import { createApiToken, listApiTokens, restCaller, revokeApiToken, type RestCaller } from "./tokens";
@@ -16,7 +17,7 @@ export const API_PREFIX = "/api/v1";
 /** The largest JSON body read: a form with many fields is a few kilobytes. */
 const MAX_BODY_BYTES = 256 * 1024;
 
-type Reply = { status: number; body?: unknown };
+type Reply = { status: number; body?: unknown; raw?: Response }; // `raw`: an answer that is not JSON (a file)
 type Input = { rt: Runtime; base: string; caller: RestCaller; params: Record<string, string>; query: Record<string, unknown>; body: unknown };
 
 type Op = {
@@ -29,7 +30,7 @@ type Op = {
   params?: Record<string, string>; // name: description
   query?: z.ZodObject;
   body?: z.ZodType;
-  ok: { status: number; description: string; schema?: z.ZodType };
+  ok: { status: number; description: string; schema?: z.ZodType; binary?: boolean }; // `binary`: the bytes of a file, not JSON
   errors: number[];
   handle: (input: Input) => Promise<Reply> | Reply;
 };
@@ -206,6 +207,21 @@ export const OPS: Op[] = [
     },
   },
   {
+    method: "GET",
+    path: "/submissions/{id}/files/{file}",
+    operationId: "getFile",
+    tool: "get_file",
+    summary: "A file that came with a submission, as a download",
+    tag: "Submissions",
+    params: { id: Id, file: "The file's id, from the submission's `files`" },
+    ok: { status: 200, description: "The file's bytes, as `application/octet-stream` with its name in `Content-Disposition`", binary: true },
+    errors: [401, 404],
+    handle: ({ rt, params }) => {
+      const res = fileResponse(rt, params.file!, { submissionId: params.id! });
+      return res ? { status: 200, raw: res } : fail(404, "no such file on this submission");
+    },
+  },
+  {
     method: "POST",
     path: "/submissions/{id}/notes",
     operationId: "addNote",
@@ -371,9 +387,10 @@ export async function restRoute(req: Request, rt: Runtime, segments: string[]): 
     return Response.json(openApiDocument(base + API_PREFIX), { headers: { "cache-control": "no-store" } });
   const challenge = { "www-authenticate": `Bearer resource_metadata="${base}/.well-known/oauth-protected-resource${API_PREFIX}"` };
   const send = (r: Reply) =>
-    r.body === undefined
+    r.raw ??
+    (r.body === undefined
       ? new Response(null, { status: r.status })
-      : Response.json(r.body, { status: r.status, headers: { "cache-control": "no-store", ...(r.status === 401 ? challenge : {}) } });
+      : Response.json(r.body, { status: r.status, headers: { "cache-control": "no-store", ...(r.status === 401 ? challenge : {}) } }));
   const m = match(segments);
   if (!m) return send(fail(404, "no such endpoint"));
   const method = req.method === "HEAD" ? "GET" : req.method;
@@ -429,7 +446,11 @@ export function openApiDocument(serverUrl: string): Record<string, unknown> {
       })),
     ];
     const responses: Record<string, unknown> = {
-      [o.ok.status]: { description: o.ok.description, ...(o.ok.schema && { content: { "application/json": { schema: jsonSchema(o.ok.schema, "output") } } }) },
+      [o.ok.status]: {
+        description: o.ok.description,
+        ...(o.ok.schema && { content: { "application/json": { schema: jsonSchema(o.ok.schema, "output") } } }),
+        ...(o.ok.binary && { content: { "application/octet-stream": { schema: { type: "string", format: "binary" } } } }),
+      },
     };
     for (const status of o.errors)
       responses[status] = {

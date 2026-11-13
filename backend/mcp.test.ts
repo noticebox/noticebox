@@ -3,9 +3,10 @@
 // runs end to end over HTTP; each call still goes through whoFor, so a revoked connection stops its calls here too.
 import { randomBytes } from "node:crypto";
 import { expect, test } from "vitest";
+import { fileRoute } from "./files";
 import { revokeConnection, connections } from "./admin";
 import { mcpAs, mcpRoute, whoFor } from "./mcp";
-import { BASE, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
+import { BASE, fileConfig, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
 
 const V = "2026-07-28";
 const META = { "io.modelcontextprotocol/clientInfo": { name: "t", version: "0" }, "io.modelcontextprotocol/clientCapabilities": {} };
@@ -64,6 +65,7 @@ test("tools act in the name of the person who allowed the client, and the trail 
     "delete_box",
     "delete_form",
     "export",
+    "get_file",
     "get_form",
     "get_submission",
     "list_api_tokens",
@@ -239,6 +241,9 @@ test("every tool's result says what to do next", async () => {
   const rt = testRuntime();
   const { call, tools } = await caller(rt);
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
+  const withFile = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date(), [
+    { field: "file", name: "shot.png", type: "image/png", data: new Uint8Array([1]) },
+  ]);
   const other = await connect(rt, "marcel", "Other");
   const grant = (await connections(rt, other.personId)).find((c) => c.client_name === "Other")!.id;
   // One valid call per tool, in an order where each finds what it needs.
@@ -249,6 +254,7 @@ test("every tool's result says what to do next", async () => {
     ["put_form", { name: "spare", form: { kind: "message" } }],
     ["list_submissions", {}],
     ["get_submission", { id }],
+    ["get_file", () => ({ id: withFile.id, file: rt.store.files(withFile.id)[0]!.id })],
     ["add_note", { id, text: "Checked." }],
     ["decide", { id, to: "rejected", reason: "Fine." }],
     ["create_box", { name: "shop" }],
@@ -368,4 +374,41 @@ test("export gives the submissions with their histories, by form and state", asy
   const byState = (await call("export", { form: "contact", state: "new" })).structuredContent;
   expect(byState.submissions).toHaveLength(1);
   expect(byState.next[0]).toContain(`${BASE}/export.json?form=contact&state=new`);
+});
+
+test("get_file hands over a download link, shows a picture when asked, and never another submission's file", async () => {
+  const rt = testRuntime({ config: fileConfig() });
+  const { access } = await connect(rt);
+  const auth = { authorization: `Bearer ${access}` };
+  const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
+  const s = rt.store.receive(rt.config.forms.order!, { name: "Ann" }, null, new Date(), [
+    { field: "model", name: "part.stl", type: "model/stl", data: new TextEncoder().encode("solid part") },
+    { field: "model", name: "photo.png", type: "image/png", data: png },
+  ]);
+  const other = rt.store.receive(rt.config.forms.order!, { name: "Bob" }, null, new Date());
+  const got = (await (await rpc(rt, "tools/call", { name: "get_submission", arguments: { id: s.id } }, auth)).json()).result.structuredContent;
+  expect(got.files.map((f: { name: string; picture: boolean }) => [f.name, f.picture])).toEqual([
+    ["part.stl", false],
+    ["photo.png", true],
+  ]);
+  expect(got.next.join(" ")).toMatch(/get_file/);
+  const [stl, photo] = got.files as { id: string }[];
+  const getFile = async (args: Record<string, unknown>) => (await (await rpc(rt, "tools/call", { name: "get_file", arguments: args }, auth)).json()).result;
+
+  // The bytes don't come along: a link does, and it downloads the file without signing in.
+  const link = await getFile({ id: s.id, file: stl!.id });
+  expect(link.structuredContent).toMatchObject({ name: "part.stl", size: 10 });
+  expect(link.content).toHaveLength(1);
+  const download = await fileRoute(new Request(link.structuredContent.download_url), rt, stl!.id);
+  expect(await download.text()).toBe("solid part");
+
+  // A picture is shown when asked; anything else is not, and the answer says why.
+  const shown = await getFile({ id: s.id, file: photo!.id, show: true });
+  expect(shown.content[1]).toEqual({ type: "image", mimeType: "image/png", data: Buffer.from(png).toString("base64") });
+  const notShown = await getFile({ id: s.id, file: stl!.id, show: true });
+  expect(notShown.content).toHaveLength(1);
+  expect(notShown.structuredContent.next.join(" ")).toMatch(/not a picture/);
+
+  const wrong = await getFile({ id: other.id, file: photo!.id });
+  expect(wrong.isError).toBe(true);
 });

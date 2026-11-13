@@ -23,6 +23,9 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
     options: Array.isArray(f.options) ? f.options.join(", ") : "",
     personal: f.personal === undefined ? "default" : f.personal ? "yes" : "no",
     help: str(f.help),
+    accept: Array.isArray(f.accept) ? f.accept.join(", ") : "",
+    maxFiles: str(f.maxFiles),
+    maxMegabytes: str(f.maxMegabytes),
   }));
   const notifyRaw = raw.notify;
   const notify: RawTarget[] = Array.isArray(notifyRaw)

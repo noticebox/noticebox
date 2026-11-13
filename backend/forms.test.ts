@@ -152,7 +152,9 @@ test("an instance upgraded with a forms file starts with the same forms, and its
   const { runtime } = await import("./runtime");
   writeFileSync(process.env.NOTICEBOX_CONFIG!, JSON.stringify(FILE));
   const old = open(); // a 0.15 database: submissions, no forms yet
-  old.db.exec("drop table settings; drop table forms; drop table boxes; create table grants (id text primary key); pragma user_version = 1");
+  old.db.exec(
+    "drop table file_chunks; drop table files; drop table settings; drop table forms; drop table boxes; create table grants (id text primary key); pragma user_version = 1",
+  );
   old.db
     .prepare("insert into submissions (id, form, kind, state, fields, received_at) values ('s1', 'report', 'report', 'new', '{}', '2026-11-01T00:00:00Z')")
     .run();

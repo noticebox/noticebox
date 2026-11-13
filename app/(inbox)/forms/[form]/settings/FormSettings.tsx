@@ -14,6 +14,9 @@ export type RawFieldRow = {
   options: string;
   personal: "default" | "yes" | "no";
   help: string;
+  accept: string; // a file field's kinds, separated by commas
+  maxFiles: string;
+  maxMegabytes: string;
 };
 export type RawTarget = { type: "ntfy" | "webhook"; url: string };
 export type StateRow = { name: string; closed: boolean; reason: boolean };
@@ -36,7 +39,7 @@ export type Settings = {
   fields: RawFieldRow[];
 };
 
-const TYPES = ["text", "textarea", "select", "email", "hidden"];
+const TYPES = ["text", "textarea", "select", "email", "hidden", "file"];
 
 /** What the settings page sends: the raw form object as the file will hold it. Empty strings mean "not set". */
 function toRaw(s: Settings): Record<string, unknown> {
@@ -46,7 +49,16 @@ function toRaw(s: Settings): Record<string, unknown> {
     if (f.type !== "text") o.type = f.type;
     if (f.label.trim()) o.label = f.label.trim();
     if (f.required) o.required = true;
-    if (f.max.trim()) o.max = Number(f.max);
+    if (f.max.trim() && f.type !== "file") o.max = Number(f.max);
+    if (f.type === "file") {
+      const accept = f.accept
+        .split(",")
+        .map((x) => x.trim())
+        .filter(Boolean);
+      if (accept.length) o.accept = accept;
+      if (f.maxFiles.trim()) o.maxFiles = Number(f.maxFiles);
+      if (f.maxMegabytes.trim()) o.maxMegabytes = Number(f.maxMegabytes);
+    }
     if (f.type === "select")
       o.options = f.options
         .split(",")
@@ -89,7 +101,19 @@ const small = "field py-1 text-sm";
 
 // The settings of a form: everything the file says about it, edited as a whole and saved as a whole. The state is
 // React's, so a refused save keeps what was typed and shows why it was refused.
-const EMPTY_FIELD = (name = ""): RawFieldRow => ({ name, type: "text", label: "", required: false, max: "", options: "", personal: "default", help: "" });
+const EMPTY_FIELD = (name = ""): RawFieldRow => ({
+  name,
+  type: "text",
+  label: "",
+  required: false,
+  max: "",
+  options: "",
+  personal: "default",
+  help: "",
+  accept: "",
+  maxFiles: "",
+  maxMegabytes: "",
+});
 
 export function FormSettings({
   name,
@@ -272,6 +296,42 @@ export function FormSettings({
                       <Icon name="remove" />
                     </button>
                   </div>
+                  {f.type === "file" && (
+                    <div className="grid gap-2 sm:col-span-4 sm:grid-cols-[1fr_auto_auto]">
+                      <div>
+                        <label className="text-[13px] text-muted">{t.settings.accept}</label>
+                        <input
+                          value={f.accept}
+                          onChange={(e) => field(i, { accept: e.target.value })}
+                          className={small}
+                          placeholder=".stl, .3mf, image/*"
+                          aria-label={t.settings.fieldN(i + 1, "accept")}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[13px] text-muted">{t.settings.maxFiles}</label>
+                        <input
+                          value={f.maxFiles}
+                          onChange={(e) => field(i, { maxFiles: e.target.value })}
+                          inputMode="numeric"
+                          className={`${small} w-20`}
+                          placeholder="1"
+                          aria-label={t.settings.fieldN(i + 1, "maxFiles")}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[13px] text-muted">{t.settings.maxMegabytes}</label>
+                        <input
+                          value={f.maxMegabytes}
+                          onChange={(e) => field(i, { maxMegabytes: e.target.value })}
+                          inputMode="decimal"
+                          className={`${small} w-20`}
+                          placeholder="10"
+                          aria-label={t.settings.fieldN(i + 1, "maxMegabytes")}
+                        />
+                      </div>
+                    </div>
+                  )}
                   {f.type === "select" && (
                     <div className="sm:col-span-4">
                       <label className="text-[13px] text-muted">{t.settings.options}</label>
@@ -299,7 +359,7 @@ export function FormSettings({
                         <option value="no">{t.common.no}</option>
                       </select>
                     </label>
-                    <label className="flex items-center gap-1.5">
+                    <label className={`flex items-center gap-1.5 ${f.type === "file" ? "hidden" : ""}`}>
                       {t.settings.atMost}
                       <input
                         value={f.max}

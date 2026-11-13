@@ -19,14 +19,15 @@ export { apiResourceMetadataRoute, authRoute, authServerMetadataRoute, clientNam
 export type { Config, Field, Form, GitHub, State, Target } from "./config";
 export type { Event } from "./db";
 export type { RawForm } from "./forms";
-export type { Figures, ListFilter, Outcome, Submission } from "./db";
+export type { Figures, ListFilter, Outcome, StoredFile, Submission } from "./db";
+export { fileResponse, fileRoute, isPicture } from "./files";
 export { issueDraft, issueUrl, type Draft } from "./github";
 export { healthRoute } from "./health";
 export { intakePreflight, intakeRoute } from "./intake";
 export { KINDS, stateOf, type KindName } from "./kinds";
 export { linkFor } from "./links";
 export { mcpRoute } from "./mcp";
-export { boxPath, casePath, formPath, submissionPath, submissionsPath } from "./paths";
+export { boxPath, casePath, filePath, formPath, submissionPath, submissionsPath } from "./paths";
 export { restRoute } from "./rest";
 export { runtime, sweepNow, type Runtime } from "./runtime";
 export { createApiToken, listApiTokens, revokeApiToken, type ApiToken, type Scope } from "./tokens";

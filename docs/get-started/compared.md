@@ -39,7 +39,7 @@ noticebox is not a form builder, and it is not a general form backend either. It
 ## When another tool is the better fit
 
 - You want to **build the form without writing HTML**, with a visual editor, conditional questions or a hosted page. Use a form builder.
-- You need **file uploads**, payments, signatures, or integrations with dozens of services. noticebox takes text fields only and notifies through ntfy or a webhook.
+- You need **large uploads**, payments, signatures, or integrations with dozens of services. noticebox takes text fields and files of up to 25 MB, keeps them in its database, and notifies through ntfy or a webhook.
 - You want **survey analysis**: charts over many answers, response rates, A/B tests.
 - You do not want to **run a server** or keep backups. A hosted backend does this for you; noticebox is one container but you operate it.
 - Your site is **hosted on a platform with built-in forms**, such as Netlify, and mailing the submissions to yourself is all you need.

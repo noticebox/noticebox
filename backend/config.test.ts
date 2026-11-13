@@ -39,7 +39,7 @@ test("defaults fill in what the file leaves out", () => {
   expect(f.redirect).toBeNull();
   expect(f.notify).toEqual([]);
   expect(c.boxes).toEqual(["forms"]);
-  expect(f.fields.email).toEqual({ type: "email", label: "email", required: false, max: 254, options: [], personal: true, help: "" });
+  expect(f.fields.email).toEqual({ type: "email", label: "email", required: false, max: 254, options: [], personal: true, help: "", files: null });
   expect(f.fields.message!.max).toBe(10000);
   expect(f.fields.topic!.personal).toBe(false);
 });
