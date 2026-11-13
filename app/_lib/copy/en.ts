@@ -225,6 +225,8 @@ export const en = {
     personal: "personal",
     keptUntilClosed: (days: number) => `Personal fields are removed ${days} ${plural(days, "day", "days")} after this is closed. The history stays.`,
     removedOn: (day: string) => `Personal fields are removed on ${day}. The history stays.`,
+    deletedSoon: (minutes: number) =>
+      `This state deletes it entirely, history and files too, ${minutes === 0 ? "within a minute" : `${minutes} ${plural(minutes, "minute", "minutes")} after it was closed`}.`,
     appendOnly: "only added to, never changed",
     files: "Files",
     download: (name: string) => `Download ${name}`,

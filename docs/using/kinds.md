@@ -1,6 +1,6 @@
 # States, reasons and kinds
 
-A form's submissions move through its states. A state is a name and two flags: whether it counts as **closed**, and whether entering it **needs a reason**. Any state can be moved to any other; what noticebox enforces is not the path but the record: every move is an event with who, when and why, and a state that needs a reason cannot be entered without one.
+A form's submissions move through its states. A state is a name and two flags: whether it counts as **closed**, and whether entering it **needs a reason**; a closed state may also delete what reaches it after a number of minutes. Any state can be moved to any other; what noticebox enforces is not the path but the record: every move is an event with who, when and why, and a state that needs a reason cannot be entered without one.
 
 ## The presets
 
@@ -40,7 +40,7 @@ A report's usual path, from left to right: the two closed states at the end need
 
 **Needs a reason** makes the reason the record of the decision: what was done, or why nothing was. The dialog refuses the move without one; the reason is shown large in the history.
 
-**Deleted after minutes** (`deleteAfterMinutes`, closed states only) deletes a submission that reaches the state that many minutes later, with its history and files, whatever the form's retention says; `0` deletes it at the next sweep, within a minute. It is meant for states such as `test` or `spam`, whose submissions are worth nothing once looked at, and keeps them out of the nightly backups too:
+**Deleted after minutes** (`deleteAfterMinutes`, closed states only) deletes a submission that reaches the state that many minutes later, with its history and files, whatever the form's retention says; `0` deletes it at the next sweep, within a minute. It is meant for states such as `test` or `spam`, whose submissions are worth nothing once looked at, and keeps them out of the nightly backups too. On the *Settings* tab it is the "deleted after … minutes" field of a closed state; the submission itself says that it will be deleted, in the inbox and in MCP's `next`, instead of a retention date it would never reach:
 
 ```json
 "states": ["new", { "name": "answered", "closed": true }, { "name": "test", "closed": true, "deleteAfterMinutes": 0 }]

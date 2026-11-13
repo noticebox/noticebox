@@ -412,3 +412,27 @@ test("get_file hands over a download link, shows a picture when asked, and never
   const wrong = await getFile({ id: other.id, file: photo!.id });
   expect(wrong.isError).toBe(true);
 });
+
+test("a submission in a state that deletes after minutes is told so, and not given a retention date it will never reach", async () => {
+  const rt = testRuntime({ now: () => new Date("2026-01-02T00:00:00Z") });
+  const { call } = await caller(rt);
+  const states = [
+    "new",
+    { name: "answered", closed: true },
+    { name: "test", closed: true, deleteAfterMinutes: 0 },
+    { name: "spam", closed: true, deleteAfterMinutes: 5 },
+  ];
+  await call("put_form", { name: "orders", form: { kind: "message", states, retentionDays: 30, deleteAfterDays: 60 } });
+  const form = rt.config.forms.orders!;
+  const id = rt.store.receive(form, { message: "x" }, null, new Date("2026-01-01T00:00:00Z")).id;
+  const next = async (to: string) => ((await call("decide", { id, to })).structuredContent.next as string[]).join(" ");
+
+  const test0 = await next("test");
+  expect(test0).toContain("deletes it with its history and files within a minute");
+  expect(test0).not.toMatch(/Retention|2026-02-01|2026-03-03/);
+  expect(await next("spam")).toContain("5 minutes after it was closed");
+  const answered = await next("answered");
+  expect(answered).toContain("Retention removes its personal fields on 2026-02-01");
+  expect(answered).toContain("deleted on 2026-03-03");
+  expect(answered).not.toContain("within a minute");
+});

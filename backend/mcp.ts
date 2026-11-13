@@ -48,14 +48,17 @@ function server(rt: Runtime, who: Who): McpServer {
     const out: string[] = [];
     if (x.purged_at) out.push(`Its personal fields were removed on ${x.purged_at.slice(0, 10)}; what is left is the record of the decision.`);
     if (x.closed_at && form) {
-      if (!x.purged_at)
-        out.push(`It is closed (${x.state}). Retention removes its personal fields on ${day(x.closed_at, form.retentionDays)}, unless it is reopened first.`);
-      const st = form.states.find((s) => s.name === x.state);
-      if (st?.deleteAfterMinutes != null)
+      const minutes = form.states.find((s) => s.name === x.state)?.deleteAfterMinutes ?? null;
+      // A state that deletes after minutes overrides the form's retention: the days never come.
+      if (minutes !== null)
         out.push(
-          `The state ${x.state} deletes it with its history and files ${st.deleteAfterMinutes} minute${st.deleteAfterMinutes === 1 ? "" : "s"} after it was closed.`,
+          `It is closed (${x.state}), and that state deletes it with its history and files ${minutes === 0 ? "within a minute" : `${minutes} minute${minutes === 1 ? "" : "s"} after it was closed`}, unless it is moved first.`,
         );
-      else if (form.deleteAfterDays !== null) out.push(`The whole submission and its history are deleted on ${day(x.closed_at, form.deleteAfterDays)}.`);
+      else {
+        if (!x.purged_at)
+          out.push(`It is closed (${x.state}). Retention removes its personal fields on ${day(x.closed_at, form.retentionDays)}, unless it is reopened first.`);
+        if (form.deleteAfterDays !== null) out.push(`The whole submission and its history are deleted on ${day(x.closed_at, form.deleteAfterDays)}.`);
+      }
       out.push("Moving it to a state that is not closed reopens it.");
     } else if (form) {
       out.push(

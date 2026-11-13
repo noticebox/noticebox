@@ -32,11 +32,14 @@ export async function Submission({ name, id, as }: { name: string; id: string; a
     const tone = state ? stateTone(state, states) : "badge-off";
     return { "badge-open": "bg-accent", "badge-review": "bg-amber", "badge-done": "bg-ok", "badge-off": "bg-muted" }[tone] ?? "bg-muted";
   };
+  const minutes = s.closed_at ? (form.states.find((st) => st.name === s.state)?.deleteAfterMinutes ?? null) : null;
   const retention = s.purged_at
     ? t.submission.purgedAt(when(s.purged_at))
-    : s.closed_at
-      ? t.submission.removedOn(t.day(new Date(new Date(s.closed_at).getTime() + form.retentionDays * DAY).toISOString()))
-      : t.submission.keptUntilClosed(form.retentionDays);
+    : minutes !== null
+      ? t.submission.deletedSoon(minutes)
+      : s.closed_at
+        ? t.submission.removedOn(t.day(new Date(new Date(s.closed_at).getTime() + form.retentionDays * DAY).toISOString()))
+        : t.submission.keptUntilClosed(form.retentionDays);
 
   const pane = as === "pane";
 
