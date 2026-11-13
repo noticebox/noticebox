@@ -61,7 +61,7 @@ export function formsView(rt: Runtime, base: string) {
       title: f.title,
       kind: f.kind,
       url: base + formPath(f.name),
-      states: f.states.map(({ name, closed, reason }) => ({ name, closed, reason })), // the published shape; deleteAfterMinutes shows in get_form
+      states: f.states,
       retention_days: f.retentionDays,
       delete_after_days: f.deleteAfterDays,
     })),
@@ -122,7 +122,7 @@ const FULL = {
   purged_at: z.string().nullable(),
   events: z.array(EVENT),
 };
-const STATE = z.object({ name: z.string(), closed: z.boolean(), reason: z.boolean() });
+const STATE = z.object({ name: z.string(), closed: z.boolean(), reason: z.boolean(), deleteAfterMinutes: z.number().nullable() });
 const BOX = z.object({ name: z.string(), url: z.string() });
 const FORMS = {
   boxes: z.array(BOX),

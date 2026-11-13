@@ -186,3 +186,18 @@ test("a closed state with deleteAfterMinutes deletes what reaches it that long a
   expect(store.get(open.id)).toBeDefined();
   store.close();
 });
+
+test("a sweep that finds nothing to remove writes no log line, so a sweep every minute doesn't fill the log", async () => {
+  const { sweepNow } = await import("./runtime");
+  const { testRuntime } = await import("./testutil");
+  const lines: string[] = [];
+  const rt = testRuntime({ log: (l) => lines.push(l) });
+  rt.store.receive(rt.config.forms.contact!, { message: "open" }, null, new Date());
+  for (let i = 0; i < 5; i++) expect(sweepNow(rt)).toEqual({ purged: 0, deleted: 0 });
+  expect(lines).toEqual([]);
+  // One that does remove something says so, once.
+  const s = rt.store.receive(rt.config.forms.contact!, { message: "done" }, null, new Date(0));
+  rt.store.transition(rt.config.forms.contact!, s.id, "marcel", "answered", "", new Date(0));
+  expect(sweepNow(rt).purged).toBe(1);
+  expect(lines).toEqual(["retention: personal fields removed from 1 closed submission"]);
+});
