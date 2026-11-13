@@ -55,8 +55,8 @@ export const PLACEHOLDER = /\{([a-z][a-z0-9_]{0,31})\}/g;
 const TYPES: FieldType[] = ["text", "textarea", "select", "email", "hidden", "file"];
 // `max` is characters; a file field has no text, so its `max` is never checked (its limits are in `files`).
 const DEFAULT_MAX: Record<FieldType, number> = { text: 500, textarea: 10000, select: 200, email: 254, hidden: 200, file: 1 };
-/** The most a file field may take: files per submission, and megabytes per file. */
-export const FILE_LIMITS = { maxFiles: 10, maxMegabytes: 25 };
+/** The largest file SQLite keeps in one value (its default SQLITE_MAX_LENGTH); every other limit is the form's to choose. */
+export const MAX_FILE_BYTES = 1_000_000_000;
 const ACCEPT = /^(\.[a-z0-9]{1,10}|[a-z]+\/(\*|[a-z0-9.+-]+))$/;
 
 export type Env = Record<string, string | undefined>;
@@ -255,12 +255,12 @@ function parseFileRule(at: string, f: Record<string, unknown>, t: FieldType): Fi
   const accept = stringList(f.accept, `${at}.accept`).map((a) => a.trim().toLowerCase());
   for (const a of accept) if (!ACCEPT.test(a)) throw new Error(`${at}.accept: "${a}" is neither an extension like .stl nor a media type like image/*`);
   const maxFiles = f.maxFiles === undefined ? 1 : f.maxFiles;
-  if (typeof maxFiles !== "number" || !Number.isInteger(maxFiles) || maxFiles < 1 || maxFiles > FILE_LIMITS.maxFiles)
-    throw new Error(`${at}.maxFiles: a whole number from 1 to ${FILE_LIMITS.maxFiles}`);
+  if (typeof maxFiles !== "number" || !Number.isInteger(maxFiles) || maxFiles < 1) throw new Error(`${at}.maxFiles: a whole number, at least 1`);
   const mb = f.maxMegabytes === undefined ? 10 : f.maxMegabytes;
-  if (typeof mb !== "number" || !(mb > 0) || mb > FILE_LIMITS.maxMegabytes)
-    throw new Error(`${at}.maxMegabytes: more than 0, at most ${FILE_LIMITS.maxMegabytes}`);
-  return { accept, maxFiles, maxBytes: Math.round(mb * 1024 * 1024) };
+  const maxBytes = typeof mb === "number" ? Math.round(mb * 1024 * 1024) : NaN;
+  if (!(maxBytes > 0) || maxBytes > MAX_FILE_BYTES)
+    throw new Error(`${at}.maxMegabytes: more than 0, at most ${Math.floor(MAX_FILE_BYTES / 1024 / 1024)} (the most SQLite keeps in one value)`);
+  return { accept, maxFiles, maxBytes };
 }
 
 function record(x: unknown, at: string): Record<string, unknown> {

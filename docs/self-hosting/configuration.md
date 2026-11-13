@@ -92,8 +92,8 @@ The key is the field's name as the page posts it: lowercase letters, digits and 
 | `personal` | `true` for text, textarea, email and file; `false` otherwise. An undescribed field is always personal | Removed by retention once the submission is closed and past `retentionDays` |
 | `help` | none | A sentence for the person filling the form |
 | `accept` | any | A `file` field's kinds: extensions (`.stl`) or media types (`image/png`, `image/*`) |
-| `maxFiles` | `1` | How many files a `file` field takes in one post, at most 10 |
-| `maxMegabytes` | `10` | How large each file may be, at most 25 |
+| `maxFiles` | `1` | How many files a `file` field takes in one post |
+| `maxMegabytes` | `10` | How large each file may be, at most 953 (the most SQLite keeps in one value) |
 
 Values are trimmed, line ends normalised, control characters dropped; a value of any type but `textarea` is folded onto one line.
 

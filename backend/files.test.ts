@@ -36,8 +36,12 @@ test("a file field is described with what it accepts, how many and how large; th
   const form = (field: Record<string, unknown>) => parseConfig({ forms: { f: { kind: "message", fields: { x: field } } } });
   expect(() => form({ type: "text", accept: [".stl"] })).toThrow(/only a file field has accept/);
   expect(() => form({ type: "file", accept: ["stl"] })).toThrow(/neither an extension/);
-  expect(() => form({ type: "file", maxFiles: 11 })).toThrow(/maxFiles: a whole number from 1 to 10/);
-  expect(() => form({ type: "file", maxMegabytes: 26 })).toThrow(/maxMegabytes/);
+  expect(() => form({ type: "file", maxFiles: 0 })).toThrow(/maxFiles: a whole number, at least 1/);
+  expect(() => form({ type: "file", maxFiles: 1.5 })).toThrow(/maxFiles/);
+  expect(() => form({ type: "file", maxMegabytes: 0 })).toThrow(/maxMegabytes/);
+  expect(() => form({ type: "file", maxMegabytes: 1000 })).toThrow(/at most 953/);
+  // Beyond that the limits are the form's: many files, large ones.
+  expect(form({ type: "file", maxFiles: 50, maxMegabytes: 500 }).forms.f!.fields.x!.files).toMatchObject({ maxFiles: 50, maxBytes: 500 * 1024 * 1024 });
 });
 
 test("files arrive with the submission, in order, with their names and sizes", async () => {

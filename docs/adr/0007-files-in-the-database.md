@@ -17,7 +17,7 @@ A file is personal data like a free-text field, so it has to go with the submiss
 
 ## Decision Outcome
 
-Option 1, from 0.20.0. A post takes files only through fields described as `file`, each with its kinds (`accept`), a count (`maxFiles`, at most 10) and a size per file (`maxMegabytes`, at most 25); the body limit of that form grows by what its file fields allow. The files are written in the same transaction as the submission, and removed in the same transaction as the fields retention removes (`Store.sweep`) or the record `deleteAfterDays` deletes (`Store.expire`).
+Option 1, from 0.20.0. A post takes files only through fields described as `file`, each with its kinds (`accept`), a count (`maxFiles`) and a size per file (`maxMegabytes`), both the form's to choose up to what SQLite keeps in one value; the body limit of that form grows by what its file fields allow. The files are written in the same transaction as the submission, and removed in the same transaction as the fields retention removes (`Store.sweep`) or the record `deleteAfterDays` deletes (`Store.expire`).
 
 Nothing a stranger sent is rendered as part of the inbox: a file is served as `application/octet-stream` with `Content-Disposition: attachment`, `nosniff` and a sandboxing CSP; only PNG, JPEG, GIF, WebP and AVIF are shown inline as pictures, never SVG. The media type the browser claimed is stored as a hint and is never trusted to decide anything else.
 

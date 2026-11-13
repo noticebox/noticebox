@@ -71,6 +71,8 @@ A script sends the same with `fetch(url, { method: "POST", body: new FormData(fo
 
 The file's name and bytes are kept with the submission; the media type the browser sends is only a hint. The inbox shows the common photo formats (PNG, JPEG, GIF, WebP, AVIF) as pictures and offers everything else as a download, never as a page. Notifications don't mention files, as they don't mention any content. The MCP tool `get_file` and `GET /api/v1/submissions/{id}/files/{file}` hand a file over; the [export](../self-hosting/retention.md#export) lists files without their bytes.
 
+How many files and how large is the form's to choose; noticebox sets no ceiling of its own below SQLite's. A post is held in memory while it is checked, so what a form allows in all (`maxFiles` × `maxMegabytes` over its file fields) should fit the server's memory a few times over, and a reverse proxy in front must let a body that large through.
+
 ## Describing fields from the page
 
 The page can say what noticebox should know about its fields, in hidden fields named with an underscore, so nobody has to describe them in the inbox:
