@@ -7,9 +7,11 @@
 //   NOTICEBOX_ALLOWED_EMAILS, NOTICEBOX_SMTP_URL, NOTICEBOX_SMTP_FROM, NOTICEBOX_OIDC_<NAME>_*: who signs in, and how (accounts.ts)
 //   NOTICEBOX_DEV_USER     a fixed user without signing in, for development; refused when NODE_ENV=production
 //   NOTICEBOX_TRUST_PROXY  0 to take client addresses from the socket instead of X-Forwarded-For
+//   NOTICEBOX_UPLOAD_DIR  where a post's files wait while it is checked (default the system's temporary folder)
 //   NOTICEBOX_RATE_LIMIT   submissions per client and form in ten minutes (default 10; 0 switches the limit off)
 import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { openAuth, signInFromEnv, type Auth, type SignInSettings } from "./accounts";
 import type { Config } from "./config";
@@ -47,6 +49,7 @@ export type Runtime = {
   devUser: string | null;
   trustProxy: boolean;
   bodyLimit: number;
+  uploadDir: string; // where a post's files wait while it is checked (multipart.ts)
   now: () => Date;
   fetch: Fetch;
   log: (line: string) => void;
@@ -78,6 +81,7 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { for
     devUser: null,
     trustProxy: true,
     bodyLimit: 64 * 1024,
+    uploadDir: tmpdir(),
     now: () => new Date(),
     fetch,
     log: (line) => console.error(line),
@@ -136,6 +140,7 @@ function fromEnv(env: Record<string, string | undefined>): Runtime {
     baseUrl: signIn.baseUrl,
     devUser: env.NOTICEBOX_DEV_USER || null,
     trustProxy: env.NOTICEBOX_TRUST_PROXY !== "0",
+    uploadDir: env.NOTICEBOX_UPLOAD_DIR || tmpdir(),
     log,
   });
 }

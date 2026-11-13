@@ -23,7 +23,7 @@ MCP is noticebox's main interface: everything the inbox can do, an assistant can
 | `list_forms` | The boxes and forms, each form with its kind, states and retention |
 | `list_submissions` | Submissions, filtered by form, state or open/closed; each with its summary, its URL in the inbox and its link |
 | `get_submission` | One submission with its fields and history, and `github_issue_url` when its form names a [repository](github.md) |
-| `get_file` | A file that came with a submission: a picture as an image, anything else as an embedded resource, up to 5 MB |
+| `get_file` | A file that came with a submission: its name, kind and size and a download link that works for 15 minutes without signing in; with `show`, a picture up to 5 MB as an image |
 | `add_note` | A note on a submission |
 | `decide` | A move to another state, with the reason; refused like in the UI when the reason is missing or the move is not allowed |
 | `get_form` | One form as it is stored, `${VAR}` references unexpanded, with its figures: open and closed in the last 30 days (by state), the oldest open submission, and when personal fields are next removed |

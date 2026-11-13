@@ -15,6 +15,7 @@ Every setting is an environment variable, and in a deployment they all live in o
 | `NOTICEBOX_ALLOWED_EMAILS` | empty: nobody | Who may sign in: addresses and `@domain` entries, comma-separated ([Sign-in](login.md#who-may-sign-in)) |
 | `NOTICEBOX_SMTP_URL`, `NOTICEBOX_SMTP_FROM` | none | Where sign-in codes are mailed from ([Sign-in](login.md#ways-to-sign-in)) |
 | `NOTICEBOX_OIDC_<NAME>_CLIENT_ID`, `_CLIENT_SECRET`, `_ISSUER`, `_LABEL` | none | A provider to sign in with; `GITHUB` and `GOOGLE` need no issuer ([Sign-in](login.md#ways-to-sign-in)) |
+| `NOTICEBOX_UPLOAD_DIR` | the system's temporary folder | Where a post's files wait while it is checked; it needs room for the largest post a form allows |
 | `NOTICEBOX_RATE_LIMIT` | `10` | Posts per client address and form in ten minutes; `0` turns it off |
 | `NOTICEBOX_TRUST_PROXY` | on | `0` to ignore `X-Forwarded-For` and take the connecting address |
 | `NOTICEBOX_DEV_USER` | none | A fixed name instead of signing in, for development; refused when `NODE_ENV=production` |
@@ -93,7 +94,7 @@ The key is the field's name as the page posts it: lowercase letters, digits and 
 | `help` | none | A sentence for the person filling the form |
 | `accept` | any | A `file` field's kinds: extensions (`.stl`) or media types (`image/png`, `image/*`) |
 | `maxFiles` | `1` | How many files a `file` field takes in one post |
-| `maxMegabytes` | `10` | How large each file may be, at most 953 (the most SQLite keeps in one value) |
+| `maxMegabytes` | `10` | How large each file may be |
 
 Values are trimmed, line ends normalised, control characters dropped; a value of any type but `textarea` is folded onto one line.
 

@@ -20,7 +20,7 @@ export type { Config, Field, Form, GitHub, State, Target } from "./config";
 export type { Event } from "./db";
 export type { RawForm } from "./forms";
 export type { Figures, ListFilter, Outcome, StoredFile, Submission } from "./db";
-export { fileResponse, isPicture } from "./files";
+export { fileResponse, fileRoute, isPicture } from "./files";
 export { issueDraft, issueUrl, type Draft } from "./github";
 export { healthRoute } from "./health";
 export { intakePreflight, intakeRoute } from "./intake";

@@ -77,7 +77,8 @@ create table settings (
   },
   {
     // Files that came with a submission (ADR 0007): kept in the database like everything else, so a backup holds them
-    // and retention removes them in the same transaction as the fields they belong with.
+    // and retention removes them in the same transaction as the fields they belong with. The bytes are in chunks of a
+    // megabyte, so a file of any size is written and read without holding all of it in memory.
     name: "files",
     sql: `
 create table files (
@@ -86,10 +87,15 @@ create table files (
   field text not null,
   name text not null,
   type text not null,
-  size integer not null,
-  data blob not null
+  size integer not null
 );
 create index files_by_submission on files (submission_id, id);
+create table file_chunks (
+  file_id text not null references files (id),
+  seq integer not null,
+  data blob not null,
+  primary key (file_id, seq)
+) without rowid;
 `,
   },
 ];

@@ -2,9 +2,10 @@
 // A browser form post is answered with a redirect, a JSON post with the id. A bot that fills the field nobody sees
 // gets the same answer and nothing is stored.
 import { clientIp, originOf } from "./auth";
-import { FIELD_NAME, RESERVED_FIELDS, type Field, type Form } from "./config";
-import type { Upload } from "./db";
-import { mediaType, parseForm, readCapped, seeOther, text } from "./http";
+import { FIELD_NAME, RESERVED_FIELDS, type Form } from "./config";
+import { rm } from "node:fs/promises";
+import { mediaType, parseFields, readCapped, seeOther, text } from "./http";
+import { readMultipart, type Received } from "./multipart";
 import { notify } from "./notify";
 import type { Runtime } from "./runtime";
 
@@ -69,60 +70,6 @@ export function validate(form: Form, data: Record<string, string>, hints: Hints 
   return { fields, errors };
 }
 
-/**
- * The files for the form's file fields, checked against each field's rule: how many, how large, which kinds. A file
- * sent under any other name is dropped, or refused on a strict form. Only names and bytes are kept from the browser;
- * the media type is the browser's guess and is only ever served as a download (files.ts).
- */
-export async function checkFiles(form: Form, sent: Record<string, File[]>): Promise<{ uploads: Upload[]; errors: string[] }> {
-  const uploads: Upload[] = [];
-  const errors: string[] = [];
-  for (const name of Object.keys(sent)) if (form.fields[name]?.type !== "file" && form.strict) errors.push(`${name} is not a file field of this form`);
-  for (const [name, f] of Object.entries(form.fields)) {
-    if (f.type !== "file" || !f.files) continue;
-    const files = sent[name] ?? [];
-    if (files.length === 0) {
-      if (f.required) errors.push(`${f.label} is required`);
-      continue;
-    }
-    if (files.length > f.files.maxFiles) {
-      errors.push(`${f.label}: at most ${f.files.maxFiles} file${f.files.maxFiles === 1 ? "" : "s"}`);
-      continue;
-    }
-    for (const file of files) {
-      const fileName = safeName(file.name);
-      if (file.size === 0) errors.push(`${f.label}: ${fileName} is empty`);
-      else if (file.size > f.files.maxBytes) errors.push(`${f.label}: ${fileName} is larger than ${megabytes(f.files.maxBytes)}`);
-      else if (!accepted(f, fileName, file.type)) errors.push(`${f.label}: ${fileName} is not one of the accepted kinds (${f.files.accept.join(", ")})`);
-      else uploads.push({ field: name, name: fileName, type: mediaTypeOf(file.type), data: new Uint8Array(await file.arrayBuffer()) });
-    }
-  }
-  return { uploads, errors };
-}
-
-/** An extension in `accept` matches the end of the name; a media type matches the browser's, `image/*` any image. */
-function accepted(f: Field, name: string, type: string): boolean {
-  const accept = f.files?.accept ?? [];
-  if (accept.length === 0) return true;
-  const lower = name.toLowerCase();
-  const t = type.toLowerCase();
-  return accept.some((a) => (a.startsWith(".") ? lower.endsWith(a) : a.endsWith("/*") ? t.startsWith(a.slice(0, -1)) : t === a));
-}
-
-/** The file's own name without any path, control characters or quotes, at most 120 characters; "file" when none is left. */
-export function safeName(name: string): string {
-  const base = name.split(/[\\/]/).pop() ?? "";
-  const cleaned = base
-    .replace(/[\u0000-\u001f\u007f"]/g, "")
-    .trim()
-    .slice(-120);
-  return cleaned && cleaned !== "." && cleaned !== ".." ? cleaned : "file";
-}
-
-const mediaTypeOf = (type: string): string => (/^[a-z]+\/[a-z0-9.+-]+$/i.test(type) ? type.toLowerCase() : "application/octet-stream");
-
-const megabytes = (bytes: number): string => `${Math.round((bytes / 1024 / 1024) * 10) / 10} MB`;
-
 /** How much larger than a text-only post a post to this form may be: every file field full, plus room for the part headers. */
 export function fileAllowance(form: Form): number {
   return Object.values(form.fields).reduce((sum, f) => sum + (f.files ? f.files.maxFiles * (f.files.maxBytes + 4096) : 0), 0);
@@ -164,37 +111,76 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
   if (!rt.rate.allow(`${form.name}|${clientIp(h, rt)}`, at.getTime())) return text(429, "Too many submissions; try again later.", { "retry-after": "600" });
 
   const type = mediaType(h);
-  const bytes = await readCapped(req, rt.bodyLimit + fileAllowance(form));
-  if (bytes === null) return text(413, "the body is too large");
   let data: Record<string, string>;
-  let sent: Record<string, File[]> = {};
+  let received: Received[] = [];
+  let fileErrors: string[] = [];
+  let dir: string | null = null;
   let wantsJson: boolean;
-  if (type === "application/json") {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(new TextDecoder().decode(bytes));
-    } catch {
-      return text(400, "the body is not JSON");
-    }
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return text(400, "the body must be a JSON object");
-    data = Object.fromEntries(
-      Object.entries(parsed)
-        .filter(([, v]) => ["string", "number", "boolean"].includes(typeof v))
-        .map(([k, v]) => [k, String(v)]),
-    );
-    wantsJson = true;
-  } else if (type === "application/x-www-form-urlencoded" || type === "multipart/form-data") {
-    try {
-      ({ fields: data, files: sent } = await parseForm(bytes, h));
-    } catch {
-      return text(400, "the body is not a form");
-    }
+  const browser = () => {
     const accept = h.get("accept") ?? "";
-    wantsJson = accept.includes("application/json") && !accept.includes("text/html");
+    return accept.includes("application/json") && !accept.includes("text/html");
+  };
+  if (type === "multipart/form-data") {
+    // Read as it arrives, files into a temporary folder (multipart.ts); only this form's file fields make it larger.
+    const limit = rt.bodyLimit + fileAllowance(form);
+    if (Number(h.get("content-length")) > limit) return text(413, "the body is too large");
+    const m = await readMultipart(req, form, limit, rt.uploadDir);
+    if (m === "too large") return text(413, "the body is too large");
+    if (m === "not a form") return text(400, "the body is not a form");
+    ({ fields: data, files: received, errors: fileErrors, dir } = m);
+    wantsJson = browser();
   } else {
-    return text(415, "send application/x-www-form-urlencoded, multipart/form-data or application/json");
+    const bytes = await readCapped(req, rt.bodyLimit);
+    if (bytes === null) return text(413, "the body is too large");
+    if (type === "application/json") {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(new TextDecoder().decode(bytes));
+      } catch {
+        return text(400, "the body is not JSON");
+      }
+      if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return text(400, "the body must be a JSON object");
+      data = Object.fromEntries(
+        Object.entries(parsed)
+          .filter(([, v]) => ["string", "number", "boolean"].includes(typeof v))
+          .map(([k, v]) => [k, String(v)]),
+      );
+      wantsJson = true;
+    } else if (type === "application/x-www-form-urlencoded") {
+      try {
+        data = await parseFields(bytes, h);
+      } catch {
+        return text(400, "the body is not a form");
+      }
+      wantsJson = browser();
+    } else {
+      return text(415, "send application/x-www-form-urlencoded, multipart/form-data or application/json");
+    }
+    // Without a multipart body there are no files: a required file field is missing.
+    for (const f of Object.values(form.fields)) if (f.type === "file" && f.required) fileErrors.push(`${f.label} is required`);
   }
+  try {
+    return await take(req, rt, form, data, received, fileErrors, wantsJson, cors.headers, at, origin);
+  } finally {
+    if (dir) await rm(dir, { recursive: true, force: true });
+  }
+}
 
+/** A post that could be read: refused with what is wrong, or stored with its files and announced. */
+async function take(
+  req: Request,
+  rt: Runtime,
+  form: Form,
+  data: Record<string, string>,
+  received: Received[],
+  fileErrors: string[],
+  wantsJson: boolean,
+  corsHeaders: Record<string, string>,
+  at: Date,
+  origin: string | null,
+): Promise<Response> {
+  const h = req.headers;
+  const cors = { headers: corsHeaders };
   const hints = hintsOf(data);
   // `_next`: where the page wants the browser afterwards, taken only when it is on an origin the form accepts.
   const next = hints.next && originAllowed(form, hints.next) ? hints.next : null;
@@ -206,7 +192,6 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
     return accepted("bot");
   }
   const { fields, errors: fieldErrors } = validate(form, data, hints);
-  const { uploads, errors: fileErrors } = await checkFiles(form, sent);
   const errors = [...fieldErrors, ...fileErrors];
   if (errors.length) {
     if (wantsJson) return Response.json({ errors }, { status: 400, headers: cors.headers });
@@ -219,7 +204,7 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
     for (const e of errors) back.searchParams.append("error", e);
     return seeOther(back.toString(), cors.headers);
   }
-  const s = rt.store.receive(form, fields, origin, at, uploads);
+  const s = rt.store.receive(form, fields, origin, at, received);
   const res = accepted(s.id);
   // What the page says about fields it is the first to send is written into the forms file: a label, whether the
   // field is personal, whether it is required. What the file already says is never changed by a post.

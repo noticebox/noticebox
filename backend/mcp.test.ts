@@ -3,6 +3,7 @@
 // runs end to end over HTTP; each call still goes through whoFor, so a revoked connection stops its calls here too.
 import { randomBytes } from "node:crypto";
 import { expect, test } from "vitest";
+import { fileRoute } from "./files";
 import { revokeConnection, connections } from "./admin";
 import { mcpAs, mcpRoute, whoFor } from "./mcp";
 import { BASE, fileConfig, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
@@ -375,7 +376,7 @@ test("export gives the submissions with their histories, by form and state", asy
   expect(byState.next[0]).toContain(`${BASE}/export.json?form=contact&state=new`);
 });
 
-test("get_file hands over a submission's file: a picture as an image, anything else as a resource, never another submission's", async () => {
+test("get_file hands over a download link, shows a picture when asked, and never another submission's file", async () => {
   const rt = testRuntime({ config: fileConfig() });
   const { access } = await connect(rt);
   const auth = { authorization: `Bearer ${access}` };
@@ -392,14 +393,22 @@ test("get_file hands over a submission's file: a picture as an image, anything e
   ]);
   expect(got.next.join(" ")).toMatch(/get_file/);
   const [stl, photo] = got.files as { id: string }[];
+  const getFile = async (args: Record<string, unknown>) => (await (await rpc(rt, "tools/call", { name: "get_file", arguments: args }, auth)).json()).result;
 
-  const asResource = (await (await rpc(rt, "tools/call", { name: "get_file", arguments: { id: s.id, file: stl!.id } }, auth)).json()).result;
-  expect(asResource.structuredContent).toMatchObject({ name: "part.stl", size: 10 });
-  expect(asResource.content[1]).toMatchObject({ type: "resource", resource: { mimeType: "model/stl", blob: Buffer.from("solid part").toString("base64") } });
+  // The bytes don't come along: a link does, and it downloads the file without signing in.
+  const link = await getFile({ id: s.id, file: stl!.id });
+  expect(link.structuredContent).toMatchObject({ name: "part.stl", size: 10 });
+  expect(link.content).toHaveLength(1);
+  const download = await fileRoute(new Request(link.structuredContent.download_url), rt, stl!.id);
+  expect(await download.text()).toBe("solid part");
 
-  const asImage = (await (await rpc(rt, "tools/call", { name: "get_file", arguments: { id: s.id, file: photo!.id } }, auth)).json()).result;
-  expect(asImage.content[1]).toEqual({ type: "image", mimeType: "image/png", data: Buffer.from(png).toString("base64") });
+  // A picture is shown when asked; anything else is not, and the answer says why.
+  const shown = await getFile({ id: s.id, file: photo!.id, show: true });
+  expect(shown.content[1]).toEqual({ type: "image", mimeType: "image/png", data: Buffer.from(png).toString("base64") });
+  const notShown = await getFile({ id: s.id, file: stl!.id, show: true });
+  expect(notShown.content).toHaveLength(1);
+  expect(notShown.structuredContent.next.join(" ")).toMatch(/not a picture/);
 
-  const wrong = (await (await rpc(rt, "tools/call", { name: "get_file", arguments: { id: other.id, file: photo!.id } }, auth)).json()).result;
+  const wrong = await getFile({ id: other.id, file: photo!.id });
   expect(wrong.isError).toBe(true);
 });

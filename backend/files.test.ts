@@ -1,10 +1,15 @@
 // Files on forms: what a post may bring (how many, how large, which kinds), that nothing else gets in, that they are
 // only ever served as downloads or sandboxed pictures, that retention takes them with the personal fields, and that
 // the API hands them to a token and to nobody else.
+import { mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 import { parseConfig } from "./config";
-import { fileResponse } from "./files";
-import { intakeRoute, safeName } from "./intake";
+import { CHUNK_BYTES } from "./db";
+import { fileResponse, fileRoute, signedFileUrl } from "./files";
+import { intakeRoute } from "./intake";
+import { safeName } from "./multipart";
 import { restRoute } from "./rest";
 import { createApiToken } from "./tokens";
 import { BASE, fileConfig, testRuntime, type TestRuntime } from "./testutil";
@@ -38,10 +43,9 @@ test("a file field is described with what it accepts, how many and how large; th
   expect(() => form({ type: "file", accept: ["stl"] })).toThrow(/neither an extension/);
   expect(() => form({ type: "file", maxFiles: 0 })).toThrow(/maxFiles: a whole number, at least 1/);
   expect(() => form({ type: "file", maxFiles: 1.5 })).toThrow(/maxFiles/);
-  expect(() => form({ type: "file", maxMegabytes: 0 })).toThrow(/maxMegabytes/);
-  expect(() => form({ type: "file", maxMegabytes: 1000 })).toThrow(/at most 953/);
+  expect(() => form({ type: "file", maxMegabytes: 0 })).toThrow(/maxMegabytes: a number more than 0/);
   // Beyond that the limits are the form's: many files, large ones.
-  expect(form({ type: "file", maxFiles: 50, maxMegabytes: 500 }).forms.f!.fields.x!.files).toMatchObject({ maxFiles: 50, maxBytes: 500 * 1024 * 1024 });
+  expect(form({ type: "file", maxFiles: 50, maxMegabytes: 5000 }).forms.f!.fields.x!.files).toMatchObject({ maxFiles: 50, maxBytes: 5000 * 1024 * 1024 });
 });
 
 test("files arrive with the submission, in order, with their names and sizes", async () => {
@@ -205,4 +209,85 @@ test("the API lists a submission's files and hands one to a token, as a download
   expect(await dl.text()).toBe("solid");
   expect((await get(`/submissions/other/files/${f.id}`)).status).toBe(404);
   expect((await get(`/submissions/${s.id}/files/${f.id}`, null)).status).toBe(401);
+});
+
+/** A folder of its own for a test's uploads, to see that nothing is left in it. */
+const uploads = () => mkdtempSync(join(tmpdir(), "noticebox-test-"));
+
+test("a file too large is cut off as it arrives: the rest of the post is never read, and nothing is left behind", async () => {
+  const dir = uploads();
+  const rt = testRuntime({ config: fileConfig(), uploadDir: dir });
+  const boundary = "----noticebox";
+  const head = new TextEncoder().encode(
+    `--${boundary}\r\ncontent-disposition: form-data; name="name"\r\n\r\nAnn\r\n--${boundary}\r\ncontent-disposition: form-data; name="model"; filename="huge.stl"\r\ncontent-type: application/octet-stream\r\n\r\n`,
+  );
+  let sent = 0;
+  // A body that never ends: if the intake read it all, the test would time out.
+  const body = new ReadableStream<Uint8Array>({
+    start(c) {
+      c.enqueue(head);
+    },
+    pull(c) {
+      sent += 64 * 1024;
+      c.enqueue(new Uint8Array(64 * 1024).fill(7));
+    },
+  });
+  const res = await intakeRoute(
+    new Request(`${BASE}/f/order`, {
+      method: "POST",
+      body,
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}`, accept: "application/json" },
+      duplex: "half",
+    } as RequestInit),
+    "order",
+    rt,
+  );
+  expect(res.status).toBe(400);
+  expect(((await res.json()) as { errors: string[] }).errors).toEqual(["Model: huge.stl is larger than 1 MB"]);
+  expect(sent).toBeLessThan(2 * 1024 * 1024);
+  expect(rt.store.list()).toHaveLength(0);
+  expect(readdirSync(dir)).toEqual([]);
+});
+
+test("a file of several chunks comes back byte for byte, and its temporary copy is gone", async () => {
+  const dir = uploads();
+  const rt = testRuntime({ config: fileConfig(), uploadDir: dir });
+  const bytes = new Uint8Array(2 * CHUNK_BYTES + 12345).map((_, i) => (i * 31) % 251);
+  const res = await intakeRoute(
+    await post("order", { name: "Ann" }, [
+      ["model", file("a.stl", 10)],
+      ["sketch", new File([bytes], "scan.pdf", { type: "application/pdf" })],
+    ]),
+    "order",
+    rt,
+  );
+  expect(res.status).toBe(201);
+  expect(readdirSync(dir)).toEqual([]);
+  const { id } = (await res.json()) as { id: string };
+  const scan = rt.store.files(id).find((f) => f.name === "scan.pdf")!;
+  expect(scan.size).toBe(bytes.byteLength);
+  expect(rt.store.chunk(scan.id, 2)!.byteLength).toBe(12345);
+  const back = new Uint8Array(await fileResponse(rt, scan.id)!.arrayBuffer());
+  expect(Buffer.compare(back, bytes)).toBe(0);
+});
+
+test("a signed link downloads a file without signing in, until it runs out; a changed one never does", async () => {
+  let now = new Date("2026-11-13T10:00:00Z");
+  const rt = testRuntime({ config: fileConfig(), now: () => now });
+  const s = rt.store.receive(rt.config.forms.order!, { name: "Ann" }, null, now, [
+    { field: "model", name: "part.stl", type: "model/stl", data: new TextEncoder().encode("solid") },
+  ]);
+  const f = rt.store.files(s.id)[0]!;
+  const link = signedFileUrl(rt, BASE, f.id);
+  expect(link.expires_at).toBe("2026-11-13T10:15:00.000Z");
+  const get = (url: string) => fileRoute(new Request(url), rt, f.id);
+  const ok = await get(link.url);
+  expect(ok.status).toBe(200);
+  expect(await ok.text()).toBe("solid");
+  expect((await get(link.url.replace(/sig=./, "sig=x"))).status).toBe(403);
+  expect((await get(link.url.replace(/exp=\d+/, (m) => `exp=${Number(m.slice(4)) + 3600}`))).status).toBe(403);
+  expect((await fileRoute(new Request(link.url), rt, "another")).status).toBe(403);
+  expect((await get(`${BASE}/files/${f.id}`)).status).toBe(401);
+  now = new Date("2026-11-13T10:16:00Z");
+  expect((await get(link.url)).status).toBe(403);
 });
