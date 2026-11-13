@@ -1,4 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { signedFileUrl } from "../backend/files";
+import type { Runtime } from "../backend/runtime";
+import { E2E_ENV } from "./seed";
 
 // A page posts a model and a photo with its form; the inbox shows the photo, offers both as downloads, and the
 // download is a download, not a page.
@@ -51,5 +54,13 @@ test("files posted with a form are kept, shown as a picture or offered as a down
   // Without a session, no file.
   const anonymous = await page.context().browser()!.newContext({ storageState: undefined });
   expect((await anonymous.request.get(href)).status()).toBe(401);
+  // A signed link (what MCP get_file hands out) works without a session, through the proxy; a changed one doesn't.
+  const fileId = href.split("/").pop()!.split("?")[0]!;
+  const signer = { now: () => new Date(), signIn: { secret: E2E_ENV.NOTICEBOX_SECRET } } as unknown as Runtime;
+  const { url } = signedFileUrl(signer, "", fileId);
+  const signed = await anonymous.request.get(url);
+  expect(signed.status()).toBe(200);
+  expect(await signed.text()).toBe("solid x");
+  expect((await anonymous.request.get(url.replace(/sig=./, "sig=x"))).status()).toBe(403);
   await anonymous.close();
 });

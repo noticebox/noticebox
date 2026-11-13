@@ -52,3 +52,10 @@ test("with Better Auth's session cookie the inbox is let through to the pages, w
   expect(passes(r)).toBe(true);
   expect(r.headers.get("cache-control")).toBe("no-store");
 });
+
+test("a file with a signed link goes through to its route, which checks the signature; without one it needs a session", () => {
+  expect(passes(get("/files/HW7PEbxnVeTT?exp=1794566518&sig=abc"))).toBe(true);
+  expect(get("/files/HW7PEbxnVeTT").status).toBe(401);
+  expect(get("/files/HW7PEbxnVeTT/other?sig=abc").status).toBe(401);
+  expect(get("/forms/order?sig=abc").status).toBe(401);
+});
