@@ -18,8 +18,8 @@ test("defaults fill in what the file leaves out", () => {
   expect(f.box).toBe("forms");
   expect(f.strict).toBe(false);
   expect(f.states).toEqual([
-    { name: "new", closed: false, reason: false },
-    { name: "answered", closed: true, reason: false },
+    { name: "new", closed: false, reason: false, deleteAfterMinutes: null },
+    { name: "answered", closed: true, reason: false, deleteAfterMinutes: null },
   ]);
   const own = parseConfig({
     forms: { x: { kind: "report", strict: true, states: ["open", { name: "lawyer" }, { name: "done", closed: true, reason: true }] } },
@@ -103,4 +103,14 @@ test("a form's link is a URL template over its own fields", () => {
 
 test("a form name may start with a digit, like a domain", () => {
   expect(Object.keys(parseConfig({ forms: { "3dbruckner-order": { kind: "message", fields: { a: {} } } } }).forms)).toEqual(["3dbruckner-order"]);
+});
+
+test("deleteAfterMinutes: whole minutes, 0 or more, on a closed state only", () => {
+  const states = (st: Record<string, unknown>) => parseConfig({ forms: { x: { kind: "message", states: ["new", st] } } }).forms.x!.states[1];
+  expect(states({ name: "test", closed: true, deleteAfterMinutes: 0 })).toEqual({ name: "test", closed: true, reason: false, deleteAfterMinutes: 0 });
+  expect(states({ name: "test", closed: true, deleteAfterMinutes: 10 })!.deleteAfterMinutes).toBe(10);
+  expect(states({ name: "test", closed: true, deleteAfterMinutes: null })!.deleteAfterMinutes).toBeNull();
+  expect(() => states({ name: "test", closed: true, deleteAfterMinutes: -1 })).toThrow(/deleteAfterMinutes: a whole number of minutes, 0 or more/);
+  expect(() => states({ name: "test", closed: true, deleteAfterMinutes: 1.5 })).toThrow(/deleteAfterMinutes/);
+  expect(() => states({ name: "later", deleteAfterMinutes: 5 })).toThrow(/only a closed state deletes what reaches it/);
 });

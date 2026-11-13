@@ -6,7 +6,17 @@
 import { randomBytes } from "node:crypto";
 import { closeSync, openSync, readSync } from "node:fs";
 import BetterSqlite3 from "better-sqlite3";
-import { DummyDriver, Kysely, sql, SqliteAdapter, SqliteIntrospector, SqliteQueryCompiler, type Compilable, type Generated } from "kysely";
+import {
+  DummyDriver,
+  Kysely,
+  sql,
+  SqliteAdapter,
+  SqliteIntrospector,
+  SqliteQueryCompiler,
+  type Compilable,
+  type Generated,
+  type SelectQueryBuilder,
+} from "kysely";
 import type { Config, Form } from "./config";
 import { stateOf, type KindName } from "./kinds";
 import { migrate } from "./migrations";
@@ -351,23 +361,38 @@ export class Store {
   }
 
   /**
-   * The optional second step: a submission closed longer ago than its form's `deleteAfterDays` is deleted with its
-   * events. Forms without it keep the anonymised record. A reopened submission has no `closed_at` and is never due.
+   * The optional second step: a submission closed longer ago than its form's `deleteAfterDays`, or than its state's
+   * `deleteAfterMinutes`, is deleted with its events and files. Forms without either keep the anonymised record. A
+   * reopened submission has no `closed_at` and is never due.
    */
   expire(config: Config, now: Date): number {
     let deleted = 0;
     for (const form of Object.values(config.forms)) {
-      if (form.deleteAfterDays === null) continue;
-      const before = new Date(now.getTime() - form.deleteAfterDays * 86400000).toISOString();
-      const due = q.selectFrom("submissions").select("id").where("form", "=", form.name).where("closed_at", "is not", null).where("closed_at", "<", before);
-      this.db.transaction(() => {
-        this.run(q.deleteFrom("events").where("submission_id", "in", due));
-        this.run(q.deleteFrom("file_chunks").where("file_id", "in", q.selectFrom("files").select("id").where("submission_id", "in", due)));
-        this.run(q.deleteFrom("files").where("submission_id", "in", due));
-        deleted += this.run(q.deleteFrom("submissions").where("id", "in", due));
-      })();
+      const closed = q.selectFrom("submissions").select("id").where("form", "=", form.name).where("closed_at", "is not", null);
+      if (form.deleteAfterDays !== null) {
+        const before = new Date(now.getTime() - form.deleteAfterDays * 86400000).toISOString();
+        deleted += this.deleteAll(closed.where("closed_at", "<", before));
+      }
+      // A state with deleteAfterMinutes (tests, say) deletes what is in it that long after it was closed; 0 at the next sweep.
+      for (const st of form.states) {
+        if (st.deleteAfterMinutes === null) continue;
+        const before = new Date(now.getTime() - st.deleteAfterMinutes * 60000).toISOString();
+        deleted += this.deleteAll(closed.where("state", "=", st.name).where("closed_at", "<=", before));
+      }
     }
     return deleted;
+  }
+
+  /** Deletes the submissions `due` selects, with their history and files, in one transaction. */
+  private deleteAll(due: SelectQueryBuilder<Tables, "submissions", { id: string }>): number {
+    let n = 0;
+    this.db.transaction(() => {
+      this.run(q.deleteFrom("events").where("submission_id", "in", due));
+      this.run(q.deleteFrom("file_chunks").where("file_id", "in", q.selectFrom("files").select("id").where("submission_id", "in", due)));
+      this.run(q.deleteFrom("files").where("submission_id", "in", due));
+      n = this.run(q.deleteFrom("submissions").where("id", "in", due));
+    })();
+    return n;
   }
 
   /** Every box (also those a form names) and every form, each in its stored order. */

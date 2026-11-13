@@ -149,3 +149,55 @@ test("figures: what is open, the oldest open one, what closed lately and when fi
   expect(store.figures(report, t0).nextErase).toEqual({ day: new Date(t0.getTime() + 2 * DAY + report.retentionDays * DAY).toISOString().slice(0, 10), n: 2 });
   store.close();
 });
+
+test("a closed state with deleteAfterMinutes deletes what reaches it that long after, with history and files; 0 at the next sweep", () => {
+  const base = testConfig();
+  const states = [
+    { name: "new", closed: false, reason: false, deleteAfterMinutes: null },
+    { name: "answered", closed: true, reason: false, deleteAfterMinutes: null },
+    { name: "test", closed: true, reason: false, deleteAfterMinutes: 10 },
+    { name: "spam", closed: true, reason: false, deleteAfterMinutes: 0 },
+  ];
+  const contact = { ...base.forms.contact!, states };
+  const config = { ...base, forms: { ...base.forms, contact } };
+  const store = new Store(":memory:");
+  const t0 = new Date("2026-11-13T12:00:00Z");
+  const min = (n: number) => new Date(t0.getTime() + n * 60000);
+  const test10 = store.receive(contact, { message: "a test" }, null, t0, [{ field: "x", name: "a.stl", type: "model/stl", data: new Uint8Array([1]) }]);
+  const spam = store.receive(contact, { message: "spam" }, null, t0);
+  const answered = store.receive(contact, { message: "real" }, null, t0);
+  const open = store.receive(contact, { message: "open" }, null, t0);
+  const fileId = store.files(test10.id)[0]!.id;
+  expect(store.chunk(fileId, 0)).toBeDefined();
+  store.transition(contact, test10.id, "marcel", "test", "", t0);
+  store.transition(contact, spam.id, "marcel", "spam", "", t0);
+  store.transition(contact, answered.id, "marcel", "answered", "", t0);
+
+  expect(store.expire(config, t0)).toBe(1); // 0 minutes: gone at the first sweep
+  expect(store.get(spam.id)).toBeUndefined();
+  expect(store.expire(config, min(9))).toBe(0);
+  expect(store.expire(config, min(10))).toBe(1);
+  expect(store.get(test10.id)).toBeUndefined();
+  expect(store.events(test10.id)).toEqual([]);
+  expect(store.files(test10.id)).toEqual([]);
+  expect(store.chunk(fileId, 0)).toBeUndefined();
+  expect(store.expire(config, min(100000))).toBe(0); // answered and open stay: their states delete nothing
+  expect(store.get(answered.id)).toBeDefined();
+  expect(store.get(open.id)).toBeDefined();
+  store.close();
+});
+
+test("a sweep that finds nothing to remove writes no log line, so a sweep every minute doesn't fill the log", async () => {
+  const { sweepNow } = await import("./runtime");
+  const { testRuntime } = await import("./testutil");
+  const lines: string[] = [];
+  const rt = testRuntime({ log: (l) => lines.push(l) });
+  rt.store.receive(rt.config.forms.contact!, { message: "open" }, null, new Date());
+  for (let i = 0; i < 5; i++) expect(sweepNow(rt)).toEqual({ purged: 0, deleted: 0 });
+  expect(lines).toEqual([]);
+  // One that does remove something says so, once.
+  const s = rt.store.receive(rt.config.forms.contact!, { message: "done" }, null, new Date(0));
+  rt.store.transition(rt.config.forms.contact!, s.id, "marcel", "answered", "", new Date(0));
+  expect(sweepNow(rt).purged).toBe(1);
+  expect(lines).toEqual(["retention: personal fields removed from 1 closed submission"]);
+});

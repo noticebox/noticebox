@@ -4,7 +4,7 @@
 
 A submission is closed when it reaches a closed state: `acted_on` or `rejected` for a report, `answered` for a message. `retentionDays` after that, its personal fields are removed: every field marked `personal`, which free text, textareas and email addresses are by default, and the files of every `file` field marked `personal`, which they are by default. What stays is the ids and other fields marked `personal: false`, the chosen category of a `select`, the states, the history with every reason, and the time of the removal. The submission's page says *Personal fields removed* with the date.
 
-The sweep runs at start and every six hours. A report reopened before the sweep keeps its fields until it is closed again and the days have passed again.
+The sweep runs at start and every minute. A report reopened before the sweep keeps its fields until it is closed again and the days have passed again.
 
 By default nothing is deleted entirely: the anonymised record is the proof that submissions were handled.
 
@@ -13,6 +13,8 @@ By default nothing is deleted entirely: the anonymised record is the proof that 
 A form may set `deleteAfterDays`, a whole number of days counted from closing like `retentionDays`, and at least as long. Once that has passed, the sweep deletes the submission together with its history; the log says how many. Set it when your privacy page promises deletion after a period (a year is common for an audit trail). The form's overview and its *Settings* tab show it beside the retention; MCP's `get_form` and `put_form` carry it as `deleteAfterDays`, and `list_forms` as `delete_after_days`.
 
 A submission that is reopened is not deleted; its clock starts again when it is closed again. A deleted submission also leaves the overview's chart of the last 30 days, which matters only if `deleteAfterDays` is shorter than that.
+
+A closed state may delete sooner: with `deleteAfterMinutes` (see [States](../using/kinds.md)), a submission is deleted that many minutes after it reaches the state, with its history and files, before any backup is likely to hold it. For tests, `0`.
 
 If you need a copy beyond that period, keep one with the [export](#export) before it runs out.
 

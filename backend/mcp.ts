@@ -50,7 +50,12 @@ function server(rt: Runtime, who: Who): McpServer {
     if (x.closed_at && form) {
       if (!x.purged_at)
         out.push(`It is closed (${x.state}). Retention removes its personal fields on ${day(x.closed_at, form.retentionDays)}, unless it is reopened first.`);
-      if (form.deleteAfterDays !== null) out.push(`The whole submission and its history are deleted on ${day(x.closed_at, form.deleteAfterDays)}.`);
+      const st = form.states.find((s) => s.name === x.state);
+      if (st?.deleteAfterMinutes != null)
+        out.push(
+          `The state ${x.state} deletes it with its history and files ${st.deleteAfterMinutes} minute${st.deleteAfterMinutes === 1 ? "" : "s"} after it was closed.`,
+        );
+      else if (form.deleteAfterDays !== null) out.push(`The whole submission and its history are deleted on ${day(x.closed_at, form.deleteAfterDays)}.`);
       out.push("Moving it to a state that is not closed reopens it.");
     } else if (form) {
       out.push(

@@ -19,7 +19,7 @@ export type RawFieldRow = {
   maxMegabytes: string;
 };
 export type RawTarget = { type: "ntfy" | "webhook"; url: string };
-export type StateRow = { name: string; closed: boolean; reason: boolean };
+export type StateRow = { name: string; closed: boolean; reason: boolean; deleteAfterMinutes: string };
 export type Settings = {
   box: string;
   kind: string;
@@ -74,6 +74,7 @@ function toRaw(s: Settings): Record<string, unknown> {
     const o: Record<string, unknown> = { name: st.name.trim() };
     if (st.closed) o.closed = true;
     if (st.reason) o.reason = true;
+    if (st.closed && st.deleteAfterMinutes.trim()) o.deleteAfterMinutes = Number(st.deleteAfterMinutes);
     return o;
   });
   if (s.thanks.trim()) raw.thanks = s.thanks.trim();
@@ -402,6 +403,20 @@ export function FormSettings({
                   <label className="flex items-center gap-1.5 text-sm">
                     <input type="checkbox" checked={st.reason} onChange={(e) => state(i, { reason: e.target.checked })} /> {t.settings.needsReason}
                   </label>
+                  {st.closed && (
+                    <label className="flex items-center gap-1.5 text-sm">
+                      {t.settings.stateDeleteAfter}
+                      <input
+                        value={st.deleteAfterMinutes}
+                        onChange={(e) => state(i, { deleteAfterMinutes: e.target.value })}
+                        inputMode="numeric"
+                        className="field w-16 py-0.5 text-sm"
+                        placeholder="–"
+                        aria-label={t.settings.stateDeleteAfterN(i + 1)}
+                      />
+                      {t.settings.stateMinutes}
+                    </label>
+                  )}
                   <div className="ml-auto flex gap-1">
                     <button type="button" onClick={() => moveState(i, -1)} aria-label={t.settings.moveStateUp} className="btn px-2" disabled={i === 0}>
                       <Icon name="moveUp" />
@@ -431,7 +446,7 @@ export function FormSettings({
             </div>
             <button
               type="button"
-              onClick={() => set((x) => ({ ...x, states: [...x.states, { name: "", closed: false, reason: false }] }))}
+              onClick={() => set((x) => ({ ...x, states: [...x.states, { name: "", closed: false, reason: false, deleteAfterMinutes: "" }] }))}
               className="btn mt-3"
             >
               {t.settings.addState}

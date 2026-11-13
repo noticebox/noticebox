@@ -106,12 +106,19 @@
                                 },
                                 "reason": {
                                   "type": "boolean"
+                                },
+                                "deleteAfterMinutes": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
                                 }
                               },
                               "required": [
                                 "name",
                                 "closed",
-                                "reason"
+                                "reason",
+                                "deleteAfterMinutes"
                               ],
                               "additionalProperties": false
                             }
