@@ -291,3 +291,20 @@ test("a signed link downloads a file without signing in, until it runs out; a ch
   now = new Date("2026-11-13T10:16:00Z");
   expect((await get(link.url)).status).toBe(403);
 });
+
+test("a file input left empty sends a part without a name or bytes: no file, on any field, whatever it accepts", async () => {
+  const rt = testRuntime({ config: fileConfig() });
+  // `sketch` is optional; an empty part under `model` (which accepts .stl and images only) must not count either.
+  const res = await intakeRoute(
+    await post("order", { name: "Ann" }, [
+      ["model", file("a.stl", 5)],
+      ["model", new File([], "", { type: "application/octet-stream" })],
+      ["sketch", new File([], "", { type: "application/octet-stream" })],
+    ]),
+    "order",
+    rt,
+  );
+  expect(res.status).toBe(201);
+  const { id } = (await res.json()) as { id: string };
+  expect(rt.store.files(id).map((f) => f.name)).toEqual(["a.stl"]);
+});

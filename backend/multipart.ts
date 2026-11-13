@@ -76,8 +76,14 @@ export async function readMultipart(req: Request, form: Form, limit: number, upl
       stream.resume();
       return;
     }
+    // A file input left empty still sends a part, without a name and without bytes: that is no file. A part without a
+    // name is never taken as one, so it can't be refused for its kind or count either.
+    if (!info.filename) {
+      stream.resume();
+      return;
+    }
     const rule = field.files;
-    const fileName = safeName(info.filename ?? "");
+    const fileName = safeName(info.filename);
     counts[name] = (counts[name] ?? 0) + 1;
     if (counts[name] > rule.maxFiles) {
       say(`${field.label}: at most ${rule.maxFiles} file${rule.maxFiles === 1 ? "" : "s"}`);
@@ -96,9 +102,7 @@ export async function readMultipart(req: Request, form: Form, limit: number, upl
     writing.push(
       pipeline(stream, size, createWriteStream(path)).then(
         () => {
-          // A file input left empty still sends a part, without a name or bytes: that is no file.
-          if (size.bytes === 0 && !info.filename) counts[name]!--;
-          else if (size.bytes === 0) say(`${field.label}: ${fileName} is empty`);
+          if (size.bytes === 0) say(`${field.label}: ${fileName} is empty`);
           else files.push({ field: name, name: fileName, type, size: size.bytes, path });
         },
         (e: unknown) => {
