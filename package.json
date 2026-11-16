@@ -40,7 +40,7 @@
     "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "9.6.0",
-    "@types/busboy": "1.5.4",
+    "@types/busboy": "1.5.5",
     "@types/node": "^22",
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19",
