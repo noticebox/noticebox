@@ -1,6 +1,6 @@
 # Notifications
 
-A notification says that something arrived and where to look, never what it says: a topic at ntfy.sh and a webhook travel through other people's servers, and the content stays in the box behind the login.
+A notification says that something happened and where to look, never what it says: a topic at ntfy.sh and a webhook travel through other people's servers, and the content stays in the box behind the login.
 
 ## ntfy
 
@@ -16,11 +16,29 @@ A post to the topic with the title *New report: <form title>*, the link to the s
 "notify": [{ "type": "webhook", "url": "https://hooks.example.org/noticebox" }]
 ```
 
-A JSON post:
+A JSON post when a submission arrives:
 
 ```json
-{ "form": "contact", "kind": "message", "id": "kemGIkDjIh9Y", "received_at": "2026-10-10T14:20:11.000Z", "url": "https://inbox.example.org/forms/contact/submissions/kemGIkDjIh9Y" }
+{ "event": "received", "form": "contact", "kind": "message", "id": "kemGIkDjIh9Y", "received_at": "2026-10-10T14:20:11.000Z", "url": "https://inbox.example.org/forms/contact/submissions/kemGIkDjIh9Y" }
 ```
+
+### Decisions
+
+A webhook can also be told about every decision: a submission moved to another state, in the inbox, over MCP or through the API. It names what it wants in `on`:
+
+```json
+"notify": [{ "type": "webhook", "url": "https://hooks.example.org/noticebox", "on": ["decided"] }]
+```
+
+`on` lists `received` (a submission arrived) and `decided` (a decision); without it a webhook gets arrivals only, as it always did. A decision posts:
+
+```json
+{ "event": "decided", "form": "contact", "kind": "message", "id": "kemGIkDjIh9Y", "from": "new", "to": "answered", "at": "2026-10-11T08:02:40.000Z", "url": "https://inbox.example.org/forms/contact/submissions/kemGIkDjIh9Y" }
+```
+
+It names the two states, never the reason or who decided: both stay in the history, behind the login. The post goes out after the decision is stored and never delays or fails it. This is how another service picks up a case once a person has decided on it (moved it to an "accepted" state, say) and reads it with an API token: the person's decision starts it, and the content leaves only through that read. ntfy announces arrivals only.
+
+The form's *Settings* tab sets a webhook's events too (new submissions, decisions or both).
 
 ## Test posts
 

@@ -43,6 +43,16 @@ items:
       - { label: "V2", url: "https://noticebox.github.io/noticebox/values/#v2" }
 
   # ---- done ------------------------------------------------------------------------------------------------------------
+  - id: decision-webhooks
+    status: done
+    date: 2026-11-20
+    icon: webhook
+    title: Webhooks on decisions
+    summary: A webhook can be told about every decision as well as every arrival, with the two states and the link, never the content.
+    links:
+      - { label: "#113", url: "https://github.com/noticebox/noticebox/issues/113" }
+      - { label: "V1", url: "https://noticebox.github.io/noticebox/values/#v1" }
+
   - id: file-uploads
     status: done
     date: 2026-11-12
