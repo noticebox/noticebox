@@ -22,7 +22,7 @@ test("a browser submission is stored, answered with a redirect, and announced wi
   expect(ntfy.headers.title).toBe("New report: Report content");
   expect(ntfy.headers.priority).toBe("4");
   expect(ntfy.headers.tags).toBe("mailbox");
-  expect(JSON.parse(hook.body)).toEqual({ form: "report", kind: "report", id: s!.id, received_at: s!.received_at, url: link });
+  expect(JSON.parse(hook.body)).toEqual({ event: "received", form: "report", kind: "report", id: s!.id, received_at: s!.received_at, url: link });
   for (const h of rt.hits) expect(h.body + JSON.stringify(h.headers)).not.toMatch(/spam|example\.org/i);
 });
 
