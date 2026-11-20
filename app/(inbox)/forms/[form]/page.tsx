@@ -97,7 +97,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
           <dd className="mb-2 sm:mb-0">
             {form.notify.length
               ? form.notify
-                  .map((n) => (n.type === "ntfy" ? t.overview.onNtfy(new URL(n.url).host) : t.overview.toWebhook(new URL(n.url).host)))
+                  .map((n) => (n.type === "ntfy" ? t.overview.onNtfy(new URL(n.url).host) : t.overview.toWebhook(new URL(n.url).host, n.on ?? ["received"])))
                   .join(t.overview.and)
               : t.overview.nowhere}
           </dd>

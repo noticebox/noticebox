@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { type AdminState, deleteForm, updateForm } from "../../../admin";
+import type { NotifyEvent } from "@/backend";
 import { Icon } from "@/app/_lib/icons";
 import { t } from "@/app/_lib/copy";
 
@@ -18,7 +19,8 @@ export type RawFieldRow = {
   maxFiles: string;
   maxMegabytes: string;
 };
-export type RawTarget = { type: "ntfy" | "webhook"; url: string };
+// `on` only for a webhook, and only when it was written (or chosen here): a webhook without it hears of arrivals only.
+export type RawTarget = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[] };
 export type StateRow = { name: string; closed: boolean; reason: boolean; deleteAfterMinutes: string };
 export type Settings = {
   box: string;
@@ -86,7 +88,7 @@ function toRaw(s: Settings): Record<string, unknown> {
   if (s.redirect.trim()) raw.redirect = s.redirect.trim();
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
   if (s.deleteAfterDays.trim()) raw.deleteAfterDays = Number(s.deleteAfterDays);
-  if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim() }));
+  if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim(), ...(t.type === "webhook" && t.on ? { on: t.on } : {}) }));
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
   const labels = s.githubLabels
     .split(",")
@@ -518,6 +520,18 @@ export function FormSettings({
                     <option value="ntfy">ntfy</option>
                     <option value="webhook">webhook</option>
                   </select>
+                  {tg.type === "webhook" && (
+                    <select
+                      value={(tg.on ?? ["received"]).join(",")}
+                      onChange={(e) => target(i, { on: e.target.value.split(",") as NotifyEvent[] })}
+                      className="field w-44"
+                      aria-label={t.settings.targetN(i + 1, "events")}
+                    >
+                      <option value="received">{t.settings.onReceived}</option>
+                      <option value="decided">{t.settings.onDecided}</option>
+                      <option value="received,decided">{t.settings.onBoth}</option>
+                    </select>
+                  )}
                   <input
                     value={tg.url}
                     onChange={(e) => target(i, { url: e.target.value })}

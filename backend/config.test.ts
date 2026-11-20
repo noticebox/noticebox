@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { expand, FORM_NAME, loadConfig, parseConfig } from "./config";
+import { expand, FORM_NAME, loadConfig, parseConfig, wants } from "./config";
 import { Store } from "./db";
 import { Forms } from "./forms";
 
@@ -113,4 +113,32 @@ test("deleteAfterMinutes: whole minutes, 0 or more, on a closed state only", () 
   expect(() => states({ name: "test", closed: true, deleteAfterMinutes: -1 })).toThrow(/deleteAfterMinutes: a whole number of minutes, 0 or more/);
   expect(() => states({ name: "test", closed: true, deleteAfterMinutes: 1.5 })).toThrow(/deleteAfterMinutes/);
   expect(() => states({ name: "later", deleteAfterMinutes: 5 })).toThrow(/only a closed state deletes what reaches it/);
+});
+
+test("a webhook names the events it wants; without on it gets arrivals only", () => {
+  const notify = (n: unknown) => parseConfig({ forms: { x: { kind: "report", fields: { a: {} }, notify: n } } }).forms.x!.notify;
+  const both = notify([{ type: "webhook", url: "https://hooks.test/x", on: ["received", "decided", "decided"] }]);
+  expect(both).toEqual([{ type: "webhook", url: "https://hooks.test/x", on: ["received", "decided"] }]);
+  expect(wants(both[0]!, "decided")).toBe(true);
+  expect(wants(both[0]!, "received")).toBe(true);
+  const plain = notify([{ type: "webhook", url: "https://hooks.test/x" }]);
+  expect(plain).toEqual([{ type: "webhook", url: "https://hooks.test/x" }]);
+  expect(wants(plain[0]!, "received")).toBe(true);
+  expect(wants(plain[0]!, "decided")).toBe(false);
+  const decisions = notify([{ type: "webhook", url: "https://hooks.test/x", on: ["decided"] }]);
+  expect(wants(decisions[0]!, "received")).toBe(false);
+  const old = notify({ ntfy: "https://ntfy.test/t", webhook: "https://hooks.test/x" });
+  expect(old.map((t) => [wants(t, "received"), wants(t, "decided")])).toEqual([
+    [true, false],
+    [true, false],
+  ]);
+  expect(wants(notify([{ type: "ntfy", url: "https://ntfy.test/t" }])[0]!, "decided")).toBe(false);
+});
+
+test("on must name known events, and only a webhook takes it", () => {
+  const bad = (n: unknown, re: RegExp) => expect(() => parseConfig({ forms: { x: { kind: "report", fields: { a: {} }, notify: n } } })).toThrow(re);
+  bad([{ type: "webhook", url: "https://hooks.test/x", on: ["closed"] }], /notify\[0\]\.on: a list of "received" and "decided"/);
+  bad([{ type: "webhook", url: "https://hooks.test/x", on: [] }], /notify\[0\]\.on: a list of "received" and "decided"/);
+  bad([{ type: "webhook", url: "https://hooks.test/x", on: "decided" }], /notify\[0\]\.on: a list of "received" and "decided"/);
+  bad([{ type: "ntfy", url: "https://ntfy.test/t", on: ["decided"] }], /notify\[0\]\.on: only a webhook takes "on"/);
 });

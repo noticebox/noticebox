@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { runtime } from "@/backend";
+import { runtime, type NotifyEvent } from "@/backend";
 import { FormSettings, type RawFieldRow, type RawTarget, type Settings, type StateRow } from "./FormSettings";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,11 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
   }));
   const notifyRaw = raw.notify;
   const notify: RawTarget[] = Array.isArray(notifyRaw)
-    ? notifyRaw.map((t: { type: string; url: string }) => ({ type: t.type === "webhook" ? "webhook" : "ntfy", url: str(t.url) }))
+    ? notifyRaw.map((t: { type: string; url: string; on?: unknown }) => ({
+        type: t.type === "webhook" ? "webhook" : "ntfy",
+        url: str(t.url),
+        ...(t.type === "webhook" && Array.isArray(t.on) ? { on: t.on as NotifyEvent[] } : {}),
+      }))
     : notifyRaw && typeof notifyRaw === "object"
       ? ([
           ...(str((notifyRaw as Record<string, unknown>).ntfy) ? [{ type: "ntfy", url: str((notifyRaw as Record<string, unknown>).ntfy) }] : []),
