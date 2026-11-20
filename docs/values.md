@@ -14,7 +14,7 @@ What someone sends through a form stays in the inbox until a person reads it and
 
 **Rules out:** content or the sender's email address in ntfy, webhook or mail notifications; forwarding submissions to other services automatically; a token or API call that pushes submission content out of noticebox.
 
-ADRs: [0001](https://github.com/noticebox/noticebox/blob/main/docs/adr/0001-github-issues-as-filled-in-links.md).
+ADRs: [0001](https://github.com/noticebox/noticebox/blob/main/docs/adr/0001-github-issues-as-filled-in-links.md), [0008](https://github.com/noticebox/noticebox/blob/main/docs/adr/0008-a-decision-may-start-a-read.md).
 
 ### V2. Personal data doesn't outlive the case {#v2}
 
