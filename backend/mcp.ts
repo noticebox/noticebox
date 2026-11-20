@@ -6,6 +6,7 @@ import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotoco
 import * as z from "zod";
 import { publicUrl } from "./auth";
 import type { Event, Submission } from "./db";
+import { decide } from "./decide";
 import { boxPath, endpointPath, formPath, submissionPath } from "./paths";
 import { clientName, connected, connections, createBox, deleteBox, deleteForm, exportSubmissions, putForm, renameBox, revokeConnection } from "./admin";
 import type { Runtime } from "./runtime";
@@ -311,7 +312,7 @@ function server(rt: Runtime, who: Who): McpServer {
       const x = rt.store.get(id);
       const form = x && rt.config.forms[x.form];
       if (!x || !form) return refuse("no such submission");
-      const r = rt.store.transition(form, id, actor, to, reason, rt.now());
+      const r = decide(rt, form, id, actor, to, reason, base);
       if (!r.ok) return refuse(r.error);
       const after = rt.store.get(id)!;
       return ok(full(after), [`Recorded as "${actor}".`, ...afterSubmission(after)]);
