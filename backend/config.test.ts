@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { expand, FORM_NAME, loadConfig, parseConfig, wants } from "./config";
+import { eventsOf, expand, FORM_NAME, loadConfig, parseConfig, wants } from "./config";
 import { Store } from "./db";
 import { Forms } from "./forms";
 
@@ -141,4 +141,11 @@ test("on must name known events, and only a webhook takes it", () => {
   bad([{ type: "webhook", url: "https://hooks.test/x", on: [] }], /notify\[0\]\.on: a list of "received" and "decided"/);
   bad([{ type: "webhook", url: "https://hooks.test/x", on: "decided" }], /notify\[0\]\.on: a list of "received" and "decided"/);
   bad([{ type: "ntfy", url: "https://ntfy.test/t", on: ["decided"] }], /notify\[0\]\.on: only a webhook takes "on"/);
+});
+
+test("the settings page reads on in the canonical order, whatever order it was written in", () => {
+  expect(eventsOf({ type: "webhook", url: "https://hooks.test/x", on: ["decided", "received"] })).toEqual(["received", "decided"]);
+  expect(eventsOf({ type: "webhook", url: "https://hooks.test/x", on: ["decided", "decided"] })).toEqual(["decided"]);
+  expect(eventsOf({ type: "webhook", url: "https://hooks.test/x" })).toBeUndefined();
+  expect(eventsOf({ type: "ntfy", url: "https://ntfy.test/t", on: ["decided"] })).toBeUndefined();
 });

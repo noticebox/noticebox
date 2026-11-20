@@ -36,7 +36,7 @@ A webhook can also be told about every decision: a submission moved to another s
 { "event": "decided", "form": "contact", "kind": "message", "id": "kemGIkDjIh9Y", "from": "new", "to": "answered", "at": "2026-10-11T08:02:40.000Z", "url": "https://inbox.example.org/forms/contact/submissions/kemGIkDjIh9Y" }
 ```
 
-It names the two states, never the reason or who decided: both stay in the history, behind the login. The post goes out after the decision is stored and never delays or fails it. This is how another service picks up a case once a person has decided on it (moved it to an "accepted" state, say) and reads it with an API token: the person's decision starts it, and the content leaves only through that read. ntfy announces arrivals only.
+It names the two states, never the reason or who decided: both stay in the history, behind the login. The post goes out after the decision is stored and never delays or fails it. This is how another service picks up a case once a person has decided on it (moved it to an "accepted" state, say) and reads it with an API token: the person's decision starts it, and the content leaves only through that read. Posts are not retried, and two quick decisions may arrive in either order: `at` says which came first. ntfy announces arrivals only.
 
 The form's *Settings* tab sets a webhook's events too (new submissions, decisions or both).
 

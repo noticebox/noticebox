@@ -510,7 +510,7 @@ export function FormSettings({
             </p>
             <div className="grid gap-2">
               {s.notify.map((tg, i) => (
-                <div key={i} className="flex gap-2">
+                <div key={i} className="flex flex-wrap gap-2">
                   <select
                     value={tg.type}
                     onChange={(e) => target(i, { type: e.target.value as RawTarget["type"] })}
@@ -535,7 +535,7 @@ export function FormSettings({
                   <input
                     value={tg.url}
                     onChange={(e) => target(i, { url: e.target.value })}
-                    className="field min-w-0 flex-1"
+                    className="field min-w-0 flex-1 basis-60"
                     placeholder={tg.type === "ntfy" ? "https://ntfy.sh/your-topic" : "https://hooks.example.org/noticebox"}
                     aria-label={t.settings.targetN(i + 1, "URL")}
                   />

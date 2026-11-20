@@ -51,6 +51,7 @@ items:
     summary: A webhook can be told about every decision as well as every arrival, with the two states and the link, never the content.
     links:
       - { label: "#113", url: "https://github.com/noticebox/noticebox/issues/113" }
+      - { label: "ADR 0008", url: "https://github.com/noticebox/noticebox/blob/main/docs/adr/0008-a-decision-may-start-a-read.md" }
       - { label: "V1", url: "https://noticebox.github.io/noticebox/values/#v1" }
 
   - id: file-uploads

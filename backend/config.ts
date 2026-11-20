@@ -51,6 +51,16 @@ const EVENTS: NotifyEvent[] = ["received", "decided"];
 // `on`: only as written, on a webhook; `unset`: the variable the URL needs and the environment lacks.
 export type Target = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[]; unset?: string };
 
+/**
+ * A raw target's `on` as the editor shows it: known events, in their canonical order, without repeats; undefined for ntfy and for a
+ * webhook without `on`. The stored JSON keeps `on` as written, so it may come in any order (from put_form or the file).
+ */
+export function eventsOf(raw: { type?: unknown; on?: unknown; [k: string]: unknown }): NotifyEvent[] | undefined {
+  if (raw.type !== "webhook" || !Array.isArray(raw.on)) return undefined;
+  const on = raw.on;
+  return EVENTS.filter((e) => on.includes(e));
+}
+
 /** Whether `t` is to be told about `event`. */
 export function wants(t: Target, event: NotifyEvent): boolean {
   if (t.type === "ntfy") return event === "received";

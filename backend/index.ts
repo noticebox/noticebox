@@ -16,6 +16,7 @@ export {
 export { safeNext, signInMethods } from "./accounts";
 export { actorOf, personOf, publicUrl, type Person } from "./auth";
 export { apiResourceMetadataRoute, authRoute, authServerMetadataRoute, clientNameFor, openIdConfigRoute, refusedSignIn, type RefusedSignIn } from "./signin";
+export { eventsOf } from "./config";
 export type { Config, Field, Form, GitHub, NotifyEvent, State, Target } from "./config";
 export type { Event } from "./db";
 export type { RawForm } from "./forms";
