@@ -35,14 +35,37 @@ export type Form = {
   redirect: string | null; // where the browser goes after a submission; null means the hosted thanks page
   retentionDays: number;
   deleteAfterDays: number | null; // days after closing until the submission and its history are deleted; null keeps the anonymised record
-  notify: Target[]; // where a new submission is announced (title and link, never the content)
+  notify: Target[]; // where a new submission, or a decision, is announced (ids and a link, never the content)
   link: { url: string; label: string } | null; // where the thing a submission is about can be looked at: a URL template with {field} placeholders
   github: GitHub | null; // where an issue can be opened from a submission
 };
 
 export type GitHub = { repo: string; labels: string[] }; // repo is owner/name
 
-export type Target = { type: "ntfy" | "webhook"; url: string; unset?: string }; // `unset`: the variable the URL needs and the environment lacks
+// What a target can be told about: a submission arriving, or a decision moving one to another state. ntfy only ever hears of
+// arrivals (a push per decision would be noise); a webhook names what it wants in `on`, and without it gets arrivals only, as
+// webhooks did before decisions were announced, so an existing one never starts receiving posts it didn't ask for.
+export type NotifyEvent = "received" | "decided";
+const EVENTS: NotifyEvent[] = ["received", "decided"];
+
+// `on`: only as written, on a webhook; `unset`: the variable the URL needs and the environment lacks.
+export type Target = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[]; unset?: string };
+
+/**
+ * A raw target's `on` as the editor shows it: known events, in their canonical order, without repeats; undefined for ntfy and for a
+ * webhook without `on`. The stored JSON keeps `on` as written, so it may come in any order (from put_form or the file).
+ */
+export function eventsOf(raw: { type?: unknown; on?: unknown; [k: string]: unknown }): NotifyEvent[] | undefined {
+  if (raw.type !== "webhook" || !Array.isArray(raw.on)) return undefined;
+  const on = raw.on;
+  return EVENTS.filter((e) => on.includes(e));
+}
+
+/** Whether `t` is to be told about `event`. */
+export function wants(t: Target, event: NotifyEvent): boolean {
+  if (t.type === "ntfy") return event === "received";
+  return (t.on ?? ["received"]).includes(event);
+}
 
 export type Config = { boxes: string[]; forms: Record<string, Form> }; // `boxes` lists every box, also those without a form yet
 
@@ -206,7 +229,13 @@ function parseNotify(at: string, raw: unknown): Target[] {
   return raw.map((t, i) => {
     const o = record(t, `${at}[${i}]`);
     if (o.type !== "ntfy" && o.type !== "webhook") throw new Error(`${at}[${i}].type: "ntfy" or "webhook"`);
-    return { type: o.type, url: absoluteUrl(o.url, `${at}[${i}].url`) };
+    const target: Target = { type: o.type, url: absoluteUrl(o.url, `${at}[${i}].url`) };
+    if (o.on === undefined || o.on === null) return target;
+    if (o.type !== "webhook") throw new Error(`${at}[${i}].on: only a webhook takes "on"`);
+    const on = o.on;
+    if (!Array.isArray(on) || on.length === 0 || !on.every((e) => EVENTS.includes(e as NotifyEvent)))
+      throw new Error(`${at}[${i}].on: a list of "received" and "decided"`);
+    return { ...target, on: EVENTS.filter((e) => on.includes(e)) };
   });
 }
 

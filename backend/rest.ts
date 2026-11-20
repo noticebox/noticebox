@@ -6,6 +6,7 @@
 import * as z from "zod";
 import { connections, createBox, deleteBox, deleteForm, exportSubmissions, putForm, renameBox, revokeConnection } from "./admin";
 import type { Outcome } from "./db";
+import { decide } from "./decide";
 import { fileResponse } from "./files";
 import { boxPath, formPath } from "./paths";
 import type { Runtime } from "./runtime";
@@ -253,7 +254,7 @@ export const OPS: Op[] = [
       const x = rt.store.get(params.id!);
       const form = x && rt.config.forms[x.form];
       if (!x || !form) return fail(404, "no such submission");
-      const r = rt.store.transition(form, x.id, caller.actor, to, reason, rt.now());
+      const r = decide(rt, form, x.id, caller.actor, to, reason, base);
       return r.ok ? { status: 200, body: fullView(rt, base, rt.store.get(x.id)!) } : fail(400, r.error);
     },
   },

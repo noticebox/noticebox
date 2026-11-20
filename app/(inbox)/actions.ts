@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { actorOf, runtime } from "@/backend";
+import { actorOf, decide as decideOn, publicUrl, runtime } from "@/backend";
 import { t } from "@/app/_lib/copy";
 
 // What the dialog gets back: refused, with the message and what was submitted, so it can show them again (React
@@ -13,7 +13,8 @@ export type DecideState = { ok?: boolean; error?: string; to?: string; reason?: 
 // the signed-in person; Next checks the request's origin before any server action runs.
 export async function decide(prev: DecideState, data: FormData): Promise<DecideState> {
   const rt = runtime();
-  const actor = await actorOf(await headers(), rt);
+  const h = await headers();
+  const actor = await actorOf(h, rt);
   const id = String(data.get("id") ?? "");
   const to = String(data.get("to") ?? "").trim();
   const reason = String(data.get("reason") ?? "");
@@ -22,7 +23,7 @@ export async function decide(prev: DecideState, data: FormData): Promise<DecideS
   const s = rt.store.get(id);
   const form = s && rt.config.forms[s.form];
   if (!s || !form) return { error: t.common.noSuchSubmission, to, reason, n };
-  const r = to ? rt.store.transition(form, id, actor, to, reason, rt.now()) : rt.store.note(id, actor, reason, rt.now());
+  const r = to ? decideOn(rt, form, id, actor, to, reason, publicUrl(h, rt)) : rt.store.note(id, actor, reason, rt.now());
   if (!r.ok) return { error: r.error, to, reason, n };
   revalidatePath("/", "layout");
   return { ok: true, n };

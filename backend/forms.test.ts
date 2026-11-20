@@ -52,6 +52,11 @@ test("boxes and forms are created, changed and removed in the database, which ke
     forms.updateForm("contact", { ...forms.rawForm("contact")!, title: "Write to us", notify: [{ type: "webhook", url: "https://hooks.test/x" }] }),
   ).toEqual({ ok: true });
   expect(forms.config.forms.contact!.notify).toEqual([{ type: "webhook", url: "https://hooks.test/x" }]);
+  // `on` is kept as written, in the parsed form and in the stored JSON.
+  const on = { type: "webhook", url: "https://hooks.test/x", on: ["decided"] };
+  expect(forms.updateForm("contact", { ...forms.rawForm("contact")!, notify: [on] })).toEqual({ ok: true });
+  expect(forms.config.forms.contact!.notify).toEqual([on]);
+  expect(JSON.parse(stored(store, "contact")!.definition).notify).toEqual([on]);
 
   expect(forms.renameBox("site", "notes")).toMatchObject({ ok: false });
   expect(forms.renameBox("site", "example.org")).toEqual({ ok: true });

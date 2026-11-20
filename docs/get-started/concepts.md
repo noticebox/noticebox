@@ -25,6 +25,7 @@ sequenceDiagram
   NB-)N: something arrived, and the link (never the content)
   You->>DB: move it to another state, with the reason
   Note over DB: every step is an event: who, when, why
+  NB-)N: a webhook that asked for decisions: the two states and the link
 ```
 
 The path of one submission: the checks come first, so a refused post stores nothing; the notification carries only the link; every later decision is added to the submission's history.

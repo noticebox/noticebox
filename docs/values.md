@@ -10,11 +10,11 @@ These three come first. When a feature would be easier, or would sell better, by
 
 ### V1. Personal data leaves only by a person's hand {#v1}
 
-What someone sends through a form stays in the inbox until a person reads it and decides to pass it on. A notification says only that something arrived, with a link, never what. Nothing sends a submission's content to another service by itself: a GitHub issue, for one, is a filled-in link that a person checks and submits, without the sender's email address.
+What someone sends through a form stays in the inbox until a person reads it and decides to pass it on. A notification says only that something arrived or was decided, with ids, the states and a link, never what. When a person's decision is what another service waits for, that service reads the case with a token the person gave it: the decision is the person's hand. Nothing sends a submission's content to another service by itself: a GitHub issue, for one, is a filled-in link that a person checks and submits, without the sender's email address.
 
 **Rules out:** content or the sender's email address in ntfy, webhook or mail notifications; forwarding submissions to other services automatically; a token or API call that pushes submission content out of noticebox.
 
-ADRs: [0001](https://github.com/noticebox/noticebox/blob/main/docs/adr/0001-github-issues-as-filled-in-links.md).
+ADRs: [0001](https://github.com/noticebox/noticebox/blob/main/docs/adr/0001-github-issues-as-filled-in-links.md), [0008](https://github.com/noticebox/noticebox/blob/main/docs/adr/0008-a-decision-may-start-a-read.md).
 
 ### V2. Personal data doesn't outlive the case {#v2}
 

@@ -6,6 +6,7 @@ import { McpServer, createMcpHandler, type AuthInfo } from "@modelcontextprotoco
 import * as z from "zod";
 import { publicUrl } from "./auth";
 import type { Event, Submission } from "./db";
+import { decide } from "./decide";
 import { boxPath, endpointPath, formPath, submissionPath } from "./paths";
 import { clientName, connected, connections, createBox, deleteBox, deleteForm, exportSubmissions, putForm, renameBox, revokeConnection } from "./admin";
 import type { Runtime } from "./runtime";
@@ -114,7 +115,7 @@ function server(rt: Runtime, who: Who): McpServer {
     "put_form",
     {
       description:
-        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, deleteAfterDays (optional: days after closing until the submission and its history are deleted, at least retentionDays), notify ([{type: ntfy|webhook, url}]), link ({url, label}), github ({repo: owner/name, labels}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes. A state that submissions are in cannot be removed.",
+        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, deleteAfterDays (optional: days after closing until the submission and its history are deleted, at least retentionDays), notify ([{type: ntfy|webhook, url, on?}]; a webhook's on lists received and/or decided, without it arrivals only; ntfy announces arrivals), link ({url, label}), github ({repo: owner/name, labels}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes. A state that submissions are in cannot be removed.",
       inputSchema: z.object({ name: z.string().describe("lowercase letters, digits, - and _"), form: z.record(z.string(), z.unknown()) }),
       outputSchema: withNext({ name: z.string(), created: z.boolean(), url: z.string(), endpoint: z.string(), form: z.record(z.string(), z.unknown()) }),
       annotations: { destructiveHint: true, idempotentHint: true },
@@ -311,7 +312,7 @@ function server(rt: Runtime, who: Who): McpServer {
       const x = rt.store.get(id);
       const form = x && rt.config.forms[x.form];
       if (!x || !form) return refuse("no such submission");
-      const r = rt.store.transition(form, id, actor, to, reason, rt.now());
+      const r = decide(rt, form, id, actor, to, reason, base);
       if (!r.ok) return refuse(r.error);
       const after = rt.store.get(id)!;
       return ok(full(after), [`Recorded as "${actor}".`, ...afterSubmission(after)]);

@@ -16,13 +16,15 @@ export {
 export { safeNext, signInMethods } from "./accounts";
 export { actorOf, personOf, publicUrl, type Person } from "./auth";
 export { apiResourceMetadataRoute, authRoute, authServerMetadataRoute, clientNameFor, openIdConfigRoute, refusedSignIn, type RefusedSignIn } from "./signin";
-export type { Config, Field, Form, GitHub, State, Target } from "./config";
+export { eventsOf } from "./config";
+export type { Config, Field, Form, GitHub, NotifyEvent, State, Target } from "./config";
 export type { Event } from "./db";
 export type { RawForm } from "./forms";
 export type { Figures, ListFilter, Outcome, StoredFile, Submission } from "./db";
 export { fileResponse, fileRoute, isPicture } from "./files";
 export { issueDraft, issueUrl, type Draft } from "./github";
 export { healthRoute } from "./health";
+export { decide } from "./decide";
 export { intakePreflight, intakeRoute } from "./intake";
 export { KINDS, stateOf, type KindName } from "./kinds";
 export { linkFor } from "./links";

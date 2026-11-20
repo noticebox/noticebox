@@ -6,7 +6,8 @@ import { expect, test } from "vitest";
 import { mcpAs, mcpRoute } from "./mcp";
 import { OPS, openApiDocument, restRoute } from "./rest";
 import { createApiToken, listApiTokens, revokeApiToken } from "./tokens";
-import { BASE, REPORT, testRuntime, type TestRuntime } from "./testutil";
+import { parseConfig } from "./config";
+import { BASE, REPORT, testRuntime, until, type TestRuntime } from "./testutil";
 
 type Adapter = { create(q: { model: string; data: Record<string, unknown> }): Promise<Record<string, unknown>> };
 
@@ -143,4 +144,16 @@ test("tokens: made on the web or over MCP, in one list, never stored as given, a
     rt,
   );
   expect(mcp.status).toBe(401);
+});
+
+test("POST decisions posts to a decided webhook", async () => {
+  const config = parseConfig({
+    forms: { report: { kind: "report", fields: { reason: {}, text: {} }, notify: [{ type: "webhook", url: "https://hook.test/decided", on: ["decided"] }] } },
+  });
+  const rt = testRuntime({ config });
+  const write = await tokenFor(rt, await person(rt));
+  const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
+  expect((await api(rt, "POST", `/submissions/${id}/decisions`, write.token, { to: "rejected", reason: "Not spam." })).status).toBe(200);
+  await until(() => rt.hits.length === 1);
+  expect(JSON.parse(rt.hits[0]!.body)).toMatchObject({ event: "decided", id, from: "open", to: "rejected" });
 });

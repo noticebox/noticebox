@@ -6,7 +6,8 @@ import { expect, test } from "vitest";
 import { fileRoute } from "./files";
 import { revokeConnection, connections } from "./admin";
 import { mcpAs, mcpRoute, whoFor } from "./mcp";
-import { BASE, fileConfig, REPORT, testConfig, testRuntime, type TestRuntime } from "./testutil";
+import { parseConfig } from "./config";
+import { BASE, fileConfig, REPORT, testConfig, testRuntime, until, type TestRuntime } from "./testutil";
 
 const V = "2026-07-28";
 const META = { "io.modelcontextprotocol/clientInfo": { name: "t", version: "0" }, "io.modelcontextprotocol/clientCapabilities": {} };
@@ -435,4 +436,16 @@ test("a submission in a state that deletes after minutes is told so, and not giv
   expect(answered).toContain("Retention removes its personal fields on 2026-02-01");
   expect(answered).toContain("deleted on 2026-03-03");
   expect(answered).not.toContain("within a minute");
+});
+
+test("decide posts to a decided webhook", async () => {
+  const config = parseConfig({
+    forms: { report: { kind: "report", fields: { reason: {}, text: {} }, notify: [{ type: "webhook", url: "https://hook.test/decided", on: ["decided"] }] } },
+  });
+  const rt = testRuntime({ config });
+  const { call } = await caller(rt);
+  const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date()).id;
+  expect((await call("decide", { id, to: "rejected", reason: "Not spam." })).isError).toBeFalsy();
+  await until(() => rt.hits.some((h) => h.url === "https://hook.test/decided"));
+  expect(JSON.parse(rt.hits.find((h) => h.url === "https://hook.test/decided")!.body)).toMatchObject({ event: "decided", id, from: "open", to: "rejected" });
 });
