@@ -2,6 +2,11 @@
 export {
   connections,
   type Connection,
+  createApiToken,
+  listApiTokens,
+  revokeApiToken,
+  type ApiToken,
+  type Scope,
   createBox,
   createForm,
   deleteBox,
@@ -13,9 +18,9 @@ export {
   updateForm,
   type Exported,
 } from "./admin";
-export { safeNext, signInMethods } from "./accounts";
+export { safeNext, signInMethods } from "next-app-kit/signin";
 export { actorOf, personOf, publicUrl, type Person } from "./auth";
-export { apiResourceMetadataRoute, authRoute, authServerMetadataRoute, clientNameFor, openIdConfigRoute, refusedSignIn, type RefusedSignIn } from "./signin";
+export { clientNameFor, refusedSignIn, type RefusedSignIn } from "./signin";
 export { eventsOf } from "./config";
 export type { Config, Field, Form, GitHub, NotifyEvent, State, Target } from "./config";
 export type { Event } from "./db";
@@ -28,9 +33,9 @@ export { decide } from "./decide";
 export { intakePreflight, intakeRoute } from "./intake";
 export { KINDS, stateOf, type KindName } from "./kinds";
 export { linkFor } from "./links";
-export { mcpRoute } from "./mcp";
+export { mcpContext } from "./mcp";
 export { boxPath, casePath, filePath, formPath, submissionPath, submissionsPath } from "./paths";
-export { restRoute } from "./rest";
+export { restApp } from "./rest";
 export { runtime, sweepNow, type Runtime } from "./runtime";
-export { createApiToken, listApiTokens, revokeApiToken, type ApiToken, type Scope } from "./tokens";
+export { kitAuth, kitMcp, kitRest } from "./kit";
 export { summaryOf } from "./summary";

@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { KINDS, publicUrl, runtime, submissionsPath, type Field } from "@/backend";
@@ -27,7 +26,7 @@ export default async function OverviewPage({ params }: { params: Promise<{ form:
   const counts = rt.store.counts().filter((c) => c.form === form.name);
   const byState = (s: string) => counts.find((c) => c.state === s)?.n ?? 0;
   const open = counts.filter((c) => !form.states.find((s) => s.name === c.state)?.closed).reduce((a, c) => a + c.n, 0);
-  const endpoint = `${publicUrl(await headers(), rt)}/f/${form.name}`;
+  const endpoint = `${publicUrl(rt)}/f/${form.name}`;
   const list = submissionsPath(form.name);
 
   const kept = counts.reduce((a, c) => a + c.n, 0);

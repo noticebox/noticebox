@@ -5,12 +5,13 @@
 //   docker compose run --rm noticebox node scripts/rename-actor.mjs marcel marcel@example.org
 //   docker compose start noticebox
 // Without --yes it only counts what it would change.
+import { join } from "node:path";
 import Database from "better-sqlite3";
 
 const args = process.argv.slice(2).filter((a) => a !== "--yes");
 const apply = process.argv.includes("--yes");
 const [from, to] = args;
-const file = process.env.NOTICEBOX_DB || "data/noticebox.sqlite";
+const file = join(process.env.DATA_DIR || "data", "noticebox.sqlite");
 if (!from || !to || args.length !== 2) {
   console.error("usage: node scripts/rename-actor.mjs <old name> <new name> [--yes]");
   process.exit(2);

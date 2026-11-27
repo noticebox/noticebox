@@ -19,7 +19,8 @@ import {
 } from "kysely";
 import type { Config, Form } from "./config";
 import { stateOf, type KindName } from "./kinds";
-import { migrate } from "./migrations";
+import { migrate } from "next-app-kit/migrations";
+import { MIGRATIONS } from "./db/migrations";
 
 export type Submission = {
   id: string;
@@ -131,7 +132,7 @@ export class Store {
     try {
       this.db.pragma("journal_mode = wal");
       this.db.pragma("foreign_keys = on");
-      migrate(this.db);
+      migrate(this.db, MIGRATIONS);
     } catch (e) {
       this.db.close();
       throw e;

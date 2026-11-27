@@ -1,6 +1,7 @@
 // The submission endpoint: POST /f/<form> (rewritten to /api/f/<form> by proxy.ts), with the preflight scripts need.
 // A browser form post is answered with a redirect, a JSON post with the id. A bot that fills the field nobody sees
 // gets the same answer and nothing is stored.
+import { tmpdir } from "node:os";
 import { clientIp, originOf } from "./auth";
 import { FIELD_NAME, RESERVED_FIELDS, type Form } from "./config";
 import { rm } from "node:fs/promises";
@@ -124,7 +125,7 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
     // Read as it arrives, files into a temporary folder (multipart.ts); only this form's file fields make it larger.
     const limit = rt.bodyLimit + fileAllowance(form);
     if (Number(h.get("content-length")) > limit) return text(413, "the body is too large");
-    const m = await readMultipart(req, form, limit, rt.uploadDir);
+    const m = await readMultipart(req, form, limit, tmpdir());
     if (m === "too large") return text(413, "the body is too large");
     if (m === "not a form") return text(400, "the body is not a form");
     ({ fields: data, files: received, errors: fileErrors, dir } = m);
@@ -211,7 +212,7 @@ async function take(
   if (!form.strict) learn(rt, form, fields, hints);
   // The notification goes out after the answer is on its way; a slow ntfy never slows the reporter. A test post
   // (`_test`) is announced as one.
-  void notify(form, s, publicBase(h, rt), rt.fetch, rt.log, Boolean(data._test));
+  void notify(form, s, rt.signIn.baseUrl, rt.fetch, rt.log, Boolean(data._test));
   return res;
 }
 
@@ -254,11 +255,4 @@ function backTo(form: Form, referer: string | null): URL | null {
   if (form.origins.length > 0 && !form.origins.includes(u.origin)) return null;
   u.hash = "";
   return u;
-}
-
-function publicBase(h: Headers, rt: Runtime): string {
-  if (rt.baseUrl) return rt.baseUrl;
-  const proto = h.get("x-forwarded-proto")?.split(",")[0]?.trim() || "http";
-  const host = h.get("x-forwarded-host")?.split(",")[0]?.trim() || h.get("host") || "localhost";
-  return `${proto}://${host}`;
 }

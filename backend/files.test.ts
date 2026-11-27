@@ -4,15 +4,14 @@
 import { mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { parseConfig } from "./config";
 import { CHUNK_BYTES } from "./db";
 import { fileResponse, fileRoute, signedFileUrl } from "./files";
 import { intakeRoute } from "./intake";
 import { safeName } from "./multipart";
-import { restRoute } from "./rest";
-import { createApiToken } from "./tokens";
-import { BASE, fileConfig, testRuntime, type TestRuntime } from "./testutil";
+import { createApiToken } from "./admin";
+import { BASE, fileConfig, restRoute, testRuntime, type TestRuntime } from "./testutil";
 
 const DAY = 86400000;
 
@@ -198,7 +197,7 @@ test("the API lists a submission's files and hands one to a token, as a download
   ]);
   const key = await token(rt);
   const get = (path: string, auth: string | null = key) =>
-    restRoute(new Request(`${BASE}/api/v1${path}`, { headers: auth ? { authorization: `Bearer ${auth}` } : {} }), rt, path.slice(1).split("/"));
+    restRoute(new Request(`${BASE}/api/v1${path}`, { headers: auth ? { authorization: `Bearer ${auth}` } : {} }), rt);
   const sub = (await (await get(`/submissions/${s.id}`)).json()) as { files: { id: string; api_url: string; url: string }[] };
   const f = sub.files[0]!;
   expect(f.url).toBe(`${BASE}/files/${f.id}`);
@@ -211,12 +210,17 @@ test("the API lists a submission's files and hands one to a token, as a download
   expect((await get(`/submissions/${s.id}/files/${f.id}`, null)).status).toBe(401);
 });
 
-/** A folder of its own for a test's uploads, to see that nothing is left in it. */
-const uploads = () => mkdtempSync(join(tmpdir(), "noticebox-test-"));
+/** A folder of its own for a test's uploads, to see that nothing is left in it: TMPDIR, where a post's files wait. */
+const uploads = () => {
+  const dir = mkdtempSync(join(tmpdir(), "noticebox-test-"));
+  vi.stubEnv("TMPDIR", dir);
+  return dir;
+};
+afterEach(() => void vi.unstubAllEnvs());
 
 test("a file too large is cut off as it arrives: the rest of the post is never read, and nothing is left behind", async () => {
   const dir = uploads();
-  const rt = testRuntime({ config: fileConfig(), uploadDir: dir });
+  const rt = testRuntime({ config: fileConfig() });
   const boundary = "----noticebox";
   const head = new TextEncoder().encode(
     `--${boundary}\r\ncontent-disposition: form-data; name="name"\r\n\r\nAnn\r\n--${boundary}\r\ncontent-disposition: form-data; name="model"; filename="huge.stl"\r\ncontent-type: application/octet-stream\r\n\r\n`,
@@ -251,7 +255,7 @@ test("a file too large is cut off as it arrives: the rest of the post is never r
 
 test("a file of several chunks comes back byte for byte, and its temporary copy is gone", async () => {
   const dir = uploads();
-  const rt = testRuntime({ config: fileConfig(), uploadDir: dir });
+  const rt = testRuntime({ config: fileConfig() });
   const bytes = new Uint8Array(2 * CHUNK_BYTES + 12345).map((_, i) => (i * 31) % 251);
   const res = await intakeRoute(
     await post("order", { name: "Ann" }, [

@@ -5,9 +5,10 @@ import { randomBytes } from "node:crypto";
 import { expect, test } from "vitest";
 import { fileRoute } from "./files";
 import { revokeConnection, connections } from "./admin";
-import { mcpAs, mcpRoute, whoFor } from "./mcp";
+import { whoFor } from "next-app-kit/mcp";
+import { mcpContext } from "./mcp";
 import { parseConfig } from "./config";
-import { BASE, fileConfig, REPORT, testConfig, testRuntime, until, type TestRuntime } from "./testutil";
+import { BASE, fileConfig, mcpAs, mcpRoute, REPORT, testConfig, testRuntime, until, type TestRuntime } from "./testutil";
 
 const V = "2026-07-28";
 const META = { "io.modelcontextprotocol/clientInfo": { name: "t", version: "0" }, "io.modelcontextprotocol/clientCapabilities": {} };
@@ -32,8 +33,8 @@ async function rpc(rt: TestRuntime, method: string, params: Record<string, unkno
   });
   const m = /^Bearer test:([^:]+):(.+)$/.exec(authorization ?? "");
   if (!m) return mcpRoute(req, rt);
-  const who = await whoFor(rt, m[1]!, m[2]!, BASE);
-  return typeof who === "string" ? Response.json({ error: who }, { status: 401 }) : mcpAs(req, rt, who);
+  const who = await whoFor(await mcpContext(rt), m[1]!, m[2]!);
+  return typeof who === "string" ? Response.json({ error: who }, { status: 401 }) : mcpAs(rt, who, method, params);
 }
 
 type Adapter = { create(q: { model: string; data: Record<string, unknown> }): Promise<Record<string, unknown>> };
@@ -57,7 +58,13 @@ test("tools act in the name of the person who allowed the client, and the trail 
   const { access } = await connect(rt, "marcel", "Claude");
   const auth = { authorization: `Bearer ${access}` };
 
-  const tools = (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as { name: string }[];
+  const tools = (await (await rpc(rt, "tools/list", {}, auth)).json()).result.tools as {
+    name: string;
+    outputSchema: { properties: Record<string, unknown> };
+  }[];
+  // Every result says what to do now, under the kit's name for it.
+  for (const t of tools) expect(Object.keys(t.outputSchema.properties), t.name).toContain("guidance");
+  for (const t of tools) expect(Object.keys(t.outputSchema.properties), t.name).not.toContain("next");
   expect(tools.map((t) => t.name).sort()).toEqual([
     "add_note",
     "create_api_token",
@@ -274,8 +281,8 @@ test("every tool's result says what to do next", async () => {
     const r = await call(name, typeof args === "function" ? args() : args);
     if (name === "create_api_token") tokenId = r.structuredContent.id;
     expect(r.isError, `${name}: ${r.content?.[0]?.text}`).toBeFalsy();
-    expect(r.structuredContent.next.length, name).toBeGreaterThan(0);
-    for (const line of r.structuredContent.next) expect(typeof line).toBe("string");
+    expect(r.structuredContent.guidance.length, name).toBeGreaterThan(0);
+    for (const line of r.structuredContent.guidance) expect(typeof line).toBe("string");
   }
 });
 
@@ -284,11 +291,11 @@ test("next is built from what the call did", async () => {
   const { call } = await caller(rt);
   const id = rt.store.receive(rt.config.forms.report!, REPORT, null, new Date("2026-01-01T00:00:00Z")).id;
   const decided = await call("decide", { id, to: "rejected", reason: "Not spam." });
-  expect(decided.structuredContent.next.join(" ")).toContain("2026-04-02"); // closed on 2 January: retention (90 days) blanks it then
+  expect(decided.structuredContent.guidance.join(" ")).toContain("2026-04-02"); // closed on 2 January: retention (90 days) blanks it then
   const reopened = await call("decide", { id, to: "in_review", reason: "" });
-  expect(reopened.structuredContent.next.join(" ")).not.toContain("retention");
+  expect(reopened.structuredContent.guidance.join(" ")).not.toContain("retention");
   const created = await call("put_form", { name: "orders", form: { kind: "message" } });
-  expect(created.structuredContent.next.join(" ")).toContain(`${BASE}/f/orders`);
+  expect(created.structuredContent.guidance.join(" ")).toContain(`${BASE}/f/orders`);
   expect(created.structuredContent.url).toBe(`${BASE}/forms/orders`);
   const forms = (await call("list_forms")).structuredContent.forms;
   expect(forms.find((f: { name: string }) => f.name === "orders").url).toBe(`${BASE}/forms/orders`);
@@ -374,7 +381,7 @@ test("export gives the submissions with their histories, by form and state", asy
   ]);
   const byState = (await call("export", { form: "contact", state: "new" })).structuredContent;
   expect(byState.submissions).toHaveLength(1);
-  expect(byState.next[0]).toContain(`${BASE}/export.json?form=contact&state=new`);
+  expect(byState.guidance[0]).toContain(`${BASE}/export.json?form=contact&state=new`);
 });
 
 test("get_file hands over a download link, never the bytes, and never another submission's file", async () => {
@@ -392,7 +399,7 @@ test("get_file hands over a download link, never the bytes, and never another su
     ["part.stl", false],
     ["photo.png", true],
   ]);
-  expect(got.next.join(" ")).toMatch(/get_file/);
+  expect(got.guidance.join(" ")).toMatch(/get_file/);
   const [stl, photo] = got.files as { id: string }[];
   const getFile = async (args: Record<string, unknown>) => (await (await rpc(rt, "tools/call", { name: "get_file", arguments: args }, auth)).json()).result;
 
@@ -423,7 +430,7 @@ test("a submission in a state that deletes after minutes is told so, and not giv
   await call("put_form", { name: "orders", form: { kind: "message", states, retentionDays: 30, deleteAfterDays: 60 } });
   const form = rt.config.forms.orders!;
   const id = rt.store.receive(form, { message: "x" }, null, new Date("2026-01-01T00:00:00Z")).id;
-  const next = async (to: string) => ((await call("decide", { id, to })).structuredContent.next as string[]).join(" ");
+  const next = async (to: string) => ((await call("decide", { id, to })).structuredContent.guidance as string[]).join(" ");
 
   const test0 = await next("test");
   expect(test0).toContain("deletes it with its history and files within a minute");

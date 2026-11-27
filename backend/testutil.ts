@@ -1,5 +1,12 @@
-// Shared by the tests: a configuration with one form of each kind, a runtime on an in-memory store, and request helpers.
+// Shared by the tests: a configuration with one form of each kind, a runtime on an in-memory store, request helpers,
+// and the routes as the app serves them (next-app-kit's handlers over a test runtime).
+import { mcpRoute as kitMcpRoute, type Who } from "next-app-kit/mcp";
+import { restHandler, wellKnownHandlers } from "next-app-kit/next";
+import { callTool } from "next-app-kit/testing";
+import * as z from "zod";
 import { parseConfig, type Config } from "./config";
+import { mcpContext } from "./mcp";
+import { restApp } from "./rest";
 import { Store } from "./db";
 import { makeRuntime, Rate, type Runtime } from "./runtime";
 
@@ -104,4 +111,39 @@ export async function until(check: () => boolean, ms = 2000): Promise<void> {
     if (Date.now() > end) throw new Error("timed out waiting");
     await new Promise((r) => setTimeout(r, 5));
   }
+}
+
+/** POST /mcp as the app serves it: the kit checks the bearer, then the inbox's tools answer. */
+export const mcpRoute = async (req: Request, rt: Runtime): Promise<Response> => kitMcpRoute(req, await mcpContext(rt));
+
+/** /api/v1/… as the app serves it. */
+export const restRoute = (req: Request, rt: Runtime): Promise<Response> =>
+  restHandler(() => restApp(rt))[(req.method === "HEAD" ? "GET" : req.method) as "GET" | "POST" | "PUT" | "PATCH" | "DELETE"](req);
+
+/** Everything under /api/auth: Better Auth answers. */
+export const authRoute = async (req: Request, rt: Runtime): Promise<Response> => (await rt.auth()).handler(req);
+
+/** The /.well-known routes as the app serves them. */
+export const wellKnown = (rt: Runtime) => wellKnownHandlers(() => rt.auth());
+
+/**
+ * One MCP request for `who`, without a token, as a test's stand-in connection makes it: tools/list lists the tools as
+ * the kit serves them (the output schemas with guidance), tools/call runs one through the MCP server.
+ */
+export async function mcpAs(rt: Runtime, who: Who, method: string, params: Record<string, unknown>): Promise<Response> {
+  const ctx = await mcpContext(rt);
+  if (method === "tools/list")
+    return Response.json({
+      result: {
+        tools: ctx.tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          inputSchema: z.toJSONSchema(t.inputSchema),
+          outputSchema: z.toJSONSchema(t.outputSchema),
+          annotations: t.annotations,
+        })),
+      },
+    });
+  if (method !== "tools/call") throw new Error(`mcpAs: ${method} is not a tool call`);
+  return Response.json({ result: await callTool(ctx, who, String(params.name), (params.arguments ?? {}) as Record<string, unknown>) });
 }

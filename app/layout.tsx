@@ -18,7 +18,7 @@ const atkinson = localFont({
 const description = "An inbox for the forms on static pages.";
 
 export function generateMetadata(): Metadata {
-  const base = process.env.NOTICEBOX_BASE_URL;
+  const base = process.env.PUBLIC_URL;
   return {
     metadataBase: base ? new URL(base) : undefined,
     title: "noticebox",

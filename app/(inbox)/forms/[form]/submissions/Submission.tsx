@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
 import { casePath, filePath, isPicture, issueUrl, KINDS, linkFor, publicUrl, runtime, stateOf, submissionPath, submissionsPath, summaryOf } from "@/backend";
 import { stateLabel, stateTone, when } from "@/app/_lib/format";
 import { StateMenu } from "../../../StateMenu";
@@ -25,7 +24,7 @@ export async function Submission({ name, id, as }: { name: string; id: string; a
   const events = rt.store.events(s.id);
   const files = rt.store.files(s.id);
   const link = linkFor(form, s);
-  const issue = issueUrl(form, s, publicUrl(await headers(), rt));
+  const issue = issueUrl(form, s, publicUrl(rt));
   const list = submissionsPath(form.name);
   const badge = (state: string) => <span className={`badge ${stateTone(state, states)}`}>{stateLabel(state)}</span>;
   const dot = (state: string | null) => {

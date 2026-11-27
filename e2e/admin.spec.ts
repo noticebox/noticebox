@@ -39,7 +39,7 @@ test("a box and a form are made in the inbox, the form's settings are saved to t
   await page.getByLabel("Takes posts from").fill("https://example.org");
   await page.getByRole("button", { name: "Save the settings" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved.");
-  const db = new Database(".e2e/e2e.sqlite", { readonly: true });
+  const db = new Database(".e2e/noticebox.sqlite", { readonly: true });
   type Row = { box: string; fields: Record<string, unknown>; notify: unknown; origins: string[] };
   const rows = db.prepare("select name, definition from forms").all() as { name: string; definition: string }[];
   const boxes = (db.prepare("select name from boxes").all() as { name: string }[]).map((b) => b.name);

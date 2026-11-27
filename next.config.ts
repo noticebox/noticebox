@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // One copy of next-app-kit for every bundle (the routes and instrumentation.ts): it knows the Auth it opened by a
+  // module-level map, which a copy bundled into each route would not share.
+  serverExternalPackages: ["next-app-kit"],
   // The hosted form page and the OAuth authorize page are never framed: a page of another site must not
   // overlay a "Send" or "Allow" click.
   headers: async () => [{ source: "/(.*)", headers: [{ key: "Content-Security-Policy", value: "frame-ancestors 'none'" }] }],

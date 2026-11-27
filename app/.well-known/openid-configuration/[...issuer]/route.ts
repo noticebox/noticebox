@@ -1,4 +1,5 @@
-import { openIdConfigRoute, runtime } from "@/backend";
+import { wellKnownHandlers } from "next-app-kit/next";
+import { kitAuth } from "@/backend";
 
 // OpenID discovery for the issuer <base>/api/auth.
-export const GET = (req: Request) => openIdConfigRoute(req, runtime());
+export const GET = wellKnownHandlers(kitAuth).openidConfiguration;

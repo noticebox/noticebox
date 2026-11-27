@@ -2,7 +2,10 @@
 // its own in a temporary folder, checked as it comes: a part that is not a file field, of a kind the field doesn't
 // accept, or one file too many is refused before its bytes are read, and a file that grows past its field's size is
 // cut off there, with the rest of the post never read. So a post of any size needs about as much memory as one chunk
-// of it, and nothing goes into the database until the whole post has been checked (intake.ts).
+// of it, and nothing goes into the database until the whole post has been checked (intake.ts). It stays noticebox's
+// until next-app-kit/files takes a form's per-field rules (next-app-kit#4): the kit's reader knows one rule for every file
+// and stops at the first problem, where a form says what is wrong with each field at once. The temporary folder is the
+// system's (TMPDIR): half-read posts are not data.
 import { createWriteStream } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -33,10 +36,10 @@ function counter(max: number, onTooMany: () => Error): Transform & { bytes: numb
 }
 
 /**
- * Reads a multipart post for `form` into `uploadDir`. The answer is "too large" when the whole post is larger than
+ * Reads a multipart post for `form` into a folder under `tmpDir`. The answer is "too large" when the whole post is larger than
  * `limit`, and "not a form" when it can't be read; the caller removes `dir` once it is done with the files.
  */
-export async function readMultipart(req: Request, form: Form, limit: number, uploadDir: string): Promise<Multipart | "too large" | "not a form"> {
+export async function readMultipart(req: Request, form: Form, limit: number, tmpDir: string): Promise<Multipart | "too large" | "not a form"> {
   if (!req.body) return "not a form";
   let bb: busboy.Busboy;
   try {
@@ -44,7 +47,7 @@ export async function readMultipart(req: Request, form: Form, limit: number, upl
   } catch {
     return "not a form";
   }
-  const dir = await mkdtemp(join(uploadDir, "noticebox-upload-"));
+  const dir = await mkdtemp(join(tmpDir, "noticebox-upload-"));
   const fields: Record<string, string> = {};
   const files: Received[] = [];
   const errors: string[] = [];

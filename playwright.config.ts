@@ -9,8 +9,8 @@ import { E2E_ENV, seed } from "./e2e/seed";
 // loaded. Playwright loads this file again in each worker; only the main process, before the server, seeds.
 if (!process.env.TEST_WORKER_INDEX) {
   mkdirSync(".e2e", { recursive: true });
-  for (const file of ["e2e.sqlite", "auth.sqlite"]) for (const suffix of ["", "-wal", "-shm"]) rmSync(`.e2e/${file}${suffix}`, { force: true });
-  seed(".e2e/e2e.sqlite");
+  for (const file of ["noticebox.sqlite", "auth.sqlite"]) for (const suffix of ["", "-wal", "-shm"]) rmSync(`.e2e/${file}${suffix}`, { force: true });
+  seed(".e2e/noticebox.sqlite");
 }
 
 export default defineConfig({
