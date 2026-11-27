@@ -13,12 +13,15 @@ export type RawConfig = { boxes?: string[]; forms?: Record<string, RawForm> };
 /** The settings key that records the one-time import of the forms file. */
 const IMPORTED = "forms_file_imported_at";
 
-/** Who a mail target may write to, and whether mail can go out at all: the sign-in settings' allowlist and SMTP. */
-export type MailPolicy = { allowed: string[]; smtp: boolean };
+/**
+ * Who a mail target may write to (NOTICEBOX_MAIL_TO: addresses and `@domain` entries, apart from who may sign in), and whether
+ * mail can go out at all (SMTP).
+ */
+export type MailPolicy = { mailTo: string[]; smtp: boolean };
 
 export class Forms {
-  /** Set by the runtime from the sign-in settings; without it no form may have a mail target. */
-  mailPolicy: MailPolicy = { allowed: [], smtp: false };
+  /** Set by the runtime from the environment; without it no form may have a mail target. */
+  mailPolicy: MailPolicy = { mailTo: [], smtp: false };
   private store: Store;
   private env: Env;
   private log: (line: string) => void;
@@ -95,15 +98,16 @@ export class Forms {
     } catch (e) {
       return { ok: false, error: (e as Error).message };
     }
-    // A form being saved may only mail someone who may sign in, and only when mail can go out; a form saved before the
-    // allowlist shrank keeps loading, its mail is skipped and logged when sent.
+    // A form being saved may only mail an address NOTICEBOX_MAIL_TO lets through, so a typo or a stranger's address can't
+    // get the announcements, and only when mail can go out; a form saved before the list shrank keeps loading, its mail
+    // is skipped and logged when sent.
     for (const [name, f] of Object.entries(parsed.forms)) {
       if (JSON.stringify(next.forms[name]) === JSON.stringify(this.raw.forms?.[name])) continue;
       for (const t of f.notify) {
         if (t.type !== "mail") continue;
         if (!this.mailPolicy.smtp) return { ok: false, error: `forms.${name}.notify: a mail target needs mail to go out; set NOTICEBOX_SMTP_URL` };
-        if (!emailAllowed(this.mailPolicy.allowed, t.to!))
-          return { ok: false, error: `forms.${name}.notify: ${t.to} may not sign in (NOTICEBOX_ALLOWED_EMAILS), so a form may not mail it` };
+        if (!emailAllowed(this.mailPolicy.mailTo, t.to!))
+          return { ok: false, error: `forms.${name}.notify: ${t.to} is not on NOTICEBOX_MAIL_TO, the addresses and @domains a form may mail` };
       }
     }
     // Only the boxes no form names are kept in the list; the rest follow from the forms.

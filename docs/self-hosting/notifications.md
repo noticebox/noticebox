@@ -27,7 +27,13 @@ A self-hosted ntfy server with a longer cache lets the app fetch missed messages
 
 A mail for each new submission, sent through the mail server that sign-in uses (`NOTICEBOX_SMTP_URL`, `NOTICEBOX_SMTP_FROM`). It's a second path next to ntfy, in case a push is lost. The subject is *New report: <form title>* and the text is the link to the submission; no field, file name or sender is in it.
 
-`to` must be an address on `NOTICEBOX_ALLOWED_EMAILS` (or in a domain listed there), so a form can never mail a stranger. A form whose mail target names anyone else can't be saved, and neither can one with a mail target while no SMTP is set. If an address is later taken off the list, its mail is skipped and the log says so. Decisions and test posts are not mailed. The log names a failed mail as `mail`, without the address.
+`to` must match `NOTICEBOX_MAIL_TO`, a comma-separated list of addresses and whole domains a form may mail, so a typo or a stranger's address never gets the announcements:
+
+```sh
+NOTICEBOX_MAIL_TO=@3dbruckner.de,me@example.org
+```
+
+The list is separate from `NOTICEBOX_ALLOWED_EMAILS`: an address can get the mail without being able to sign in. A form whose mail target names an address the list doesn't match can't be saved, and neither can one with a mail target while no SMTP is set. If the list later stops matching an address, its mail is skipped and the log says so. Decisions and test posts are not mailed. The log names a failed mail as `mail`, without the address.
 
 ## Webhook
 
