@@ -377,7 +377,7 @@ test("export gives the submissions with their histories, by form and state", asy
   expect(byState.next[0]).toContain(`${BASE}/export.json?form=contact&state=new`);
 });
 
-test("get_file hands over a download link, shows a picture when asked, and never another submission's file", async () => {
+test("get_file hands over a download link, never the bytes, and never another submission's file", async () => {
   const rt = testRuntime({ config: fileConfig() });
   const { access } = await connect(rt);
   const auth = { authorization: `Bearer ${access}` };
@@ -403,12 +403,9 @@ test("get_file hands over a download link, shows a picture when asked, and never
   const download = await fileRoute(new Request(link.structuredContent.download_url), rt, stl!.id);
   expect(await download.text()).toBe("solid part");
 
-  // A picture is shown when asked; anything else is not, and the answer says why.
-  const shown = await getFile({ id: s.id, file: photo!.id, show: true });
-  expect(shown.content[1]).toEqual({ type: "image", mimeType: "image/png", data: Buffer.from(png).toString("base64") });
-  const notShown = await getFile({ id: s.id, file: stl!.id, show: true });
-  expect(notShown.content).toHaveLength(1);
-  expect(notShown.structuredContent.next.join(" ")).toMatch(/not a picture/);
+  // Not even a picture's: it gets a link too, and nothing else.
+  const picture = await getFile({ id: s.id, file: photo!.id });
+  expect(picture.content).toEqual([{ type: "text", text: JSON.stringify(picture.structuredContent) }]);
 
   const wrong = await getFile({ id: other.id, file: photo!.id });
   expect(wrong.isError).toBe(true);

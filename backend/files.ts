@@ -49,13 +49,6 @@ export function fileResponse(rt: Runtime, id: string, opts: { submissionId?: str
   });
 }
 
-/** A file's whole bytes, for the MCP tool that shows a small picture to the model. */
-export function fileBytes(rt: Runtime, id: string): Uint8Array {
-  const parts: Uint8Array[] = [];
-  for (let seq = 0, c = rt.store.chunk(id, 0); c; c = rt.store.chunk(id, ++seq)) parts.push(c);
-  return Buffer.concat(parts);
-}
-
 const sign = (rt: Runtime, id: string, exp: number): string =>
   createHmac("sha256", rt.signIn.secret).update(`noticebox file link\n${id}\n${exp}`).digest("base64url");
 
