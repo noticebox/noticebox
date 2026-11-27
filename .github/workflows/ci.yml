@@ -37,9 +37,10 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report
+  # Built and started on every pull request too, so a Dockerfile that no longer builds shows before a tag (0.24.0 and 0.25.0
+  # never got an image); only a push logs in and pushes it.
   image:
     needs: check
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,11 +52,13 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: test "${GITHUB_REF_NAME#v}" = "$(node -p 'require("./package.json").version')" || { echo "tag $GITHUB_REF_NAME does not match package.json $(node -p 'require("./package.json").version')"; exit 1; }
       - uses: docker/login-action@v3
+        if: github.event_name == 'push'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/metadata-action@v6
+        if: github.event_name == 'push'
         id: meta
         with:
           images: ghcr.io/${{ github.repository }}
@@ -82,6 +85,7 @@ jobs:
           docker inspect --format '{{json .Config.Cmd}}' noticebox:smoke | grep -q -- --use-system-ca
           docker logs smoke
       - uses: docker/build-push-action@v7
+        if: github.event_name == 'push'
         with:
           context: .
           push: true

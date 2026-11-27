@@ -18,7 +18,7 @@ npm run test:e2e                          # next build, then Playwright on :3300
 npx playwright test e2e/inbox.spec.ts     # after a build; reuses a running server outside CI
 ```
 
-CI (`.github/workflows/ci.yml`) runs `format:check`, lint, typecheck, unit, e2e, then builds the image and smoke-tests `/health` and that `/` answers 401 before pushing (the image needs `PUBLIC_URL`, `NOTICEBOX_SECRET` and a way to sign in to start).
+CI (`.github/workflows/ci.yml`) runs `format:check`, lint, typecheck, unit, e2e, then builds the image and smoke-tests `/health` and that `/` answers 401, on pull requests too, before pushing it on `main` and tags (the image needs `PUBLIC_URL`, `NOTICEBOX_SECRET` and a way to sign in to start).
 
 Release: `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z` on `main`, with `X.Y.Z` = `package.json`'s version (CI refuses another). CI pushes the image as `X.Y.Z`, `X.Y` and `latest`, then makes the GitHub release with notes generated from the merged PRs.
 
