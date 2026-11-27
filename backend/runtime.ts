@@ -11,6 +11,7 @@
 //   NOTICEBOX_RATE_LIMIT   submissions per client and form in ten minutes (default 10; 0 switches the limit off)
 //   TMPDIR                 where a post's files wait while it is checked (the system's temporary folder; not data)
 //   NOTICEBOX_METRICS_TOKEN the bearer token /metrics wants (32+ characters); without it /metrics is not there
+//   NOTICEBOX_MAIL_TO      the addresses and @domains a form's mail target may write to (comma-separated); without it, none
 import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -58,8 +59,11 @@ export type Runtime = {
   log: (line: string) => void;
 };
 
-export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { forms?: Forms; config?: Config; store: Store; baseUrl?: string }): Runtime {
-  const { config: _ignored, baseUrl, ...rest } = o;
+export function makeRuntime(
+  o: Partial<Omit<Runtime, "config" | "auth">> & { forms?: Forms; config?: Config; store: Store; baseUrl?: string; mailTo?: string[] },
+): Runtime {
+  const { config: _ignored, baseUrl, mailTo: _mailTo, ...rest } = o;
+  void _mailTo;
   void _ignored;
   const log = o.log ?? ((line: string) => console.error(line));
   const signIn: SignInSettings = o.signIn ?? {
@@ -77,9 +81,10 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { for
     passkey: { rpName: "noticebox" },
     log,
   };
-  const mail = o.mail !== undefined ? o.mail : signIn.smtp ? { send: smtpSend(signIn.smtp), allowed: signIn.allowed } : null;
+  const mailTo = o.mailTo ?? [];
+  const mail = o.mail !== undefined ? o.mail : signIn.smtp ? { send: smtpSend(signIn.smtp), mailTo } : null;
   const forms = o.forms ?? new Forms(o.store, {}, o.log);
-  forms.mailPolicy = { allowed: signIn.allowed, smtp: mail !== null };
+  forms.mailPolicy = { mailTo: mail?.mailTo ?? mailTo, smtp: mail !== null };
   if (!o.forms && o.config) {
     const r = forms.replace(toRaw(o.config));
     if (!r.ok) throw new Error(r.error);
@@ -150,11 +155,22 @@ function fromEnv(env: Record<string, string | undefined>): Runtime {
     devUser: signIn.devUser,
     trustProxy: env.NOTICEBOX_TRUST_PROXY !== "0",
     metricsToken: metricsTokenFrom(env),
+    mailTo: mailToFrom(env),
     log,
   });
 }
 
 /** NOTICEBOX_METRICS_TOKEN, or null; one too short to be a secret stops the start, as NOTICEBOX_SECRET does. */
+/** NOTICEBOX_MAIL_TO as a list: lower-case addresses and `@domain` entries; anything else stops the start with the reason. */
+export function mailToFrom(env: Record<string, string | undefined>): string[] {
+  const entries = (env.NOTICEBOX_MAIL_TO ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  for (const e of entries) if (!/^[^\s@]*@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error(`NOTICEBOX_MAIL_TO: "${e}" is neither an address nor an @domain`);
+  return entries;
+}
+
 export function metricsTokenFrom(env: Record<string, string | undefined>): string | null {
   const token = env.NOTICEBOX_METRICS_TOKEN?.trim();
   if (!token) return null;

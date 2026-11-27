@@ -18,8 +18,8 @@ export type Fetch = typeof fetch;
 
 /** One mail out: the sign-in SMTP, or a fake in tests. */
 export type SendMail = (m: { to: string; subject: string; text: string }) => Promise<void>;
-/** How arrivals go out by mail: the sender, and who may still be written to (the allowlist may have shrunk since the form was saved). */
-export type Mail = { send: SendMail; allowed: string[] };
+/** How arrivals go out by mail: the sender, and who may still be written to (NOTICEBOX_MAIL_TO may have shrunk since the form was saved). */
+export type Mail = { send: SendMail; mailTo: string[] };
 
 /** Sends through the SMTP that sign-in uses, from its sender. */
 export function smtpSend(smtp: Smtp): SendMail {
@@ -75,7 +75,7 @@ function webhook(fetchFn: Fetch, url: string, body: Record<string, unknown>): Pr
 
 async function mailOne(mail: Mail | null, to: string, subject: string, link: string): Promise<Response> {
   if (!mail) throw new Error("mail can't go out: NOTICEBOX_SMTP_URL is not set");
-  if (!emailAllowed(mail.allowed, to)) throw new Error("skipped, the address may no longer sign in (NOTICEBOX_ALLOWED_EMAILS)");
+  if (!emailAllowed(mail.mailTo, to)) throw new Error("skipped, the address is no longer on NOTICEBOX_MAIL_TO");
   await mail.send({ to, subject, text: `${subject}\n\n${link}\n` });
   return new Response(null, { status: 204 });
 }

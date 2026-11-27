@@ -51,7 +51,7 @@ const EVENTS: NotifyEvent[] = ["received", "decided"];
 // `on`: only as written, on a webhook; `tests`: only on ntfy, which hears of test posts (`_test`) only when it says so, so a
 // site's CI checks don't bury the real submissions on the phone (webhooks always get them, marked); `unset`: the variable the
 // URL needs and the environment lacks. A mail target names its address in `to` (and `url` is its mailto: form, so every
-// target has one); it hears of arrivals only, like ntfy, and may only name someone who may sign in (checked when saved, see
+// target has one); it hears of arrivals only, like ntfy, and may only name an address NOTICEBOX_MAIL_TO matches (checked when saved, see
 // Forms, and again when sending).
 export type Target = { type: "ntfy" | "webhook" | "mail"; url: string; to?: string; on?: NotifyEvent[]; tests?: true; unset?: string };
 const MAIL_ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

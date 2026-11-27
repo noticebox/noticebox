@@ -291,7 +291,7 @@ export const en = {
     thanksPlaceholder: "Thank you. Your message has been received.",
     notifications: "Notifications",
     notificationsIntro:
-      "Where a new submission is announced: a title and the link, never the content. A webhook can also be told about every decision (the states and the link). A mail target writes to someone who may sign in, through the sign-in mail server. Test posts (_test) reach ntfy only when its target says so; webhooks always get them, marked. A secret in the URL can be written as",
+      "Where a new submission is announced: a title and the link, never the content. A webhook can also be told about every decision (the states and the link). A mail target writes to an address NOTICEBOX_MAIL_TO lets through, with the sign-in mail server. Test posts (_test) reach ntfy only when its target says so; webhooks always get them, marked. A secret in the URL can be written as",
     notificationsVar: "and set in the environment.",
     targetN: (i: number, what: string) => `Target ${i} ${what}`,
     removeTarget: (i: number) => `Remove target ${i}`,
