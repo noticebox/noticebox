@@ -1,7 +1,7 @@
 # Build: full deps, next build (standalone output).
 FROM node:26-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json .npmrc ./
+COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
