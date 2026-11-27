@@ -10,6 +10,8 @@
 //   NOTICEBOX_TRUST_PROXY  0 to take client addresses from the socket instead of X-Forwarded-For
 //   NOTICEBOX_RATE_LIMIT   submissions per client and form in ten minutes (default 10; 0 switches the limit off)
 //   TMPDIR                 where a post's files wait while it is checked (the system's temporary folder; not data)
+//   NOTICEBOX_METRICS_TOKEN the bearer token /metrics wants (32+ characters); without it /metrics is not there
+//   NOTICEBOX_MAIL_TO      the addresses and @domains a form's mail target may write to (comma-separated); without it, none
 import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -17,7 +19,8 @@ import { openAuth, PREFIX, signInFromEnv, type Auth, type SignInSettings } from 
 import type { Config } from "./config";
 import { Forms } from "./forms";
 import { Store } from "./db";
-import type { Fetch } from "./notify";
+import { Counters } from "./metrics";
+import { smtpSend, type Fetch, type Mail } from "./notify";
 
 export class Rate {
   private hits = new Map<string, number[]>();
@@ -50,16 +53,17 @@ export type Runtime = {
   bodyLimit: number;
   now: () => Date;
   fetch: Fetch;
+  mail: Mail | null; // arrivals by mail, through the sign-in SMTP; null without one
+  metricsToken: string | null; // what /metrics wants as bearer; null: no /metrics
+  counters: Counters; // arrivals and failed announcements since start, for /metrics
   log: (line: string) => void;
 };
 
-export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { forms?: Forms; config?: Config; store: Store; baseUrl?: string }): Runtime {
-  const forms = o.forms ?? new Forms(o.store, {}, o.log);
-  if (!o.forms && o.config) {
-    const r = forms.replace(toRaw(o.config));
-    if (!r.ok) throw new Error(r.error);
-  }
-  const { config: _ignored, baseUrl, ...rest } = o;
+export function makeRuntime(
+  o: Partial<Omit<Runtime, "config" | "auth">> & { forms?: Forms; config?: Config; store: Store; baseUrl?: string; mailTo?: string[] },
+): Runtime {
+  const { config: _ignored, baseUrl, mailTo: _mailTo, ...rest } = o;
+  void _mailTo;
   void _ignored;
   const log = o.log ?? ((line: string) => console.error(line));
   const signIn: SignInSettings = o.signIn ?? {
@@ -77,6 +81,14 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { for
     passkey: { rpName: "noticebox" },
     log,
   };
+  const mailTo = o.mailTo ?? [];
+  const mail = o.mail !== undefined ? o.mail : signIn.smtp ? { send: smtpSend(signIn.smtp), mailTo } : null;
+  const forms = o.forms ?? new Forms(o.store, {}, o.log);
+  forms.mailPolicy = { mailTo: mail?.mailTo ?? mailTo, smtp: mail !== null };
+  if (!o.forms && o.config) {
+    const r = forms.replace(toRaw(o.config));
+    if (!r.ok) throw new Error(r.error);
+  }
   let opened: Promise<Auth> | undefined;
   return {
     rate: new Rate(10),
@@ -86,7 +98,10 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { for
     now: () => new Date(),
     fetch,
     log: (line) => console.error(line),
+    metricsToken: null,
+    counters: new Counters(),
     ...rest,
+    mail,
     signIn,
     // A failed open is not remembered, so the next request tries again.
     auth: () => {
@@ -139,8 +154,28 @@ function fromEnv(env: Record<string, string | undefined>): Runtime {
     rate: new Rate(env.NOTICEBOX_RATE_LIMIT === undefined ? 10 : Number(env.NOTICEBOX_RATE_LIMIT)),
     devUser: signIn.devUser,
     trustProxy: env.NOTICEBOX_TRUST_PROXY !== "0",
+    metricsToken: metricsTokenFrom(env),
+    mailTo: mailToFrom(env),
     log,
   });
+}
+
+/** NOTICEBOX_MAIL_TO as a list: lower-case addresses and `@domain` entries; anything else stops the start with the reason. */
+export function mailToFrom(env: Record<string, string | undefined>): string[] {
+  const entries = (env.NOTICEBOX_MAIL_TO ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  for (const e of entries) if (!/^[^\s@]*@[^\s@]+\.[^\s@]+$/.test(e)) throw new Error(`NOTICEBOX_MAIL_TO: "${e}" is neither an address nor an @domain`);
+  return entries;
+}
+
+/** NOTICEBOX_METRICS_TOKEN, or null; one too short to be a secret stops the start, as NOTICEBOX_SECRET does. */
+export function metricsTokenFrom(env: Record<string, string | undefined>): string | null {
+  const token = env.NOTICEBOX_METRICS_TOKEN?.trim();
+  if (!token) return null;
+  if (token.length < 32) throw new Error("NOTICEBOX_METRICS_TOKEN must be at least 32 characters (openssl rand -hex 32)");
+  return token;
 }
 
 const g = globalThis as { __noticebox?: Runtime };

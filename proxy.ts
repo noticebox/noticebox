@@ -2,7 +2,7 @@ import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 import { t } from "@/app/_lib/copy";
 
-// The public side: the hosted forms and their endpoint, the health check, MCP, the REST API, Better Auth's own endpoints and the
+// The public side: the hosted forms and their endpoint, the health check, the metrics (behind their own token), MCP, the REST API, Better Auth's own endpoints and the
 // OAuth metadata (each checks its credentials itself), and the sign-in page. Everything else is the inbox, which needs
 // a Better Auth session: without its cookie, a request gets 401, with a link to the sign-in page for a browser. Only
 // the cookie's presence is checked here; the pages check the session itself (personOf), so a forged cookie gets nowhere.
@@ -10,7 +10,7 @@ import { t } from "@/app/_lib/copy";
 // out by MCP get_file) goes through to its route, which checks the signature and refuses a wrong or old one.
 const SIGNED_FILE = /^\/files\/[A-Za-z0-9_-]+$/;
 const FORM = /^\/f\/([a-z0-9][a-z0-9_-]{0,39})$/;
-const PUBLIC = /^\/(f\/|api\/f\/|api\/auth\/|api\/v1\/|health$|mcp$|login$|\.well-known\/|(icon\.svg|apple-icon\.png|opengraph-image\.png)$)/;
+const PUBLIC = /^\/(f\/|api\/f\/|api\/auth\/|api\/v1\/|health$|metrics$|mcp$|login$|\.well-known\/|(icon\.svg|apple-icon\.png|opengraph-image\.png)$)/;
 
 const escape = (s: string) => s.replace(/[&<>"]/g, (c) => `&${{ "&": "amp", "<": "lt", ">": "gt", '"': "quot" }[c]};`);
 

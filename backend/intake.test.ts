@@ -90,18 +90,16 @@ test("the honeypot swallows bots: same answer, nothing stored", async () => {
   expect(rt.hits).toHaveLength(0);
 });
 
-test("a test post is stored and announced like any other, but announced as a test", async () => {
+test("a test post is stored like any other and goes to the webhook, marked, but not to ntfy", async () => {
   const rt = testRuntime();
   const res = await intakeRoute(jsonPost("/f/report", { ...REPORT, _test: "1" }), "report", rt);
   expect(res.status).toBe(201);
   const { id } = (await res.json()) as { id: string };
   expect(rt.store.get(id)?.fields).toEqual({ ...REPORT, text: "This is spam.\nSecond line." });
-  await until(() => rt.hits.length === 2);
-  const ntfy = rt.hits.find((h) => h.url === "https://ntfy.test/topic")!;
-  expect(ntfy.headers.title).toBe("Test: New report: Report content");
-  expect(ntfy.headers.priority).toBe("1");
-  expect(ntfy.headers.tags).toBe("test_tube");
-  const hook = rt.hits.find((h) => h.url === "https://hook.test/in")!;
+  await until(() => rt.hits.length === 1);
+  await new Promise((r) => setTimeout(r, 30));
+  expect(rt.hits.map((h) => h.url)).toEqual(["https://hook.test/in"]);
+  const hook = rt.hits[0]!;
   expect(JSON.parse(hook.body)).toMatchObject({ id, test: true });
   // An invalid test post is refused like any other.
   const bad = await intakeRoute(jsonPost("/f/report", { read_id: "r1", text: "only text", _test: "1" }), "report", rt);

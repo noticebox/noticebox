@@ -4,6 +4,7 @@ import { expect, test } from "vitest";
 import { Store } from "./db";
 import { Forms } from "./forms";
 import { notify } from "./notify";
+import { mailToFrom } from "./runtime";
 
 const FILE = {
   boxes: ["empty"],
@@ -174,4 +175,28 @@ test("an instance upgraded with a forms file starts with the same forms, and its
   } finally {
     delete process.env.TOPIC;
   }
+});
+
+test("a form may mail only an address or domain on NOTICEBOX_MAIL_TO, and only when mail can go out", () => {
+  const store = open();
+  const forms = new Forms(store, {}, quiet);
+  const form = (to: string) => ({
+    forms: { orders: { kind: "message", title: "Orders", fields: { email: { type: "email" } }, notify: [{ type: "mail", to }] } },
+  });
+  const noSmtp = forms.replace(form("me@example.org"));
+  expect(noSmtp).toEqual({ ok: false, error: expect.stringMatching(/needs mail to go out; set NOTICEBOX_SMTP_URL/) });
+  forms.mailPolicy = { mailTo: ["me@example.org", "@team.example"], smtp: true };
+  expect(forms.replace(form("stranger@example.org"))).toEqual({ ok: false, error: expect.stringMatching(/stranger@example.org is not on NOTICEBOX_MAIL_TO/) });
+  expect(forms.replace(form("Me@Example.org"))).toEqual({ ok: true });
+  expect(forms.config.forms.orders!.notify).toEqual([{ type: "mail", url: "mailto:me@example.org", to: "me@example.org" }]);
+  expect(forms.replace(form("anyone@team.example"))).toEqual({ ok: true });
+  // A form saved before the list shrank still loads; its mail is refused when sent (notify).
+  forms.mailPolicy = { mailTo: [], smtp: true };
+  expect(new Forms(store, {}, quiet).config.forms.orders!.notify[0]!.to).toBe("anyone@team.example");
+});
+
+test("NOTICEBOX_MAIL_TO takes addresses and @domains, and stops the start on anything else", () => {
+  expect(mailToFrom({})).toEqual([]);
+  expect(mailToFrom({ NOTICEBOX_MAIL_TO: " Anfragen@3DBruckner.de, @marcelbruckner.de ,," })).toEqual(["anfragen@3dbruckner.de", "@marcelbruckner.de"]);
+  expect(() => mailToFrom({ NOTICEBOX_MAIL_TO: "3dbruckner.de" })).toThrow(/"3dbruckner.de" is neither an address nor an @domain/);
 });

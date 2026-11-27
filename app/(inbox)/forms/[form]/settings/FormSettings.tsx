@@ -20,7 +20,9 @@ export type RawFieldRow = {
   maxMegabytes: string;
 };
 // `on` only for a webhook, and only when it was written (or chosen here): a webhook without it hears of arrivals only.
-export type RawTarget = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[] };
+// `tests` only for ntfy, only when chosen: ntfy hears of test posts only then. A mail target's address is edited in `url`
+// and written as `to`.
+export type RawTarget = { type: "ntfy" | "webhook" | "mail"; url: string; on?: NotifyEvent[]; tests?: boolean };
 export type StateRow = { name: string; closed: boolean; reason: boolean; deleteAfterMinutes: string };
 export type Settings = {
   box: string;
@@ -88,7 +90,17 @@ function toRaw(s: Settings): Record<string, unknown> {
   if (s.redirect.trim()) raw.redirect = s.redirect.trim();
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
   if (s.deleteAfterDays.trim()) raw.deleteAfterDays = Number(s.deleteAfterDays);
-  if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim(), ...(t.type === "webhook" && t.on ? { on: t.on } : {}) }));
+  if (s.notify.length)
+    raw.notify = s.notify.map((t) =>
+      t.type === "mail"
+        ? { type: "mail", to: t.url.trim() }
+        : {
+            type: t.type,
+            url: t.url.trim(),
+            ...(t.type === "webhook" && t.on ? { on: t.on } : {}),
+            ...(t.type === "ntfy" && t.tests ? { tests: true } : {}),
+          },
+    );
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
   const labels = s.githubLabels
     .split(",")
@@ -519,6 +531,7 @@ export function FormSettings({
                   >
                     <option value="ntfy">ntfy</option>
                     <option value="webhook">webhook</option>
+                    <option value="mail">{t.settings.mailTarget}</option>
                   </select>
                   {tg.type === "webhook" && (
                     <select
@@ -532,12 +545,19 @@ export function FormSettings({
                       <option value="received,decided">{t.settings.onBoth}</option>
                     </select>
                   )}
+                  {tg.type === "ntfy" && (
+                    <label className="flex items-center gap-1 text-sm">
+                      <input type="checkbox" checked={Boolean(tg.tests)} onChange={(e) => target(i, { tests: e.target.checked })} /> {t.settings.ntfyTests}
+                    </label>
+                  )}
                   <input
                     value={tg.url}
                     onChange={(e) => target(i, { url: e.target.value })}
                     className="field min-w-0 flex-1 basis-60"
-                    placeholder={tg.type === "ntfy" ? "https://ntfy.sh/your-topic" : "https://hooks.example.org/noticebox"}
-                    aria-label={t.settings.targetN(i + 1, "URL")}
+                    placeholder={
+                      tg.type === "ntfy" ? "https://ntfy.sh/your-topic" : tg.type === "mail" ? "you@example.org" : "https://hooks.example.org/noticebox"
+                    }
+                    aria-label={t.settings.targetN(i + 1, tg.type === "mail" ? "address" : "URL")}
                   />
                   <button
                     type="button"

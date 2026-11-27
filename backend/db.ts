@@ -210,6 +210,19 @@ export class Store {
   }
 
   /** Counts per form and state, for the overview. */
+  /** What is open (not closed) per form and state, with the oldest one's arrival: for /metrics. */
+  openByState(): { form: string; state: string; n: number; oldest: string }[] {
+    return this.all(
+      q
+        .selectFrom("submissions")
+        .select(["form", "state", (eb) => eb.fn.countAll<number>().as("n"), (eb) => eb.fn.min<string>("received_at").as("oldest")])
+        .where("closed_at", "is", null)
+        .groupBy(["form", "state"])
+        .orderBy("form")
+        .orderBy("state"),
+    );
+  }
+
   counts(): { form: string; state: string; n: number }[] {
     return this.all(
       q

@@ -12,6 +12,7 @@ export function decide(rt: Runtime, form: Form, id: string, actor: string, to: s
   const from = rt.store.get(id)?.state;
   const now = rt.now();
   const r = rt.store.transition(form, id, actor, to, reason, now);
-  if (r.ok && from) void notifyDecision(form, { id, from, to, at: now.toISOString() }, baseUrl, rt.fetch, rt.log);
+  if (r.ok && from)
+    void notifyDecision(form, { id, from, to, at: now.toISOString() }, baseUrl, rt.fetch, rt.log, (type) => rt.counters.failed(form.name, type));
   return r;
 }
