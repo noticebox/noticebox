@@ -23,7 +23,7 @@ export async function decide(prev: DecideState, data: FormData): Promise<DecideS
   const s = rt.store.get(id);
   const form = s && rt.config.forms[s.form];
   if (!s || !form) return { error: t.common.noSuchSubmission, to, reason, n };
-  const r = to ? decideOn(rt, form, id, actor, to, reason, publicUrl(h, rt)) : rt.store.note(id, actor, reason, rt.now());
+  const r = to ? decideOn(rt, form, id, actor, to, reason, publicUrl(rt)) : rt.store.note(id, actor, reason, rt.now());
   if (!r.ok) return { error: r.error, to, reason, n };
   revalidatePath("/", "layout");
   return { ok: true, n };

@@ -1,5 +1,5 @@
-import { authRoute, runtime } from "@/backend";
+import { authHandler } from "next-app-kit/next";
+import { kitAuth } from "@/backend";
 
-// Better Auth: sign-in, sessions, and the OAuth server for MCP clients (authorize, token, register, jwks).
-export const GET = (req: Request) => authRoute(req, runtime());
-export const POST = (req: Request) => authRoute(req, runtime());
+// Better Auth: sign-in, sessions, and the OAuth server for MCP clients and scripts (authorize, token, register, jwks).
+export const { GET, POST } = authHandler(kitAuth);

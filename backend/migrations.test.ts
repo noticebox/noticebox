@@ -5,7 +5,8 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, expect, test } from "vitest";
 import { Store } from "./db";
-import { MIGRATIONS, migrate, type Migration } from "./migrations";
+import { migrate, type Migration } from "next-app-kit/migrations";
+import { MIGRATIONS } from "./db/migrations";
 import { REPORT, testConfig } from "./testutil";
 
 const dirs: string[] = [];
@@ -96,7 +97,7 @@ test("opening twice applies nothing the second time", () => {
   store.receive(testConfig().forms.report!, REPORT, null, new Date());
   store.close();
   const db = new Database(path);
-  expect(migrate(db)).toBe(0);
+  expect(migrate(db, MIGRATIONS)).toBe(0);
   expect(migrate(db, [...MIGRATIONS, { name: "later", sql: "create table later (x)" }])).toBe(1);
   expect(migrate(db, [...MIGRATIONS, { name: "later", sql: "create table later (x)" }])).toBe(0);
   db.close();
@@ -104,7 +105,7 @@ test("opening twice applies nothing the second time", () => {
 
 test("a failing migration rolls back and the store refuses to open", () => {
   const db = new Database(":memory:");
-  migrate(db);
+  migrate(db, MIGRATIONS);
   const broken: Migration[] = [...MIGRATIONS, { name: "half done", sql: "create table half (x); insert into nowhere values (1);" }];
   expect(() => migrate(db, broken)).toThrow(new RegExp(`migration ${MIGRATIONS.length + 1} \\(half done\\).*nowhere`));
   expect(db.prepare("select name from sqlite_master where name = 'half'").get()).toBeUndefined();
@@ -116,7 +117,7 @@ test("a database from a newer release is refused, and the store does not open", 
   const path = tempFile();
   const db = new Database(path);
   db.exec(`pragma user_version = ${MIGRATIONS.length + 1}`);
-  expect(() => migrate(db)).toThrow(/newer/);
+  expect(() => migrate(db, MIGRATIONS)).toThrow(/newer/);
   db.close();
   expect(() => new Store(path)).toThrow(/newer than this release knows/);
 });

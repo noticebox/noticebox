@@ -3,11 +3,12 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { mcpAs, mcpRoute } from "./mcp";
-import { OPS, openApiDocument, restRoute } from "./rest";
-import { createApiToken, listApiTokens, revokeApiToken } from "./tokens";
+import { checkOpsMirrorTools } from "next-app-kit/rest";
+import { createApiToken, listApiTokens, revokeApiToken } from "./admin";
+import { tools } from "./mcp";
+import { OPS, openApiDocument } from "./rest";
 import { parseConfig } from "./config";
-import { BASE, REPORT, testRuntime, until, type TestRuntime } from "./testutil";
+import { BASE, mcpRoute, REPORT, restRoute, testRuntime, until, type TestRuntime } from "./testutil";
 
 type Adapter = { create(q: { model: string; data: Record<string, unknown> }): Promise<Record<string, unknown>> };
 
@@ -29,7 +30,6 @@ const api = (rt: TestRuntime, method: string, path: string, token: string | null
       body: body === undefined ? undefined : JSON.stringify(body),
     }),
     rt,
-    path.split("?")[0]!.slice(1).split("/"),
   );
 
 async function tokenFor(rt: TestRuntime, id: string, scope: "read" | "read+write" = "read+write", days?: number | null) {
@@ -38,34 +38,11 @@ async function tokenFor(rt: TestRuntime, id: string, scope: "read" | "read+write
   return t;
 }
 
-test("every MCP tool has its REST operation, and nothing else is there", async () => {
+test("every MCP tool has its REST operation, and nothing else is there", () => {
   const rt = testRuntime();
-  const me = await person(rt);
-  const req = new Request(`${BASE}/mcp`, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream",
-      "mcp-protocol-version": "2026-07-28",
-      "mcp-method": "tools/list",
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "tools/list",
-      params: {
-        _meta: {
-          "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-          "io.modelcontextprotocol/clientInfo": { name: "t", version: "0" },
-          "io.modelcontextprotocol/clientCapabilities": {},
-        },
-      },
-    }),
-  });
-  const tools = (
-    (await (await mcpAs(req, rt, { actor: "marcel@test.example via t", person: me, clientId: "t", base: BASE })).json()).result.tools as { name: string }[]
-  ).map((t) => t.name);
-  expect(OPS.map((o) => o.tool).sort()).toEqual(tools.sort());
+  const names = tools(rt).map((t) => t.name);
+  checkOpsMirrorTools(OPS, tools(rt));
+  expect(OPS.map((o) => o.tool).sort()).toEqual(names.sort());
   expect(new Set(OPS.map((o) => o.operationId)).size).toBe(OPS.length);
 });
 

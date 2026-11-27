@@ -15,7 +15,7 @@ export default async function SettingsPage() {
   const actor = person?.email ?? "";
   const grants = person ? await connections(rt, person.id) : [];
   const tokens = person ? await listApiTokens(rt, person.id) : [];
-  const base = publicUrl(h, rt);
+  const base = publicUrl(rt);
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="mb-6 text-[28px] leading-tight font-bold tracking-tight">{t.you.title}</h1>

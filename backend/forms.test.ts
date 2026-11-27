@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 import { Store } from "./db";
 import { Forms } from "./forms";
@@ -20,7 +21,7 @@ const quiet = () => {};
 
 /** A store on the test's own temporary database (vitest.setup.ts), so reopening it is a restart. */
 function open(): Store {
-  return new Store(process.env.NOTICEBOX_DB!);
+  return new Store(join(process.env.DATA_DIR!, "noticebox.sqlite"));
 }
 
 function stored(store: Store, name: string): { box: string; definition: string } | undefined {

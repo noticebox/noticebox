@@ -3,7 +3,7 @@
 import { execFileSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { expect, test } from "vitest";
 import { Store } from "./db";
 import { REPORT, testConfig } from "./testutil";
@@ -18,7 +18,7 @@ test("renames one actor's steps, its assistants' included, and only with --yes",
   store.note(id, "marcella", "Not me.", new Date());
   store.note(id, "anna via marcel via x", "Not me either.", new Date());
   const run = (...args: string[]) =>
-    execFileSync("node", ["scripts/rename-actor.mjs", ...args], { env: { ...process.env, NOTICEBOX_DB: file }, encoding: "utf8" });
+    execFileSync("node", ["scripts/rename-actor.mjs", ...args], { env: { ...process.env, DATA_DIR: dirname(file) }, encoding: "utf8" });
 
   expect(run("marcel", "marcel@example.org")).toContain("2 step(s)");
   expect(store.events(id).map((e) => e.actor)).toContain("marcel");

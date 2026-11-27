@@ -26,7 +26,7 @@ and a `.env` with the settings; [`.env.example`](https://github.com/noticebox/no
 
 ```sh
 # .env
-NOTICEBOX_BASE_URL=http://localhost:3000
+PUBLIC_URL=http://localhost:3000
 # Fill in 32 or more random characters: openssl rand -base64 48
 NOTICEBOX_SECRET=
 NOTICEBOX_ALLOWED_EMAILS=you@example.org

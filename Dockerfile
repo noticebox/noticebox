@@ -10,7 +10,7 @@ RUN npm run build
 # Runtime: only the standalone server and its traced deps.
 FROM node:26-alpine
 WORKDIR /app
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 NOTICEBOX_DB=/data/noticebox.sqlite NOTICEBOX_CONFIG=/app/noticebox.json
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 DATA_DIR=/data NOTICEBOX_CONFIG=/app/noticebox.json
 COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 # The one-off rename of an actor in the history (docs/self-hosting/login.md, coming from the login proxy).

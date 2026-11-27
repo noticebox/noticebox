@@ -471,6 +471,16 @@
                 }
               }
             }
+          },
+          "413": {
+            "description": "The request body is larger than 256 KiB (`too_large`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       },
@@ -666,6 +676,16 @@
                 }
               }
             }
+          },
+          "413": {
+            "description": "The request body is larger than 256 KiB (`too_large`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -789,6 +809,16 @@
           },
           "404": {
             "description": "No such thing (`not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is larger than 256 KiB (`too_large`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -1554,6 +1584,16 @@
                 }
               }
             }
+          },
+          "413": {
+            "description": "The request body is larger than 256 KiB (`too_large`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }
@@ -1801,6 +1841,16 @@
           },
           "404": {
             "description": "No such thing (`not_found`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is larger than 256 KiB (`too_large`)",
             "content": {
               "application/json": {
                 "schema": {
@@ -2417,6 +2467,16 @@
           },
           "403": {
             "description": "The token's scope is `read`, and this changes something (`forbidden`)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "The request body is larger than 256 KiB (`too_large`)",
             "content": {
               "application/json": {
                 "schema": {

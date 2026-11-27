@@ -1,19 +1,19 @@
 // What a request handler needs: the forms, the store, the rate limiter and the settings from the environment. One per
 // process, kept on globalThis so a dev server's reloads reuse the open database. Tests build their own.
-//   NOTICEBOX_DB           the SQLite file (default data/noticebox.sqlite); it holds the boxes and forms too
+//   DATA_DIR               where everything kept lives (default data): noticebox.sqlite, with the boxes and forms
+//                          too, and auth.sqlite, the sign-in's (next-app-kit/signin)
+//   PUBLIC_URL             the public URL of the inbox: links, sign-in, and the OAuth issuer for MCP
 //   NOTICEBOX_CONFIG       deprecated: the forms file of releases before 0.16, imported once (default noticebox.json)
-//   NOTICEBOX_BASE_URL     the public URL of the inbox: links, sign-in, and the OAuth issuer for MCP
 //   NOTICEBOX_SECRET       Better Auth's secret (32+ characters)
-//   NOTICEBOX_ALLOWED_EMAILS, NOTICEBOX_SMTP_URL, NOTICEBOX_SMTP_FROM, NOTICEBOX_OIDC_<NAME>_*: who signs in, and how (accounts.ts)
+//   NOTICEBOX_ALLOWED_EMAILS, NOTICEBOX_SMTP_URL, NOTICEBOX_SMTP_FROM, NOTICEBOX_OIDC_<NAME>_*: who signs in, and how (the kit)
 //   NOTICEBOX_DEV_USER     a fixed user without signing in, for development; refused when NODE_ENV=production
 //   NOTICEBOX_TRUST_PROXY  0 to take client addresses from the socket instead of X-Forwarded-For
-//   NOTICEBOX_UPLOAD_DIR  where a post's files wait while it is checked (default the system's temporary folder)
 //   NOTICEBOX_RATE_LIMIT   submissions per client and form in ten minutes (default 10; 0 switches the limit off)
+//   TMPDIR                 where a post's files wait while it is checked (the system's temporary folder; not data)
 import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { openAuth, signInFromEnv, type Auth, type SignInSettings } from "./accounts";
+import { join } from "node:path";
+import { openAuth, PREFIX, signInFromEnv, type Auth, type SignInSettings } from "./accounts";
 import type { Config } from "./config";
 import { Forms } from "./forms";
 import { Store } from "./db";
@@ -45,43 +45,44 @@ export type Runtime = {
   signIn: SignInSettings;
   auth: () => Promise<Auth>; // Better Auth, opened on first use
   rate: Rate;
-  baseUrl: string | null;
   devUser: string | null;
   trustProxy: boolean;
   bodyLimit: number;
-  uploadDir: string; // where a post's files wait while it is checked (multipart.ts)
   now: () => Date;
   fetch: Fetch;
   log: (line: string) => void;
 };
 
-export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { forms?: Forms; config?: Config; store: Store }): Runtime {
+export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { forms?: Forms; config?: Config; store: Store; baseUrl?: string }): Runtime {
   const forms = o.forms ?? new Forms(o.store, {}, o.log);
   if (!o.forms && o.config) {
     const r = forms.replace(toRaw(o.config));
     if (!r.ok) throw new Error(r.error);
   }
-  const { config: _ignored, ...rest } = o;
+  const { config: _ignored, baseUrl, ...rest } = o;
   void _ignored;
   const log = o.log ?? ((line: string) => console.error(line));
   const signIn: SignInSettings = o.signIn ?? {
+    prefix: PREFIX,
+    appName: "noticebox",
     secret: randomBytes(32).toString("hex"),
-    baseUrl: o.baseUrl ?? "http://localhost:3000",
+    baseUrl: baseUrl ?? "http://localhost:3000",
     file: ":memory:",
     jwksUrl: "http://127.0.0.1:3000/api/auth/jwks",
-    allowed: [],
+    allowed: ["@test.example"], // the tests' people
+
     providers: [],
     smtp: null,
+    devUser: null,
+    passkey: { rpName: "noticebox" },
     log,
   };
   let opened: Promise<Auth> | undefined;
   return {
     rate: new Rate(10),
-    baseUrl: null,
     devUser: null,
     trustProxy: true,
     bodyLimit: 64 * 1024,
-    uploadDir: tmpdir(),
     now: () => new Date(),
     fetch,
     log: (line) => console.error(line),
@@ -123,24 +124,21 @@ function toRaw(c: Config): { boxes: string[]; forms: Record<string, Record<strin
 }
 
 function fromEnv(env: Record<string, string | undefined>): Runtime {
-  const dbPath = env.NOTICEBOX_DB ?? "data/noticebox.sqlite";
-  mkdirSync(dirname(dbPath), { recursive: true });
+  const dataDir = env.DATA_DIR || "data";
+  mkdirSync(dataDir, { recursive: true });
   const log = (line: string) => console.error(line);
   // Sign-in data lives in its own file next to the inbox's database, so a backup or export of the inbox holds none of it.
-  const signIn = signInFromEnv(env, join(dirname(dbPath), "auth.sqlite"), log);
-  const store = new Store(dbPath);
+  const signIn = signInFromEnv(env, dataDir, log);
+  const store = new Store(join(dataDir, "noticebox.sqlite"));
   const forms = new Forms(store, env);
   forms.importFile(env.NOTICEBOX_CONFIG ?? "noticebox.json");
-  if (env.NOTICEBOX_DEV_USER) log(`warning: NOTICEBOX_DEV_USER is set, everyone reaching the inbox is "${env.NOTICEBOX_DEV_USER}"`);
   return makeRuntime({
     forms,
     store,
     signIn,
     rate: new Rate(env.NOTICEBOX_RATE_LIMIT === undefined ? 10 : Number(env.NOTICEBOX_RATE_LIMIT)),
-    baseUrl: signIn.baseUrl,
-    devUser: env.NOTICEBOX_DEV_USER || null,
+    devUser: signIn.devUser,
     trustProxy: env.NOTICEBOX_TRUST_PROXY !== "0",
-    uploadDir: env.NOTICEBOX_UPLOAD_DIR || tmpdir(),
     log,
   });
 }

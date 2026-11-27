@@ -6,13 +6,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { emailAllowed, signInFromEnv, type SignInSettings } from "./accounts";
+import { emailAllowed, type SignInSettings } from "next-app-kit/signin";
+import { signInFromEnv } from "./accounts";
 import { connections } from "./admin";
 import { actorOf, personOf } from "./auth";
-import { mcpRoute } from "./mcp";
-import { restRoute } from "./rest";
-import { apiResourceMetadataRoute, authRoute, authServerMetadataRoute } from "./signin";
-import { REPORT, testRuntime, type TestRuntime } from "./testutil";
+import { authRoute, mcpRoute, REPORT, restRoute, testRuntime, wellKnown, type TestRuntime } from "./testutil";
 
 let server: Server;
 let base = "";
@@ -42,8 +40,8 @@ function provider(name: string, path: string): Response | null {
 async function route(req: Request): Promise<Response> {
   const path = new URL(req.url).pathname;
   if (path === "/mcp") return mcpRoute(req, rt);
-  if (path.startsWith("/api/v1/")) return restRoute(req, rt, path.slice("/api/v1/".length).split("/"));
-  if (path === "/.well-known/oauth-protected-resource/api/v1") return apiResourceMetadataRoute(rt);
+  if (path.startsWith("/api/v1/")) return restRoute(req, rt);
+  if (path === "/.well-known/oauth-protected-resource/api/v1") return wellKnown(rt).protectedResource(req);
   for (const name of ["fake", "other"]) {
     const found = provider(name, path);
     if (found) return found;
@@ -56,7 +54,7 @@ async function route(req: Request): Promise<Response> {
       return claims.has(token) ? Response.json(claims.get(token)) : new Response("no", { status: 401 });
     }
   }
-  if (path.startsWith("/.well-known/oauth-authorization-server")) return authServerMetadataRoute(req, rt);
+  if (path.startsWith("/.well-known/oauth-authorization-server")) return wellKnown(rt).authorizationServer(req);
   return authRoute(req, rt);
 }
 
@@ -80,6 +78,8 @@ beforeAll(async () => {
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   base = `http://localhost:${(server.address() as AddressInfo).port}`;
   const signIn: SignInSettings = {
+    prefix: "NOTICEBOX",
+    appName: "noticebox",
     secret: "s".repeat(40),
     baseUrl: base,
     file: ":memory:",
@@ -90,10 +90,12 @@ beforeAll(async () => {
       { id: "other", label: "Other", clientId: "noticebox", clientSecret: "x", issuer: `${base}/other-oidc` },
     ],
     smtp: null,
-    mailer: async (to, code, link) => void mail.set(to, { code, link }),
+    mailer: async (m) => void mail.set(m.to, { code: m.code, link: m.link }),
+    devUser: null,
+    passkey: { rpName: "noticebox" },
     log: quiet,
   };
-  rt = testRuntime({ baseUrl: base, signIn });
+  rt = testRuntime({ signIn });
 });
 
 afterAll(async () => {
@@ -330,12 +332,12 @@ test("an MCP client signs the person in, acts as '<email> via <client>', and sto
 });
 
 test("start-up refuses a dev user in production and an instance nobody can sign in to; SMTP alone is enough", () => {
-  const env = { NOTICEBOX_SECRET: "s".repeat(40), NOTICEBOX_BASE_URL: "https://inbox.example", NOTICEBOX_ALLOWED_EMAILS: "a@b.c" };
-  expect(() => signInFromEnv({ ...env, NOTICEBOX_DEV_USER: "dev", NODE_ENV: "production" }, ":memory:", quiet)).toThrow(/NOTICEBOX_DEV_USER/);
-  expect(() => signInFromEnv(env, ":memory:", quiet)).toThrow(/no way to sign in/);
-  expect(() => signInFromEnv({ ...env, NOTICEBOX_SMTP_URL: "smtp://m", NOTICEBOX_SECRET: "short" }, ":memory:", quiet)).toThrow(/NOTICEBOX_SECRET/);
-  expect(() => signInFromEnv({ ...env, NOTICEBOX_OIDC_AUTHENTIK_CLIENT_ID: "x" }, ":memory:", quiet)).toThrow(/NOTICEBOX_OIDC_AUTHENTIK_ISSUER/);
-  const smtpOnly = signInFromEnv({ ...env, NOTICEBOX_SMTP_URL: "smtp://mail.example", NOTICEBOX_SMTP_FROM: "inbox@example.org" }, ":memory:", quiet);
+  const env = { NOTICEBOX_SECRET: "s".repeat(40), PUBLIC_URL: "https://inbox.example", NOTICEBOX_ALLOWED_EMAILS: "a@b.c" };
+  expect(() => signInFromEnv({ ...env, NOTICEBOX_DEV_USER: "dev", NODE_ENV: "production" }, "data", quiet)).toThrow(/NOTICEBOX_DEV_USER/);
+  expect(() => signInFromEnv(env, "data", quiet)).toThrow(/no way to sign in/);
+  expect(() => signInFromEnv({ ...env, NOTICEBOX_SMTP_URL: "smtp://m", NOTICEBOX_SECRET: "short" }, "data", quiet)).toThrow(/NOTICEBOX_SECRET/);
+  expect(() => signInFromEnv({ ...env, NOTICEBOX_OIDC_AUTHENTIK_CLIENT_ID: "x" }, "data", quiet)).toThrow(/NOTICEBOX_OIDC_AUTHENTIK_ISSUER/);
+  const smtpOnly = signInFromEnv({ ...env, NOTICEBOX_SMTP_URL: "smtp://mail.example", NOTICEBOX_SMTP_FROM: "inbox@example.org" }, "data", quiet);
   expect(smtpOnly.providers).toEqual([]);
   expect(smtpOnly.smtp).toEqual({ url: "smtp://mail.example", from: "inbox@example.org" });
   const providers = signInFromEnv(
@@ -348,14 +350,19 @@ test("start-up refuses a dev user in production and an instance nobody can sign 
       NOTICEBOX_OIDC_AUTHENTIK_ISSUER: "https://auth.example/application/o/noticebox/",
       NOTICEBOX_OIDC_AUTHENTIK_LABEL: "Our login",
     },
-    ":memory:",
+    "data",
     quiet,
   ).providers;
   expect(providers).toEqual([
     { id: "authentik", label: "Our login", clientId: "ak", clientSecret: "aks", issuer: "https://auth.example/application/o/noticebox" },
     { id: "github", label: "GitHub", clientId: "gh", clientSecret: "ghs", issuer: null },
   ]);
-  expect(signInFromEnv({ NOTICEBOX_DEV_USER: "dev" }, ":memory:", quiet).baseUrl).toBe("http://localhost:3000");
+  expect(signInFromEnv({ NOTICEBOX_DEV_USER: "dev" }, "data", quiet).baseUrl).toBe("http://localhost:3000");
+  // The public URL is PUBLIC_URL alone: the name before next-app-kit counts for nothing.
+  const { PUBLIC_URL: _url, ...old } = { ...env, NOTICEBOX_SMTP_URL: "smtp://m" };
+  void _url;
+  expect(() => signInFromEnv({ ...old, NOTICEBOX_BASE_URL: "https://inbox.example" }, "data", quiet)).toThrow(/PUBLIC_URL must be set/);
+  expect(signInFromEnv({ ...env, NOTICEBOX_SMTP_URL: "smtp://m" }, "data", quiet).file).toBe("data/auth.sqlite");
 });
 
 /** The whole OAuth dance for `resource` as a script does it, signed in as `email`: the token response. */

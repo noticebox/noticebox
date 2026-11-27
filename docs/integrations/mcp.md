@@ -39,7 +39,7 @@ MCP is noticebox's main interface: everything the inbox can do, an assistant can
 
 The tools call the same functions as the inbox's pages, through the same validation; secrets such as an ntfy topic go in as `${VAR}` references that the container's environment must provide.
 
-Every result carries `next`: short instructions built from what the call did, such as when retention will remove a closed submission's personal fields or where a new form takes its posts. Every box, form and submission in a result carries its `url` in the inbox, and a summary carries `link`, the form's link template filled in, so an assistant can look at what a report is about before suggesting a decision.
+Every result carries `guidance`: short instructions built from what the call did, such as when retention will remove a closed submission's personal fields or where a new form takes its posts. Every box, form and submission in a result carries its `url` in the inbox, and a summary carries `link`, the form's link template filled in, so an assistant can look at what a report is about before suggesting a decision.
 
 ## How the OAuth works
 
@@ -61,4 +61,4 @@ sequenceDiagram
   Note over NB: each call checks the token and that you still allow the client
 ```
 
-The OAuth server is Better Auth's (`@better-auth/mcp`), with the issuer `<NOTICEBOX_BASE_URL>/api/auth`. It publishes RFC 8414 and RFC 9728 metadata under `/.well-known/` and accepts dynamic client registration and client metadata documents. It runs the code flow with PKCE and rotates refresh tokens. Access tokens are signed JWTs bound to this instance's `/mcp` and live ten minutes. A session cookie is no MCP token. The sign-in page sends only a code by email during this flow, never a link ([Sign-in](../self-hosting/login.md)).
+The OAuth server is Better Auth's (`@better-auth/mcp`), with the issuer `<PUBLIC_URL>/api/auth`. It publishes RFC 8414 and RFC 9728 metadata under `/.well-known/` and accepts dynamic client registration and client metadata documents. It runs the code flow with PKCE and rotates refresh tokens. Access tokens are signed JWTs bound to this instance's `/mcp` and live ten minutes. A session cookie is no MCP token. The sign-in page sends only a code by email during this flow, never a link ([Sign-in](../self-hosting/login.md)).
