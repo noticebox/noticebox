@@ -29,6 +29,7 @@ export type { Figures, ListFilter, Outcome, StoredFile, Submission } from "./db"
 export { fileResponse, fileRoute, isPicture } from "./files";
 export { issueDraft, issueUrl, type Draft } from "./github";
 export { healthRoute } from "./health";
+export { metricsRoute } from "./metrics";
 export { decide } from "./decide";
 export { intakePreflight, intakeRoute } from "./intake";
 export { KINDS, stateOf, type KindName } from "./kinds";

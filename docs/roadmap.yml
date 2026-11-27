@@ -43,6 +43,20 @@ items:
       - { label: "V2", url: "https://noticebox.github.io/noticebox/values/#v2" }
 
   # ---- done ------------------------------------------------------------------------------------------------------------
+  - id: nothing-waits-unnoticed
+    status: done
+    date: 2026-11-27
+    icon: bell-check
+    title: Nothing waits unnoticed
+    summary: A lost ntfy push no longer hides a submission. Mail is a second path, test posts stay off the phone, and `/metrics` lets monitoring alert on what waits.
+    links:
+      - { label: "#118", url: "https://github.com/noticebox/noticebox/issues/118" }
+      - { label: "#119", url: "https://github.com/noticebox/noticebox/issues/119" }
+      - { label: "#120", url: "https://github.com/noticebox/noticebox/issues/120" }
+      - { label: "#130", url: "https://github.com/noticebox/noticebox/issues/130" }
+    details: |
+      A real order request sat for three days because its one push never reached the phone. A form can now mail an allowed address too, test posts reach ntfy only when a target asks for them, and `/metrics` (behind `NOTICEBOX_METRICS_TOKEN`) gives the open count and the oldest open submission's age per form.
+
   - id: decision-webhooks
     status: done
     date: 2026-11-20

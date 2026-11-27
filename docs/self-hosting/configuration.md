@@ -15,6 +15,7 @@ Every setting is an environment variable, and in a deployment they all live in o
 | `NOTICEBOX_ALLOWED_EMAILS` | empty: nobody | Who may sign in: addresses and `@domain` entries, comma-separated ([Sign-in](login.md#who-may-sign-in)) |
 | `NOTICEBOX_SMTP_URL`, `NOTICEBOX_SMTP_FROM` | none | Where sign-in codes are mailed from ([Sign-in](login.md#ways-to-sign-in)), and the mail of a form's [mail target](notifications.md#mail) |
 | `NOTICEBOX_OIDC_<NAME>_CLIENT_ID`, `_CLIENT_SECRET`, `_ISSUER`, `_LABEL` | none | A provider to sign in with; `GITHUB`, `GOOGLE` and `APPLE` need no issuer ([Sign-in](login.md#ways-to-sign-in)) |
+| `NOTICEBOX_METRICS_TOKEN` | none: no `/metrics` | The bearer token `/metrics` wants, 32 or more characters (`openssl rand -hex 32`) ([Metrics](metrics.md)) |
 | `NOTICEBOX_RATE_LIMIT` | `10` | Posts per client address and form in ten minutes; `0` turns it off |
 | `NOTICEBOX_TRUST_PROXY` | on | `0` to ignore `X-Forwarded-For` and take the connecting address |
 | `NOTICEBOX_DEV_USER` | none | A fixed name instead of signing in, for development; refused when `NODE_ENV=production` |

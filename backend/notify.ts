@@ -31,19 +31,36 @@ export function smtpSend(smtp: Smtp): SendMail {
 type Log = (line: string) => void;
 
 /** One post per target, all at once; a target that fails or is unset is logged, nothing is thrown. */
-async function announce(form: Form, id: string, event: NotifyEvent, post: (t: Target) => Promise<Response>, log: Log, test = false): Promise<void> {
+/** Called once per target that could not be told (failed, or its variable unset): the metrics count it. */
+export type Failed = (type: Target["type"]) => void;
+
+async function announce(
+  form: Form,
+  id: string,
+  event: NotifyEvent,
+  post: (t: Target) => Promise<Response>,
+  log: Log,
+  test = false,
+  failed: Failed = () => {},
+): Promise<void> {
   // A mail target's address stays out of the log, as the sign-in mail's does.
   const name = (t: Target) => (t.type === "mail" ? "mail" : `${t.type} ${new URL(t.url).host}`);
   const skipped = (t: Target) => test && t.type !== "webhook" && !t.tests;
   for (const t of form.notify.filter((t) => wants(t, event) && skipped(t) && !t.unset)) log(`notify ${form.name} ${id} ${name(t)}: skipped, a test post`);
   const targets = form.notify.filter((t) => wants(t, event) && !skipped(t));
-  for (const t of targets) if (t.unset) log(`notify ${form.name} ${id} ${t.type}: \${${t.unset}} is not set in the environment`);
-  const jobs = targets.filter((t) => !t.unset).map((t) => ({ target: name(t), p: post(t) }));
+  for (const t of targets)
+    if (t.unset) {
+      log(`notify ${form.name} ${id} ${t.type}: \${${t.unset}} is not set in the environment`);
+      failed(t.type);
+    }
+  const jobs = targets.filter((t) => !t.unset).map((t) => ({ type: t.type, target: name(t), p: post(t) }));
   const results = await Promise.allSettled(jobs.map((j) => j.p));
   results.forEach((r, i) => {
-    const target = jobs[i]?.target;
-    if (r.status === "rejected") log(`notify ${form.name} ${id} ${target}: ${(r.reason as Error).message}`);
-    else if (!r.value.ok) log(`notify ${form.name} ${id} ${target}: HTTP ${r.value.status}`);
+    const job = jobs[i]!;
+    if (r.status === "rejected") log(`notify ${form.name} ${id} ${job.target}: ${(r.reason as Error).message}`);
+    else if (!r.value.ok) log(`notify ${form.name} ${id} ${job.target}: HTTP ${r.value.status}`);
+    else return;
+    failed(job.type);
   });
 }
 
@@ -71,6 +88,7 @@ export async function notify(
   log: Log = console.error,
   test = false,
   mail: Mail | null = null,
+  failed?: Failed,
 ): Promise<void> {
   const title = `${test ? "Test: " : ""}New ${KINDS[form.kind].label}: ${form.title}`;
   const link = baseUrl + submissionPath(form.name, s.id);
@@ -99,13 +117,21 @@ export async function notify(
             }),
     log,
     test,
+    failed,
   );
 }
 
 export type Decision = { id: string; from: string; to: string; at: string };
 
 /** A decision, to the webhooks whose `on` has "decided"; after it is stored, never in its way. */
-export async function notifyDecision(form: Form, d: Decision, baseUrl: string, fetchFn: Fetch = fetch, log: Log = console.error): Promise<void> {
+export async function notifyDecision(
+  form: Form,
+  d: Decision,
+  baseUrl: string,
+  fetchFn: Fetch = fetch,
+  log: Log = console.error,
+  failed?: Failed,
+): Promise<void> {
   const url = baseUrl + submissionPath(form.name, d.id);
   await announce(
     form,
@@ -113,5 +139,7 @@ export async function notifyDecision(form: Form, d: Decision, baseUrl: string, f
     "decided",
     (t) => webhook(fetchFn, t.url, { event: "decided", form: form.name, kind: form.kind, id: d.id, from: d.from, to: d.to, at: d.at, url }),
     log,
+    false,
+    failed,
   );
 }

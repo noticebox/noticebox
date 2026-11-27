@@ -10,6 +10,7 @@
 //   NOTICEBOX_TRUST_PROXY  0 to take client addresses from the socket instead of X-Forwarded-For
 //   NOTICEBOX_RATE_LIMIT   submissions per client and form in ten minutes (default 10; 0 switches the limit off)
 //   TMPDIR                 where a post's files wait while it is checked (the system's temporary folder; not data)
+//   NOTICEBOX_METRICS_TOKEN the bearer token /metrics wants (32+ characters); without it /metrics is not there
 import { randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
@@ -17,6 +18,7 @@ import { openAuth, PREFIX, signInFromEnv, type Auth, type SignInSettings } from 
 import type { Config } from "./config";
 import { Forms } from "./forms";
 import { Store } from "./db";
+import { Counters } from "./metrics";
 import { smtpSend, type Fetch, type Mail } from "./notify";
 
 export class Rate {
@@ -51,6 +53,8 @@ export type Runtime = {
   now: () => Date;
   fetch: Fetch;
   mail: Mail | null; // arrivals by mail, through the sign-in SMTP; null without one
+  metricsToken: string | null; // what /metrics wants as bearer; null: no /metrics
+  counters: Counters; // arrivals and failed announcements since start, for /metrics
   log: (line: string) => void;
 };
 
@@ -89,6 +93,8 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { for
     now: () => new Date(),
     fetch,
     log: (line) => console.error(line),
+    metricsToken: null,
+    counters: new Counters(),
     ...rest,
     mail,
     signIn,
@@ -143,8 +149,17 @@ function fromEnv(env: Record<string, string | undefined>): Runtime {
     rate: new Rate(env.NOTICEBOX_RATE_LIMIT === undefined ? 10 : Number(env.NOTICEBOX_RATE_LIMIT)),
     devUser: signIn.devUser,
     trustProxy: env.NOTICEBOX_TRUST_PROXY !== "0",
+    metricsToken: metricsTokenFrom(env),
     log,
   });
+}
+
+/** NOTICEBOX_METRICS_TOKEN, or null; one too short to be a secret stops the start, as NOTICEBOX_SECRET does. */
+export function metricsTokenFrom(env: Record<string, string | undefined>): string | null {
+  const token = env.NOTICEBOX_METRICS_TOKEN?.trim();
+  if (!token) return null;
+  if (token.length < 32) throw new Error("NOTICEBOX_METRICS_TOKEN must be at least 32 characters (openssl rand -hex 32)");
+  return token;
 }
 
 const g = globalThis as { __noticebox?: Runtime };
