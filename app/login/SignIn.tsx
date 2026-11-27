@@ -1,19 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { authClient } from "@/app/_lib/auth-client";
 import { t } from "@/app/_lib/copy";
 
-type Methods = { email: boolean; providers: { id: string; label: string; builtIn: boolean }[] };
+type Methods = { email: boolean; passkey: boolean; providers: { id: string; label: string; builtIn: boolean }[] };
 
-// Email first: a code, which the mail may also carry as a link. Then one button per provider. A refused provider
-// sign-in comes back here as ?error=, and the page says so.
+// Email first: a code, which the mail may also carry as a link. Then a passkey, one the person added in Your settings
+// (only in a browser that can use one), and one button per provider. A refused provider sign-in comes back here as
+// ?error=, and the page says so.
+const noChange = () => () => {};
+const canUsePasskeys = () => typeof window !== "undefined" && "PublicKeyCredential" in window;
 export function SignIn({ methods, next, refused }: { methods: Methods; next: string; refused: { provider: string | null; code: string } | null }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(refused ? t.signIn.refused(refused.provider, refused.code) : null);
+  const passkeys = useSyncExternalStore(noChange, canUsePasskeys, () => false) && methods.passkey;
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -35,9 +39,25 @@ export function SignIn({ methods, next, refused }: { methods: Methods; next: str
       setError(t.signIn.failed);
       return;
     }
-    // During an MCP sign-in Better Auth answers with where the authorization goes on; otherwise the page asked for.
-    const url = (r.data as { url?: string } | null)?.url;
+    signedIn(r.data);
+  }
+
+  // During an MCP sign-in Better Auth answers with where the authorization goes on; otherwise the page asked for.
+  function signedIn(data: unknown) {
+    const url = (data as { url?: string } | null)?.url;
     window.location.assign(url ?? next);
+  }
+
+  async function passkey() {
+    setBusy(true);
+    setError(null);
+    const r = await authClient.signIn.passkey();
+    if (r.error || !r.data) {
+      setBusy(false);
+      setError(t.signIn.passkeyFailed);
+      return;
+    }
+    signedIn(r.data);
   }
 
   async function provider(p: Methods["providers"][number]) {
@@ -95,7 +115,12 @@ export function SignIn({ methods, next, refused }: { methods: Methods; next: str
             </button>
           </form>
         ))}
-      {methods.email && methods.providers.length > 0 && <p className="text-center text-sm text-muted">{t.signIn.or}</p>}
+      {methods.email && (passkeys || methods.providers.length > 0) && <p className="text-center text-sm text-muted">{t.signIn.or}</p>}
+      {passkeys && (
+        <button type="button" className="btn" disabled={busy} onClick={passkey}>
+          {t.signIn.passkey}
+        </button>
+      )}
       {methods.providers.map((p) => (
         <button key={p.id} type="button" className="btn" disabled={busy} onClick={() => provider(p)}>
           {t.signIn.with(p.label)}

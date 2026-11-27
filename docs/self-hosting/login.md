@@ -33,6 +33,8 @@ NOTICEBOX_OIDC_GITHUB_CLIENT_ID=...
 NOTICEBOX_OIDC_GITHUB_CLIENT_SECRET=...
 ```
 
+**With a passkey.** Someone who signed in once, by email or through a provider, can add passkeys in *Your settings*; the sign-in page then offers *Sign in with a passkey*. Nothing needs setting: the passkey belongs to the host in `PUBLIC_URL`, so changing that address means adding the passkeys again. A passkey signs in only while its person's address is still on `NOTICEBOX_ALLOWED_EMAILS`. It can't be the only way in, since adding one needs a session first.
+
 The sign-in page shows a button for each provider. A provider that refuses a sign-in sends the person back with its error code, which the page shows and the log records. The start fails when there is no way to sign in at all: no SMTP and no provider.
 
 ## One person, one address

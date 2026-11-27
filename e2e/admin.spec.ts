@@ -109,7 +109,7 @@ test("an empty form is removed, and an empty box too", async ({ page }) => {
 
 test("an API token made in Your settings reads the REST API, is refused a change, and stops when revoked", async ({ page, playwright }) => {
   await page.goto("/settings");
-  await page.getByLabel("Name").fill("e2e script");
+  await page.getByLabel("Name", { exact: true }).fill("e2e script");
   await page.getByRole("button", { name: "Make a token" }).click();
   const shown = page.getByRole("status").filter({ hasText: "not shown again" });
   await expect(shown).toBeVisible();

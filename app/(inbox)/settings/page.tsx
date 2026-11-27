@@ -1,13 +1,15 @@
 import { headers } from "next/headers";
-import { connections, listApiTokens, personOf, publicUrl, runtime } from "@/backend";
+import { connections, listApiTokens, passkeysOf, personOf, publicUrl, runtime } from "@/backend";
 import { when } from "@/app/_lib/format";
 import { ActionForm } from "../ActionForm";
 import { createToken, revokeGrant, revokeToken } from "../admin";
+import { Passkeys } from "./Passkeys";
 import { t } from "@/app/_lib/copy";
 
 export const dynamic = "force-dynamic";
 
-// The signed-in person's page: who they are to noticebox, the assistants they allowed through MCP, and their API tokens.
+// The signed-in person's page: who they are to noticebox, their passkeys, the assistants they allowed through MCP, and
+// their API tokens.
 export default async function SettingsPage() {
   const rt = runtime();
   const h = await headers();
@@ -15,6 +17,7 @@ export default async function SettingsPage() {
   const actor = person?.email ?? "";
   const grants = person ? await connections(rt, person.id) : [];
   const tokens = person ? await listApiTokens(rt, person.id) : [];
+  const passkeys = (await passkeysOf(h, rt)).map((p) => ({ id: p.id, name: p.name ?? t.you.unnamedPasskey, added: when(p.createdAt) }));
   const base = publicUrl(rt);
   return (
     <div className="mx-auto max-w-3xl">
@@ -27,6 +30,12 @@ export default async function SettingsPage() {
           <strong>{actor}</strong>
           {t.you.signedInAs[1]}
         </p>
+      </section>
+
+      <section className="mb-10">
+        <h2 className="section-title">{t.you.passkeys}</h2>
+        <p className="mb-4 text-muted">{t.you.passkeysText}</p>
+        <Passkeys list={passkeys} />
       </section>
 
       <section className="mb-10">

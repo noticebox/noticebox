@@ -160,7 +160,6 @@ function fromEnv(env: Record<string, string | undefined>): Runtime {
   });
 }
 
-/** NOTICEBOX_METRICS_TOKEN, or null; one too short to be a secret stops the start, as NOTICEBOX_SECRET does. */
 /** NOTICEBOX_MAIL_TO as a list: lower-case addresses and `@domain` entries; anything else stops the start with the reason. */
 export function mailToFrom(env: Record<string, string | undefined>): string[] {
   const entries = (env.NOTICEBOX_MAIL_TO ?? "")
@@ -171,6 +170,7 @@ export function mailToFrom(env: Record<string, string | undefined>): string[] {
   return entries;
 }
 
+/** NOTICEBOX_METRICS_TOKEN, or null; one too short to be a secret stops the start, as NOTICEBOX_SECRET does. */
 export function metricsTokenFrom(env: Record<string, string | undefined>): string | null {
   const token = env.NOTICEBOX_METRICS_TOKEN?.trim();
   if (!token) return null;

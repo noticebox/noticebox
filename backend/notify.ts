@@ -30,10 +30,10 @@ export function smtpSend(smtp: Smtp): SendMail {
 }
 type Log = (line: string) => void;
 
-/** One post per target, all at once; a target that fails or is unset is logged, nothing is thrown. */
 /** Called once per target that could not be told (failed, or its variable unset): the metrics count it. */
 export type Failed = (type: Target["type"]) => void;
 
+/** One post per target, all at once; a target that fails or is unset is logged, nothing is thrown. */
 async function announce(
   form: Form,
   id: string,

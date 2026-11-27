@@ -19,7 +19,7 @@ export {
   type Exported,
 } from "./admin";
 export { safeNext, signInMethods } from "next-app-kit/signin";
-export { actorOf, personOf, publicUrl, type Person } from "./auth";
+export { actorOf, passkeysOf, personOf, publicUrl, type PasskeyView, type Person } from "./auth";
 export { clientNameFor, refusedSignIn, type RefusedSignIn } from "./signin";
 export { eventsOf } from "./config";
 export type { Config, Field, Form, GitHub, NotifyEvent, State, Target } from "./config";
