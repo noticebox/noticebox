@@ -3,8 +3,9 @@
 // arriving (to ntfy and to the webhooks that want arrivals, which is every webhook that doesn't say otherwise) and a
 // decision moving a submission to another state (only to the webhooks that asked for decisions with `on`). A decision's
 // post names the states, never the reason or who decided: both are in the history, behind the login. A test post (a
-// site's own check that its form still gets through, `_test`) is announced all the same, but quietly and labelled, so
-// nobody mistakes it for a real one.
+// site's own check that its form still gets through, `_test`) goes to the webhooks marked `"test": true`, but not to ntfy:
+// CI checks post several a day, and on the phone they buried the real submissions. An ntfy target with `tests: true` still
+// gets it, quietly and labelled, so nobody mistakes it for a real one. The skip is logged, so nothing looks lost.
 import { wants, type Form, type NotifyEvent, type Target } from "./config";
 import type { Submission } from "./db";
 import { KINDS } from "./kinds";
@@ -14,8 +15,11 @@ export type Fetch = typeof fetch;
 type Log = (line: string) => void;
 
 /** One post per target, all at once; a target that fails or is unset is logged, nothing is thrown. */
-async function announce(form: Form, id: string, event: NotifyEvent, post: (t: Target) => Promise<Response>, log: Log): Promise<void> {
-  const targets = form.notify.filter((t) => wants(t, event));
+async function announce(form: Form, id: string, event: NotifyEvent, post: (t: Target) => Promise<Response>, log: Log, test = false): Promise<void> {
+  const skipped = (t: Target) => test && t.type === "ntfy" && !t.tests;
+  for (const t of form.notify.filter((t) => wants(t, event) && skipped(t) && !t.unset))
+    log(`notify ${form.name} ${id} ntfy ${new URL(t.url).host}: skipped, a test post`);
+  const targets = form.notify.filter((t) => wants(t, event) && !skipped(t));
   for (const t of targets) if (t.unset) log(`notify ${form.name} ${id} ${t.type}: \${${t.unset}} is not set in the environment`);
   const jobs = targets.filter((t) => !t.unset).map((t) => ({ target: `${t.type} ${new URL(t.url).host}`, p: post(t) }));
   const results = await Promise.allSettled(jobs.map((j) => j.p));
@@ -60,6 +64,7 @@ export async function notify(form: Form, s: Submission, baseUrl: string, fetchFn
             ...(test ? { test: true } : {}),
           }),
     log,
+    test,
   );
 }
 

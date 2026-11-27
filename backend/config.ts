@@ -48,8 +48,10 @@ export type GitHub = { repo: string; labels: string[] }; // repo is owner/name
 export type NotifyEvent = "received" | "decided";
 const EVENTS: NotifyEvent[] = ["received", "decided"];
 
-// `on`: only as written, on a webhook; `unset`: the variable the URL needs and the environment lacks.
-export type Target = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[]; unset?: string };
+// `on`: only as written, on a webhook; `tests`: only on ntfy, which hears of test posts (`_test`) only when it says so, so a
+// site's CI checks don't bury the real submissions on the phone (webhooks always get them, marked); `unset`: the variable the
+// URL needs and the environment lacks.
+export type Target = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[]; tests?: true; unset?: string };
 
 /**
  * A raw target's `on` as the editor shows it: known events, in their canonical order, without repeats; undefined for ntfy and for a
@@ -230,6 +232,11 @@ function parseNotify(at: string, raw: unknown): Target[] {
     const o = record(t, `${at}[${i}]`);
     if (o.type !== "ntfy" && o.type !== "webhook") throw new Error(`${at}[${i}].type: "ntfy" or "webhook"`);
     const target: Target = { type: o.type, url: absoluteUrl(o.url, `${at}[${i}].url`) };
+    if (o.tests !== undefined && o.tests !== null) {
+      if (typeof o.tests !== "boolean") throw new Error(`${at}[${i}].tests: true or false`);
+      if (o.type !== "ntfy") throw new Error(`${at}[${i}].tests: only an ntfy target takes "tests"; a webhook always gets test posts, marked "test": true`);
+      if (o.tests) target.tests = true;
+    }
     if (o.on === undefined || o.on === null) return target;
     if (o.type !== "webhook") throw new Error(`${at}[${i}].on: only a webhook takes "on"`);
     const on = o.on;
