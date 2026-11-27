@@ -26,7 +26,7 @@ The old names are no longer read. A release that finds no `PUBLIC_URL` refuses t
 
 What else changes:
 
-- Every MCP tool result carries `guidance` instead of `next`, the same instructions under the kit's name.
+- Every MCP tool result carries `guidance` instead of `next`, the same instructions under the kit's name. **Reconnect every MCP client after the upgrade** (in claude.ai: the connector's settings, disconnect and connect; in Claude Code: `/mcp`): a client keeps the tools' old output schemas, so it rejects each result (*data must have required property 'next'*) until it fetches them again.
 - An address taken off `NOTICEBOX_ALLOWED_EMAILS` loses its sessions and MCP and script grants at the next start, and its MCP calls and API tokens are refused at once.
 - `APPLE` is a built-in provider, like `GITHUB` and `GOOGLE`.
 
