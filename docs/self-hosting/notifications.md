@@ -17,7 +17,7 @@ ntfy delivers on a best-effort basis, and a push that never arrives is never rep
 - **iOS:** while the phone is offline, Apple's push service keeps only the latest pending notification per app, so of several posts only the last one arrives.
 - **ntfy.sh's cache:** messages are kept for 12 hours. After that, the app can't fetch a push it missed.
 
-A self-hosted ntfy server with a longer cache lets the app fetch missed messages later (on iOS it still needs an upstream server to wake the app). What makes sure nothing is missed is the inbox itself: look at what is open, or let your monitoring alert when a submission waits too long.
+A self-hosted ntfy server with a longer cache lets the app fetch missed messages later (on iOS it still needs an upstream server to wake the app). What makes sure nothing is missed is the inbox itself: look at what is open, add a [mail target](#mail) as a second path, or let your monitoring alert when a submission waits too long ([Metrics](metrics.md)).
 
 ## Mail
 

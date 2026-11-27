@@ -23,6 +23,7 @@ test("the public paths need no session", () => {
     "/f/contact/thanks",
     "/api/f/contact",
     "/health",
+    "/metrics",
     "/mcp",
     "/login",
     "/api/auth/sign-in/email-otp",

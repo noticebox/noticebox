@@ -88,5 +88,6 @@ nav:
       - Configuration: self-hosting/configuration.md
       - Sign-in: self-hosting/login.md
       - Notifications: self-hosting/notifications.md
+      - Metrics: self-hosting/metrics.md
       - Retention, export and backups: self-hosting/retention.md
       - Upgrading: self-hosting/upgrading.md
