@@ -10,6 +10,15 @@ A notification says that something happened and where to look, never what it say
 
 A post to the topic with the title *New report: <form title>*, the link to the submission as the text and as the click action, priority 4 and a mailbox tag. The topic's name is the secret; keep it in the environment and reference it with `${…}`.
 
+### A push can be lost
+
+ntfy delivers on a best-effort basis, and a push that never arrives is never repeated. noticebox posts each arrival once, and a post that ntfy.sh accepts counts as sent: the log names only posts that failed. Two ways a push gets lost in practice:
+
+- **iOS:** while the phone is offline, Apple's push service keeps only the latest pending notification per app, so of several posts only the last one arrives.
+- **ntfy.sh's cache:** messages are kept for 12 hours. After that, the app can't fetch a push it missed.
+
+A self-hosted ntfy server with a longer cache lets the app fetch missed messages later (on iOS it still needs an upstream server to wake the app). What makes sure nothing is missed is the inbox itself: look at what is open, or let your monitoring alert when a submission waits too long.
+
 ## Webhook
 
 ```json
