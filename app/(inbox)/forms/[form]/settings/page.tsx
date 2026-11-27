@@ -29,9 +29,9 @@ export default async function FormSettingsPage({ params }: { params: Promise<{ f
   }));
   const notifyRaw = raw.notify;
   const notify: RawTarget[] = Array.isArray(notifyRaw)
-    ? notifyRaw.map((t: { type: string; url: string; on?: unknown; tests?: unknown }) => ({
-        type: t.type === "webhook" ? "webhook" : "ntfy",
-        url: str(t.url),
+    ? notifyRaw.map((t: { type: string; url: string; to?: unknown; on?: unknown; tests?: unknown }) => ({
+        type: t.type === "webhook" ? "webhook" : t.type === "mail" ? "mail" : "ntfy",
+        url: t.type === "mail" ? str(t.to) : str(t.url),
         ...(eventsOf(t) ? { on: eventsOf(t) } : {}),
         ...(t.type !== "webhook" && t.tests === true ? { tests: true } : {}),
       }))

@@ -167,6 +167,7 @@ export const en = {
     deletedDays: (n: number) => `${n} ${plural(n, "day", "days")} after it is closed`,
     announced: "Announced",
     onNtfy: (host: string) => `on ntfy (${host})`,
+    byMail: (to: string) => `by mail to ${to}`,
     toWebhook: (host: string, on: ("received" | "decided")[]) =>
       `to a webhook (${host})${on.includes("decided") ? (on.includes("received") ? ", new submissions and decisions" : ", decisions only") : ""}`,
     and: " and ",
@@ -290,7 +291,7 @@ export const en = {
     thanksPlaceholder: "Thank you. Your message has been received.",
     notifications: "Notifications",
     notificationsIntro:
-      "Where a new submission is announced: a title and the link, never the content. A webhook can also be told about every decision (the states and the link). Test posts (_test) reach ntfy only when its target says so; webhooks always get them, marked. A secret in the URL can be written as",
+      "Where a new submission is announced: a title and the link, never the content. A webhook can also be told about every decision (the states and the link). A mail target writes to someone who may sign in, through the sign-in mail server. Test posts (_test) reach ntfy only when its target says so; webhooks always get them, marked. A secret in the URL can be written as",
     notificationsVar: "and set in the environment.",
     targetN: (i: number, what: string) => `Target ${i} ${what}`,
     removeTarget: (i: number) => `Remove target ${i}`,
@@ -299,6 +300,7 @@ export const en = {
     onDecided: "decisions",
     onBoth: "both",
     ntfyTests: "test posts too",
+    mailTarget: "mail",
     retentionAndLink: "Retention and link",
     retention: "Personal fields are removed",
     retentionUnit: "days after a submission is closed",

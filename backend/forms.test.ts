@@ -175,3 +175,21 @@ test("an instance upgraded with a forms file starts with the same forms, and its
     delete process.env.TOPIC;
   }
 });
+
+test("a form may mail only someone who may sign in, and only when mail can go out", () => {
+  const store = open();
+  const forms = new Forms(store, {}, quiet);
+  const form = (to: string) => ({
+    forms: { orders: { kind: "message", title: "Orders", fields: { email: { type: "email" } }, notify: [{ type: "mail", to }] } },
+  });
+  const noSmtp = forms.replace(form("me@example.org"));
+  expect(noSmtp).toEqual({ ok: false, error: expect.stringMatching(/needs mail to go out; set NOTICEBOX_SMTP_URL/) });
+  forms.mailPolicy = { allowed: ["me@example.org", "@team.example"], smtp: true };
+  expect(forms.replace(form("stranger@example.org"))).toEqual({ ok: false, error: expect.stringMatching(/stranger@example.org may not sign in/) });
+  expect(forms.replace(form("Me@Example.org"))).toEqual({ ok: true });
+  expect(forms.config.forms.orders!.notify).toEqual([{ type: "mail", url: "mailto:me@example.org", to: "me@example.org" }]);
+  expect(forms.replace(form("anyone@team.example"))).toEqual({ ok: true });
+  // A form saved before the allowlist shrank still loads; its mail is refused when sent (notify).
+  forms.mailPolicy = { allowed: [], smtp: true };
+  expect(new Forms(store, {}, quiet).config.forms.orders!.notify[0]!.to).toBe("anyone@team.example");
+});

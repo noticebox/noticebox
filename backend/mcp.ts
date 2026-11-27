@@ -120,7 +120,7 @@ export function tools(rt: Runtime): Tool[] {
     defineTool({
       name: "put_form",
       description:
-        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, deleteAfterDays (optional: days after closing until the submission and its history are deleted, at least retentionDays), notify ([{type: ntfy|webhook, url, on?, tests?}]; a webhook's on lists received and/or decided, without it arrivals only; ntfy announces arrivals, and test posts (_test) only with tests: true, while webhooks always get them marked test: true), link ({url, label}), github ({repo: owner/name, labels}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes. A state that submissions are in cannot be removed.",
+        "Create a form, or replace one as a whole, as the forms file would have it (read the current one with get_form first). The form is an object: box, kind (report or message), title, fields ({name: {type: text|textarea|select|email|hidden, label, required, max, options, personal, help}}), strict, origins, redirect, retentionDays, deleteAfterDays (optional: days after closing until the submission and its history are deleted, at least retentionDays), notify ([{type: ntfy|webhook, url, on?, tests?} or {type: mail, to}]; a mail target writes arrivals (title and link) to an address on NOTICEBOX_ALLOWED_EMAILS and needs SMTP; a webhook's on lists received and/or decided, without it arrivals only; ntfy announces arrivals, and test posts (_test) only with tests: true, while webhooks always get them marked test: true), link ({url, label}), github ({repo: owner/name, labels}). Secrets belong in `${VAR}` references, filled from the environment. The whole file is validated before anything is written; on an error nothing changes. A state that submissions are in cannot be removed.",
       input: z.object({ name: z.string().describe("lowercase letters, digits, - and _"), form: z.record(z.string(), z.unknown()) }),
       output: z.object({ name: z.string(), created: z.boolean(), url: z.string(), endpoint: z.string(), form: z.record(z.string(), z.unknown()) }),
       annotations: { destructiveHint: true, idempotentHint: true },
@@ -134,7 +134,7 @@ export function tools(rt: Runtime): Tool[] {
           ? [`The form takes posts at ${endpoint}: point the page's <form action> or fetch there.`, `Its settings are at ${formUrl(name)}/settings.`]
           : [`Saved. The inbox shows it at ${formUrl(name)}.`];
         if (f.origins.length === 0) next.push("It takes posts from anywhere; set origins to the page's origin to limit that.");
-        if (f.notify.length === 0) next.push("Nobody is told when something arrives; add a notify target (ntfy or webhook) if someone should be.");
+        if (f.notify.length === 0) next.push("Nobody is told when something arrives; add a notify target (ntfy, webhook or mail) if someone should be.");
         return ok({ name, created: r.created === true, url: formUrl(name), endpoint, form: rt.forms.rawForm(name)! }, next);
       },
     }),

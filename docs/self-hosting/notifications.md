@@ -1,6 +1,6 @@
 # Notifications
 
-A notification says that something happened and where to look, never what it says: a topic at ntfy.sh and a webhook travel through other people's servers, and the content stays in the box behind the login.
+A notification says that something happened and where to look, never what it says: a topic at ntfy.sh, a webhook and a mail travel through other people's servers, and the content stays in the box behind the login.
 
 ## ntfy
 
@@ -18,6 +18,16 @@ ntfy delivers on a best-effort basis, and a push that never arrives is never rep
 - **ntfy.sh's cache:** messages are kept for 12 hours. After that, the app can't fetch a push it missed.
 
 A self-hosted ntfy server with a longer cache lets the app fetch missed messages later (on iOS it still needs an upstream server to wake the app). What makes sure nothing is missed is the inbox itself: look at what is open, or let your monitoring alert when a submission waits too long.
+
+## Mail
+
+```json
+"notify": [{ "type": "mail", "to": "you@example.org" }]
+```
+
+A mail for each new submission, sent through the mail server that sign-in uses (`NOTICEBOX_SMTP_URL`, `NOTICEBOX_SMTP_FROM`). It's a second path next to ntfy, in case a push is lost. The subject is *New report: <form title>* and the text is the link to the submission; no field, file name or sender is in it.
+
+`to` must be an address on `NOTICEBOX_ALLOWED_EMAILS` (or in a domain listed there), so a form can never mail a stranger. A form whose mail target names anyone else can't be saved, and neither can one with a mail target while no SMTP is set. If an address is later taken off the list, its mail is skipped and the log says so. Decisions and test posts are not mailed. The log names a failed mail as `mail`, without the address.
 
 ## Webhook
 
