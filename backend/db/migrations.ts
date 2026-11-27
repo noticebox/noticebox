@@ -99,7 +99,7 @@ create table file_chunks (
 `,
   },
   {
-    // next-app-kit/files (FileStore) keeps a file's record under `owner`; for noticebox that is the submission, as before.
+    // next-app-kit/files (FileStore) keeps a file's record under `owner` (its FILES_SCHEMA); for noticebox that is the submission, as before.
     name: "files are owned, as next-app-kit names it",
     sql: `
 alter table files rename column submission_id to owner;

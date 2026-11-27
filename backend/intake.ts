@@ -4,7 +4,7 @@
 import { clientIp, originOf } from "./auth";
 import { FIELD_NAME, RESERVED_FIELDS, type Form } from "./config";
 import { mediaType, parseFields, readCapped, seeOther, text } from "./http";
-import { readUpload, type FieldRule, type ReceivedFile as Received } from "next-app-kit/files";
+import { MultipartError, readMultipart, type FileRule, type ReceivedFile as Received } from "next-app-kit/multipart";
 import { notify } from "./notify";
 import type { Runtime } from "./runtime";
 
@@ -69,20 +69,15 @@ export function validate(form: Form, data: Record<string, string>, hints: Hints 
   return { fields, errors };
 }
 
-/** Each file field's rule, as next-app-kit/files reads a post by: its label, kinds, number and size of files. */
-export function fileRules(form: Form): Record<string, FieldRule> {
+/** Each file field's rule, as next-app-kit/multipart reads a post by: its label, kinds, number and size of files. */
+export function fileRules(form: Form): Record<string, FileRule> {
   return Object.fromEntries(
     Object.entries(form.fields).flatMap(([name, f]) =>
       f.type === "file" && f.files
-        ? [[name, { label: f.label, accept: f.files.accept, maxFiles: f.files.maxFiles, maxBytes: f.files.maxBytes, required: f.required }]]
+        ? [[name, { label: f.label, types: f.files.accept, maxFiles: f.files.maxFiles, maxFileBytes: f.files.maxBytes, required: f.required }]]
         : [],
     ),
   );
-}
-
-/** How much larger than a text-only post a post to this form may be: every file field full, plus room for the part headers. */
-export function fileAllowance(form: Form): number {
-  return Object.values(form.fields).reduce((sum, f) => sum + (f.files ? f.files.maxFiles * (f.files.maxBytes + 4096) : 0), 0);
 }
 
 /** Trims, normalises line ends and drops control characters other than newline and tab. */
@@ -131,15 +126,17 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
     return accept.includes("application/json") && !accept.includes("text/html");
   };
   if (type === "multipart/form-data") {
-    // Read as it arrives, files into a temporary folder in TMPDIR (next-app-kit/files), each file field by its own rule; only this
-    // form's file fields make it larger.
-    const limit = rt.bodyLimit + fileAllowance(form);
-    if (Number(h.get("content-length")) > limit) return text(413, "the body is too large");
-    const m = await readUpload(req, { rules: fileRules(form), limit, strict: form.strict });
-    if (m === "too large") return text(413, "the body is too large");
-    if (m === "not a form") return text(400, "the body is not a form");
-    ({ fields: data, files: received, cleanup } = m);
-    fileErrors = m.problems.map((p) => p.message);
+    // Read as it arrives, files into a temporary folder in TMPDIR (next-app-kit/multipart), each file field by its own rule; only
+    // this form's file fields make it larger than a text-only post.
+    const opts = { files: fileRules(form), strict: form.strict, fieldBytes: rt.bodyLimit };
+    try {
+      const m = await readMultipart(req, opts);
+      ({ fields: data, files: received, cleanup } = m);
+      fileErrors = m.problems.map((p) => p.message);
+    } catch (e) {
+      if (!(e instanceof MultipartError)) throw e;
+      return e.status === 413 ? text(413, "the body is too large") : text(400, "the body is not a form");
+    }
     wantsJson = browser();
   } else {
     const bytes = await readCapped(req, rt.bodyLimit);

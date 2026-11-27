@@ -5,7 +5,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, expect, test } from "vitest";
 import { Store } from "./db";
-import { filesMigration } from "next-app-kit/files";
+import { FILES_SCHEMA } from "next-app-kit/files";
 import { migrate, type Migration } from "next-app-kit/migrations";
 import { MIGRATIONS } from "./db/migrations";
 import { REPORT, testConfig } from "./testutil";
@@ -123,13 +123,13 @@ test("a database from a newer release is refused, and the store does not open", 
   expect(() => new Store(path)).toThrow(/newer than this release knows/);
 });
 
-test("the files tables are as next-app-kit/files keeps them, and a store from before the rename keeps its files", () => {
+test("the files tables are as next-app-kit/files' FILES_SCHEMA says, and a store from before the rename keeps its files", () => {
   const columns = (db: Database.Database) =>
     Object.fromEntries(
       ["files", "file_chunks"].map((t) => [t, (db.pragma(`table_info(${t})`) as { name: string; type: string }[]).map((c) => `${c.name} ${c.type}`)]),
     );
   const kit = new Database(":memory:");
-  migrate(kit, [filesMigration]);
+  kit.exec(FILES_SCHEMA);
   const path = tempFile();
   // A store at the migration before the rename, with a submission and its file.
   const old = new Database(path);
