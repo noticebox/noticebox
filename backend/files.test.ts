@@ -1,15 +1,16 @@
 // Files on forms: what a post may bring (how many, how large, which kinds), that nothing else gets in, that they are
 // only ever served as downloads or sandboxed pictures, that retention takes them with the personal fields, and that
 // the API hands them to a token and to nobody else.
+import { createHmac } from "node:crypto";
 import { mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { parseConfig } from "./config";
-import { CHUNK_BYTES } from "./db";
+import { CHUNK_BYTES } from "next-app-kit/files";
 import { fileResponse, fileRoute, signedFileUrl } from "./files";
 import { intakeRoute } from "./intake";
-import { safeName } from "./multipart";
+import { safeName } from "next-app-kit/multipart";
 import { createApiToken } from "./admin";
 import { BASE, fileConfig, restRoute, testRuntime, type TestRuntime } from "./testutil";
 
@@ -294,6 +295,20 @@ test("a signed link downloads a file without signing in, until it runs out; a ch
   expect((await get(`${BASE}/files/${f.id}`)).status).toBe(401);
   now = new Date("2026-11-13T10:16:00Z");
   expect((await get(link.url)).status).toBe(403);
+});
+
+test("a link signed before next-app-kit still downloads the file", async () => {
+  const now = new Date("2026-11-13T10:00:00Z");
+  const rt = testRuntime({ config: fileConfig(), now: () => now });
+  const s = rt.store.receive(rt.config.forms.order!, { name: "Ann" }, null, now, [
+    { field: "model", name: "part.stl", type: "model/stl", data: new TextEncoder().encode("solid") },
+  ]);
+  const f = rt.store.files(s.id)[0]!;
+  // How 0.24 signed a link: HMAC-SHA256 with the secret over "noticebox file link", the id and the expiry.
+  const exp = Math.floor(now.getTime() / 1000) + 600;
+  const sig = createHmac("sha256", rt.signIn.secret).update(`noticebox file link\n${f.id}\n${exp}`).digest("base64url");
+  expect(signedFileUrl(rt, BASE, f.id).url).toContain(`/files/${f.id}?exp=`);
+  expect((await fileRoute(new Request(`${BASE}/files/${f.id}?exp=${exp}&sig=${sig}`), rt, f.id)).status).toBe(200);
 });
 
 test("a file input left empty sends a part without a name or bytes: no file, on any field, whatever it accepts", async () => {

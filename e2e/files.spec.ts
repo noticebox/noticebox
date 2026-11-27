@@ -57,7 +57,7 @@ test("files posted with a form are kept, shown as a picture or offered as a down
   // A signed link (what MCP get_file hands out) works without a session, through the proxy; a changed one doesn't.
   const fileId = href.split("/").pop()!.split("?")[0]!;
   const signer = { now: () => new Date(), signIn: { secret: E2E_ENV.NOTICEBOX_SECRET } } as unknown as Runtime;
-  const { url } = signedFileUrl(signer, "", fileId);
+  const { url } = signedFileUrl(signer, E2E_ENV.PUBLIC_URL!, fileId);
   const signed = await anonymous.request.get(url);
   expect(signed.status()).toBe(200);
   expect(await signed.text()).toBe("solid x");
