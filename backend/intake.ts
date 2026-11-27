@@ -220,7 +220,7 @@ async function take(
   if (!form.strict) learn(rt, form, fields, hints);
   // The notification goes out after the answer is on its way; a slow ntfy never slows the reporter. A test post
   // (`_test`) is announced as one.
-  void notify(form, s, rt.signIn.baseUrl, rt.fetch, rt.log, Boolean(data._test));
+  void notify(form, s, rt.signIn.baseUrl, rt.fetch, rt.log, Boolean(data._test), rt.mail);
   return res;
 }
 

@@ -17,7 +17,7 @@ import { openAuth, PREFIX, signInFromEnv, type Auth, type SignInSettings } from 
 import type { Config } from "./config";
 import { Forms } from "./forms";
 import { Store } from "./db";
-import type { Fetch } from "./notify";
+import { smtpSend, type Fetch, type Mail } from "./notify";
 
 export class Rate {
   private hits = new Map<string, number[]>();
@@ -50,15 +50,11 @@ export type Runtime = {
   bodyLimit: number;
   now: () => Date;
   fetch: Fetch;
+  mail: Mail | null; // arrivals by mail, through the sign-in SMTP; null without one
   log: (line: string) => void;
 };
 
 export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { forms?: Forms; config?: Config; store: Store; baseUrl?: string }): Runtime {
-  const forms = o.forms ?? new Forms(o.store, {}, o.log);
-  if (!o.forms && o.config) {
-    const r = forms.replace(toRaw(o.config));
-    if (!r.ok) throw new Error(r.error);
-  }
   const { config: _ignored, baseUrl, ...rest } = o;
   void _ignored;
   const log = o.log ?? ((line: string) => console.error(line));
@@ -77,6 +73,13 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { for
     passkey: { rpName: "noticebox" },
     log,
   };
+  const mail = o.mail !== undefined ? o.mail : signIn.smtp ? { send: smtpSend(signIn.smtp), allowed: signIn.allowed } : null;
+  const forms = o.forms ?? new Forms(o.store, {}, o.log);
+  forms.mailPolicy = { allowed: signIn.allowed, smtp: mail !== null };
+  if (!o.forms && o.config) {
+    const r = forms.replace(toRaw(o.config));
+    if (!r.ok) throw new Error(r.error);
+  }
   let opened: Promise<Auth> | undefined;
   return {
     rate: new Rate(10),
@@ -87,6 +90,7 @@ export function makeRuntime(o: Partial<Omit<Runtime, "config" | "auth">> & { for
     fetch,
     log: (line) => console.error(line),
     ...rest,
+    mail,
     signIn,
     // A failed open is not remembered, so the next request tries again.
     auth: () => {

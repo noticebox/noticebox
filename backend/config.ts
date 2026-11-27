@@ -50,8 +50,11 @@ const EVENTS: NotifyEvent[] = ["received", "decided"];
 
 // `on`: only as written, on a webhook; `tests`: only on ntfy, which hears of test posts (`_test`) only when it says so, so a
 // site's CI checks don't bury the real submissions on the phone (webhooks always get them, marked); `unset`: the variable the
-// URL needs and the environment lacks.
-export type Target = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[]; tests?: true; unset?: string };
+// URL needs and the environment lacks. A mail target names its address in `to` (and `url` is its mailto: form, so every
+// target has one); it hears of arrivals only, like ntfy, and may only name someone who may sign in (checked when saved, see
+// Forms, and again when sending).
+export type Target = { type: "ntfy" | "webhook" | "mail"; url: string; to?: string; on?: NotifyEvent[]; tests?: true; unset?: string };
+const MAIL_ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * A raw target's `on` as the editor shows it: known events, in their canonical order, without repeats; undefined for ntfy and for a
@@ -65,7 +68,7 @@ export function eventsOf(raw: { type?: unknown; on?: unknown; [k: string]: unkno
 
 /** Whether `t` is to be told about `event`. */
 export function wants(t: Target, event: NotifyEvent): boolean {
-  if (t.type === "ntfy") return event === "received";
+  if (t.type !== "webhook") return event === "received";
   return (t.on ?? ["received"]).includes(event);
 }
 
@@ -230,7 +233,13 @@ function parseNotify(at: string, raw: unknown): Target[] {
   }
   return raw.map((t, i) => {
     const o = record(t, `${at}[${i}]`);
-    if (o.type !== "ntfy" && o.type !== "webhook") throw new Error(`${at}[${i}].type: "ntfy" or "webhook"`);
+    if (o.type !== "ntfy" && o.type !== "webhook" && o.type !== "mail") throw new Error(`${at}[${i}].type: "ntfy", "webhook" or "mail"`);
+    if (o.type === "mail") {
+      const to = typeof o.to === "string" ? o.to.trim().toLowerCase() : "";
+      if (!MAIL_ADDRESS.test(to)) throw new Error(`${at}[${i}].to: the address a mail target writes to`);
+      for (const k of ["url", "on", "tests"]) if (o[k] !== undefined && o[k] !== null) throw new Error(`${at}[${i}].${k}: a mail target takes only "to"`);
+      return { type: "mail", url: `mailto:${to}`, to };
+    }
     const target: Target = { type: o.type, url: absoluteUrl(o.url, `${at}[${i}].url`) };
     if (o.tests !== undefined && o.tests !== null) {
       if (typeof o.tests !== "boolean") throw new Error(`${at}[${i}].tests: true or false`);

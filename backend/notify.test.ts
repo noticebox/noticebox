@@ -88,6 +88,36 @@ test("only an ntfy target takes tests", () => {
   expect(() => form([{ type: "ntfy", url: "https://ntfy.test/t", tests: "yes" }])).toThrow(/tests: true or false/);
 });
 
+test("a mail target gets the title and the link of an arrival, never a field; its address stays out of the log", async () => {
+  const s = { id: "abc123", received_at: "2026-11-20T09:00:00.000Z" } as Submission;
+  const sent: { to: string; subject: string; text: string }[] = [];
+  const mail = { send: async (m: (typeof sent)[number]) => void sent.push(m), allowed: ["me@example.org"] };
+  const c = catcher();
+  const f = form([{ type: "mail", to: "me@example.org" }]);
+  await notify(f, s, BASE, c.fetchFn, c.log, false, mail);
+  expect(sent).toEqual([{ to: "me@example.org", subject: "New message: Orders", text: `New message: Orders\n\n${BASE}/forms/orders/submissions/abc123\n` }]);
+  expect(c.hits).toEqual([]);
+
+  await notify(f, s, BASE, c.fetchFn, c.log, true, mail);
+  expect(sent).toHaveLength(1);
+  await notify(f, s, BASE, c.fetchFn, c.log, false, { ...mail, allowed: [] });
+  await notify(f, s, BASE, c.fetchFn, c.log, false, { ...mail, send: async () => Promise.reject(new Error("connection refused")) });
+  await notify(f, s, BASE, c.fetchFn, c.log, false, null);
+  expect(sent).toHaveLength(1);
+  expect(c.lines).toEqual([
+    "notify orders abc123 mail: skipped, a test post",
+    "notify orders abc123 mail: skipped, the address may no longer sign in (NOTICEBOX_ALLOWED_EMAILS)",
+    "notify orders abc123 mail: connection refused",
+    "notify orders abc123 mail: mail can't go out: NOTICEBOX_SMTP_URL is not set",
+  ]);
+  expect(c.lines.join("\n")).not.toContain("me@example.org");
+});
+
+test("a mail target takes only an address", () => {
+  expect(() => form([{ type: "mail", to: "not an address" }])).toThrow(/the address a mail target writes to/);
+  expect(() => form([{ type: "mail", to: "me@example.org", url: "https://x.test" }])).toThrow(/a mail target takes only "to"/);
+});
+
 test("a failing webhook is logged, never thrown", async () => {
   const down = catcher(async () => new Response(null, { status: 500 }));
   await expect(notifyDecision(form(TARGETS), DECISION, BASE, down.fetchFn, down.log)).resolves.toBeUndefined();
