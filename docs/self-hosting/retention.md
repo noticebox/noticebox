@@ -24,7 +24,7 @@ If you need a copy beyond that period, keep one with the [export](#export) befor
 
 ## Backups
 
-Everything is in the one SQLite file (`NOTICEBOX_DB`, `/data/noticebox.sqlite` in the image), in WAL mode, so the `-wal` and `-shm` files next to it belong to it. Copy it with SQLite's own backup, which is consistent while the app runs:
+Everything is in the one SQLite file (`noticebox.sqlite` in `DATA_DIR`, `/data` in the image), in WAL mode, so the `-wal` and `-shm` files next to it belong to it. Copy it with SQLite's own backup, which is consistent while the app runs:
 
 ```sh
 docker exec noticebox node -e '

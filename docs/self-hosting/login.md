@@ -21,7 +21,7 @@ NOTICEBOX_SMTP_URL=smtps://inbox%40example.org:app-password@smtp.example.org:465
 NOTICEBOX_SMTP_FROM=noticebox <inbox@example.org>
 ```
 
-**Through a provider.** For each provider, set `NOTICEBOX_OIDC_<NAME>_CLIENT_ID` and `_CLIENT_SECRET`. A generic OpenID Connect provider (Authentik, Keycloak, …) also needs `_ISSUER`, its discovery base. `GITHUB` and `GOOGLE` are built in and need no issuer. `_LABEL` names the button. The provider's callback URL is `<NOTICEBOX_BASE_URL>/api/auth/callback/<name>`, with the name in lowercase.
+**Through a provider.** For each provider, set `NOTICEBOX_OIDC_<NAME>_CLIENT_ID` and `_CLIENT_SECRET`. A generic OpenID Connect provider (Authentik, Keycloak, …) also needs `_ISSUER`, its discovery base. `GITHUB`, `GOOGLE` and `APPLE` are built in and need no issuer. `_LABEL` names the button. The provider's callback URL is `<PUBLIC_URL>/api/auth/callback/<name>`, with the name in lowercase.
 
 ```sh
 NOTICEBOX_OIDC_AUTHENTIK_CLIENT_ID=noticebox

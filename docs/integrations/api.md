@@ -19,7 +19,7 @@ Every request carries a bearer token: `Authorization: Bearer <token>`. Without o
 
 A token made over MCP passes through the chat: ask for one there only when that's fine, and revoke it when the script no longer needs it.
 
-**OAuth** works for a script that can open a browser once. It signs in as an MCP client does ([How the OAuth works](mcp.md#how-the-oauth-works)), but registers for and asks for the resource `<NOTICEBOX_BASE_URL>/api/v1`. The access token it gets is bound to the API: it is refused on `/mcp`, and an `/mcp` token is refused here.
+**OAuth** works for a script that can open a browser once. It signs in as an MCP client does ([How the OAuth works](mcp.md#how-the-oauth-works)), but registers for and asks for the resource `<PUBLIC_URL>/api/v1`. The access token it gets is bound to the API: it is refused on `/mcp`, and an `/mcp` token is refused here.
 
 ```sh
 curl -H "Authorization: Bearer $NOTICEBOX_TOKEN" https://inbox.example.org/api/v1/submissions?form=contact

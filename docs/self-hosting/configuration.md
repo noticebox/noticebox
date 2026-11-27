@@ -8,18 +8,18 @@ Every setting is an environment variable, and in a deployment they all live in o
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `NOTICEBOX_DB` | `data/noticebox.sqlite` (`/data/noticebox.sqlite` in the image) | The SQLite file, with the boxes and forms; created at the first start |
+| `DATA_DIR` | `data` (`/data` in the image) | The folder with everything kept: `noticebox.sqlite` (the submissions, boxes and forms) and `auth.sqlite` (sign-in, API tokens, MCP connections); both are created at the first start |
 | `NOTICEBOX_CONFIG` | `noticebox.json` (`/app/noticebox.json` in the image) | **Deprecated**, and removed in a later release: the forms file of releases before 0.16, imported once on upgrade ([Upgrading](upgrading.md#from-the-forms-file-to-the-database)) |
-| `NOTICEBOX_BASE_URL` | none; required | The public URL: in notifications, sign-in links and MCP tokens |
+| `PUBLIC_URL` | none; required | The public URL: in notifications, sign-in links and MCP tokens. It is never taken from a request's headers |
 | `NOTICEBOX_SECRET` | none; required | 32 or more random characters that sign sessions and tokens (`openssl rand -base64 48`) |
 | `NOTICEBOX_ALLOWED_EMAILS` | empty: nobody | Who may sign in: addresses and `@domain` entries, comma-separated ([Sign-in](login.md#who-may-sign-in)) |
 | `NOTICEBOX_SMTP_URL`, `NOTICEBOX_SMTP_FROM` | none | Where sign-in codes are mailed from ([Sign-in](login.md#ways-to-sign-in)) |
-| `NOTICEBOX_OIDC_<NAME>_CLIENT_ID`, `_CLIENT_SECRET`, `_ISSUER`, `_LABEL` | none | A provider to sign in with; `GITHUB` and `GOOGLE` need no issuer ([Sign-in](login.md#ways-to-sign-in)) |
-| `NOTICEBOX_UPLOAD_DIR` | the system's temporary folder | Where a post's files wait while it is checked; it needs room for the largest post a form allows |
+| `NOTICEBOX_OIDC_<NAME>_CLIENT_ID`, `_CLIENT_SECRET`, `_ISSUER`, `_LABEL` | none | A provider to sign in with; `GITHUB`, `GOOGLE` and `APPLE` need no issuer ([Sign-in](login.md#ways-to-sign-in)) |
 | `NOTICEBOX_RATE_LIMIT` | `10` | Posts per client address and form in ten minutes; `0` turns it off |
 | `NOTICEBOX_TRUST_PROXY` | on | `0` to ignore `X-Forwarded-For` and take the connecting address |
 | `NOTICEBOX_DEV_USER` | none | A fixed name instead of signing in, for development; refused when `NODE_ENV=production` |
-| `PORT` | `3000` | Where it listens |
+| `PORT` | `3000` | Where it listens. It must be the port it really listens on: MCP and the API check OAuth tokens against the instance's own keys at `http://127.0.0.1:$PORT` |
+| `TMPDIR` | the system's temporary folder (`/tmp`) | Where a post's files wait while it is checked; it needs room for the largest post a form allows. Nothing in it is kept |
 | `PUID`, `PGID` | the owner of the mounted `/data` (1000 if that is root) | Who the server runs as inside the container, so the database belongs to the host user |
 
 `${VAR}` inside a string of a form is stored as written and replaced by the variable's value when the forms are loaded, so topics, webhook URLs and other secrets stay in the environment and out of the database; put those variables in `.env` too. Saving a form that names an unset variable is refused. If a variable a stored form needs is missing at start, the log says so, and a notification that needs it is skipped and logged each time.

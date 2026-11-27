@@ -8,6 +8,24 @@ docker compose pull && docker compose up -d
 
 The database schema is brought up to date at start: each release carries the schema changes since the first as numbered migrations, and the database records which have run (its `user_version`), so every change is applied exactly once, in order, each in a transaction. A migration that fails is rolled back and the app does not start, with the reason in the log. A downgrade is not supported: a release refuses a database that a newer one has migrated. Take a [backup](retention.md#backups) before an upgrade that the notes call out as changing the database.
 
+## Onto next-app-kit (0.24)
+
+From 0.24, sign-in, API tokens, MCP and the REST API come from [next-app-kit](https://github.com/Marceltov/next-app-kit), the library noticebox's own copy of them was moved into. What people see stays the same; the settings change their names:
+
+| Before 0.24 | From 0.24 |
+|---|---|
+| `NOTICEBOX_BASE_URL` | `PUBLIC_URL`, the same value. Required, and never taken from a request's headers |
+| `NOTICEBOX_DB` (a file) | `DATA_DIR` (its folder): `noticebox.sqlite` and `auth.sqlite` in it. The image's default, `/data`, is where both already were |
+| `NOTICEBOX_UPLOAD_DIR` | `TMPDIR`, the system's temporary folder |
+
+The old names are no longer read. A release that finds no `PUBLIC_URL` refuses to start and says so. With the image's defaults, renaming `NOTICEBOX_BASE_URL` in `.env` is the whole change; the inbox, sessions, API tokens and MCP connections carry over, and API tokens keep their scope.
+
+What else changes:
+
+- Every MCP tool result carries `guidance` instead of `next`, the same instructions under the kit's name.
+- An address taken off `NOTICEBOX_ALLOWED_EMAILS` loses its sessions and MCP and script grants at the next start, and its MCP calls and API tokens are refused at once.
+- `APPLE` is a built-in provider, like `GITHUB` and `GOOGLE`.
+
 ## From the login proxy to sign-in (0.17)
 
 From 0.17, noticebox signs people in itself and the header a login proxy sets counts for nothing. Before upgrading, set `NOTICEBOX_SECRET`, `NOTICEBOX_ALLOWED_EMAILS` and a way to sign in: SMTP, or a provider such as your Authentik. Without one, the new release refuses to start and says why. [Sign-in](login.md#coming-from-the-login-proxy-up-to-016) walks through it, including keeping the names the history records. Every MCP client connects once more after the upgrade.
