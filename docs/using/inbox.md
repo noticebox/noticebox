@@ -55,7 +55,7 @@ When the personal fields have been removed by retention, the pane says so and sh
 
 ## You
 
-The name in the top right is who you signed in as. Its menu opens *Your settings*, with the assistants you allowed through MCP and a *Revoke* for each, and *Sign out*.
+The name in the top right is who you signed in as. Its menu opens *Your settings*, with your passkeys, the assistants you allowed through MCP and a *Revoke* for each, and *Sign out*. *Add a passkey* asks your device or password manager for one; after that, *Sign in with a passkey* on the sign-in page signs you in without a code.
 
 ## Download
 

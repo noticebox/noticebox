@@ -11,6 +11,18 @@ export async function personOf(h: Headers, rt: Runtime): Promise<Person | null> 
   return kitPersonOf(h, await rt.auth(), rt.devUser);
 }
 
+export type PasskeyView = { id: string; name: string | null; createdAt: string };
+
+/** The signed-in person's passkeys, newest first, for Your settings. None for the dev user, who has no Better Auth account to hold any. */
+export async function passkeysOf(h: Headers, rt: Runtime): Promise<PasskeyView[]> {
+  const person = await personOf(h, rt);
+  if (!person || person.id.startsWith("dev:")) return [];
+  const list = await (await rt.auth()).api.listPasskeys({ headers: h });
+  return list
+    .map((p) => ({ id: p.id, name: p.name || null, createdAt: new Date(p.createdAt).toISOString() }))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 /** The name an action is recorded under: the signed-in person's address, or null without a session. */
 export async function actorOf(h: Headers, rt: Runtime): Promise<string | null> {
   return (await personOf(h, rt))?.email ?? null;

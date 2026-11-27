@@ -4,7 +4,7 @@ import { SignIn } from "./SignIn";
 
 export const dynamic = "force-dynamic";
 
-// The sign-in page: a code by email, and a button per provider. An MCP client's authorize step sends the browser here
+// The sign-in page: a code by email, a passkey, and a button per provider. An MCP client's authorize step sends the browser here
 // with a signed query (`sig`); the browser client carries it along, so the authorization goes on after the sign-in.
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const query = await searchParams;
