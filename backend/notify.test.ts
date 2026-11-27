@@ -62,6 +62,32 @@ test("an arrival posts event received and skips decisions-only webhooks", async 
   });
 });
 
+test("a test post goes to webhooks, marked, and to ntfy only when its target asks for tests; the skip is logged", async () => {
+  const s = { id: "abc123", received_at: "2026-11-20T09:00:00.000Z" } as Submission;
+  const c = catcher();
+  await notify(form(TARGETS), s, BASE, c.fetchFn, c.log, true);
+  expect(c.hits.map((h) => h.url).sort()).toEqual(["https://arrivals.test/x", "https://both.test/x"]);
+  expect(JSON.parse(c.hits[0]!.body)).toMatchObject({ test: true });
+  expect(c.lines).toEqual(["notify orders abc123 ntfy ntfy.test: skipped, a test post"]);
+
+  const opted = catcher();
+  const heads: Record<string, string>[] = [];
+  const fetchFn = (async (url: string | URL | Request, init?: RequestInit) => {
+    heads.push(Object.fromEntries(new Headers(init?.headers).entries()));
+    return opted.fetchFn(url, init);
+  }) as typeof fetch;
+  await notify(form([{ type: "ntfy", url: "https://ntfy.test/t", tests: true }]), s, BASE, fetchFn, opted.log, true);
+  expect(opted.hits.map((h) => h.url)).toEqual(["https://ntfy.test/t"]);
+  expect(heads[0]).toMatchObject({ title: "Test: New message: Orders", priority: "1", tags: "test_tube" });
+  expect(opted.lines).toEqual([]);
+});
+
+test("only an ntfy target takes tests", () => {
+  expect(form([{ type: "ntfy", url: "https://ntfy.test/t", tests: false }]).notify[0]).toEqual({ type: "ntfy", url: "https://ntfy.test/t" });
+  expect(() => form([{ type: "webhook", url: "https://hook.test/x", tests: true }])).toThrow(/only an ntfy target takes "tests"/);
+  expect(() => form([{ type: "ntfy", url: "https://ntfy.test/t", tests: "yes" }])).toThrow(/tests: true or false/);
+});
+
 test("a failing webhook is logged, never thrown", async () => {
   const down = catcher(async () => new Response(null, { status: 500 }));
   await expect(notifyDecision(form(TARGETS), DECISION, BASE, down.fetchFn, down.log)).resolves.toBeUndefined();

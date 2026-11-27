@@ -51,7 +51,15 @@ The form's *Settings* tab sets a webhook's events too (new submissions, decision
 
 ## Test posts
 
-A post with the [`_test` hint](../integrations/forms.md#a-plain-form) is stored and announced like any other, so a site can check in CI that its form reaches the inbox and the phone. Its announcement says it is a test: the ntfy title starts with *Test:*, the priority is 1 (no sound or vibration) and the tag a test tube; a webhook's body carries `"test": true`.
+A post with the [`_test` hint](../integrations/forms.md#a-plain-form) is checked and stored like any other, so a site can check in CI that its form reaches the inbox. Webhooks get it, with `"test": true` in the body. ntfy doesn't: a site's checks post several times a day, and on the phone they would bury the real submissions. The log says so for each target it skips (`notify <form> <id> ntfy <host>: skipped, a test post`), so nothing looks lost.
+
+An ntfy target that should get test posts says so with `tests`:
+
+```json
+"notify": [{ "type": "ntfy", "url": "https://ntfy.sh/${NTFY_TOPIC}", "tests": true }]
+```
+
+Then the push says it is a test: the title starts with *Test:*, the priority is 1 (no sound or vibration) and the tag is a test tube. In the form's settings this is the *test posts too* box next to an ntfy target.
 
 Any number of targets can be set on a form, on its *Settings* tab or in the file. A notification that fails is logged and never delays or fails the submission: the answer to the poster goes out first.
 

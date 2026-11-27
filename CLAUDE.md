@@ -22,7 +22,7 @@ CI (`.github/workflows/ci.yml`) runs `format:check`, lint, typecheck, unit, e2e,
 
 Release: `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z` on `main`, with `X.Y.Z` = `package.json`'s version (CI refuses another). CI pushes the image as `X.Y.Z`, `X.Y` and `latest`, then makes the GitHub release with notes generated from the merged PRs.
 
-Dependabot (`.github/dependabot.yml`) opens weekly grouped bumps; patch and minor ones merge by themselves once `check` is green (`dependabot-automerge.yml`, the one exception to merging only when the maintainer says so). `main` requires `check` through a ruleset; majors wait for review.
+Dependabot (`.github/dependabot.yml`) opens weekly grouped bumps; patch and minor ones merge by themselves once `check` is green (`dependabot-automerge.yml`, the one exception to merging only when the maintainer says so). `main` requires `check` and `image` through a ruleset; majors wait for review.
 
 ## Architecture
 

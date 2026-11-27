@@ -290,7 +290,7 @@ export const en = {
     thanksPlaceholder: "Thank you. Your message has been received.",
     notifications: "Notifications",
     notificationsIntro:
-      "Where a new submission is announced: a title and the link, never the content. A webhook can also be told about every decision (the states and the link). A secret in the URL can be written as",
+      "Where a new submission is announced: a title and the link, never the content. A webhook can also be told about every decision (the states and the link). Test posts (_test) reach ntfy only when its target says so; webhooks always get them, marked. A secret in the URL can be written as",
     notificationsVar: "and set in the environment.",
     targetN: (i: number, what: string) => `Target ${i} ${what}`,
     removeTarget: (i: number) => `Remove target ${i}`,
@@ -298,6 +298,7 @@ export const en = {
     onReceived: "new submissions",
     onDecided: "decisions",
     onBoth: "both",
+    ntfyTests: "test posts too",
     retentionAndLink: "Retention and link",
     retention: "Personal fields are removed",
     retentionUnit: "days after a submission is closed",

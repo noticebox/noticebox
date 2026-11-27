@@ -20,7 +20,8 @@ export type RawFieldRow = {
   maxMegabytes: string;
 };
 // `on` only for a webhook, and only when it was written (or chosen here): a webhook without it hears of arrivals only.
-export type RawTarget = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[] };
+// `tests` only for ntfy, only when chosen: ntfy hears of test posts only then.
+export type RawTarget = { type: "ntfy" | "webhook"; url: string; on?: NotifyEvent[]; tests?: boolean };
 export type StateRow = { name: string; closed: boolean; reason: boolean; deleteAfterMinutes: string };
 export type Settings = {
   box: string;
@@ -88,7 +89,13 @@ function toRaw(s: Settings): Record<string, unknown> {
   if (s.redirect.trim()) raw.redirect = s.redirect.trim();
   if (s.retentionDays.trim()) raw.retentionDays = Number(s.retentionDays);
   if (s.deleteAfterDays.trim()) raw.deleteAfterDays = Number(s.deleteAfterDays);
-  if (s.notify.length) raw.notify = s.notify.map((t) => ({ type: t.type, url: t.url.trim(), ...(t.type === "webhook" && t.on ? { on: t.on } : {}) }));
+  if (s.notify.length)
+    raw.notify = s.notify.map((t) => ({
+      type: t.type,
+      url: t.url.trim(),
+      ...(t.type === "webhook" && t.on ? { on: t.on } : {}),
+      ...(t.type === "ntfy" && t.tests ? { tests: true } : {}),
+    }));
   if (s.linkUrl.trim()) raw.link = s.linkLabel.trim() ? { url: s.linkUrl.trim(), label: s.linkLabel.trim() } : s.linkUrl.trim();
   const labels = s.githubLabels
     .split(",")
@@ -531,6 +538,11 @@ export function FormSettings({
                       <option value="decided">{t.settings.onDecided}</option>
                       <option value="received,decided">{t.settings.onBoth}</option>
                     </select>
+                  )}
+                  {tg.type === "ntfy" && (
+                    <label className="flex items-center gap-1 text-sm">
+                      <input type="checkbox" checked={Boolean(tg.tests)} onChange={(e) => target(i, { tests: e.target.checked })} /> {t.settings.ntfyTests}
+                    </label>
                   )}
                   <input
                     value={tg.url}
