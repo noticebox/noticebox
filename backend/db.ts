@@ -4,7 +4,6 @@
 // Queries are built with kysely, typed by the tables below, and run synchronously on better-sqlite3: kysely only
 // compiles them, so the store keeps its synchronous interface and a transaction is one plain function call.
 import { randomBytes } from "node:crypto";
-import { closeSync, openSync, readSync } from "node:fs";
 import BetterSqlite3 from "better-sqlite3";
 import {
   DummyDriver,
@@ -19,6 +18,7 @@ import {
 } from "kysely";
 import type { Config, Form } from "./config";
 import { stateOf, type KindName } from "./kinds";
+import { FileStore, type NewFile, type StoredFile as KitFile } from "next-app-kit/files";
 import { migrate } from "next-app-kit/migrations";
 import { MIGRATIONS } from "./db/migrations";
 
@@ -47,30 +47,18 @@ export type Event = {
 /** A file that came with a submission, without its bytes. */
 export type StoredFile = { id: string; submission_id: string; field: string; name: string; type: string; size: number };
 
-/** A file as it arrives, checked, before it has an id: its bytes, or the temporary file that holds them (multipart.ts). */
-export type Upload = { field: string; name: string; type: string } & ({ data: Uint8Array } | { path: string; size: number });
+/** The kit keeps a file under its `owner`; the inbox, its export and its API name the submission. */
+const asStored = (f: KitFile): StoredFile => ({
+  id: f.id,
+  submission_id: f.owner,
+  field: f.field,
+  name: f.name,
+  type: f.type,
+  size: f.size,
+});
 
-/** How large the chunks of a file are in the database. */
-export const CHUNK_BYTES = 1024 * 1024;
-
-/** A file's bytes in chunks, read from memory or from its temporary file one chunk at a time. */
-function* chunksOf(f: Upload): Generator<Uint8Array> {
-  if ("data" in f) {
-    for (let at = 0; at < f.data.byteLength; at += CHUNK_BYTES) yield f.data.subarray(at, at + CHUNK_BYTES);
-    return;
-  }
-  const fd = openSync(f.path, "r");
-  try {
-    for (;;) {
-      const buf = Buffer.allocUnsafe(CHUNK_BYTES);
-      const n = readSync(fd, buf, 0, CHUNK_BYTES, null);
-      if (n === 0) return;
-      yield buf.subarray(0, n);
-    }
-  } finally {
-    closeSync(fd);
-  }
-}
+/** A file as it arrives, checked, before it has an id: its bytes, or the temporary file that holds them (next-app-kit/files). */
+export type Upload = NewFile;
 
 export type ListFilter = { form?: string; state?: string; open?: boolean; limit?: number };
 export type Outcome = { ok: true } | { ok: false; error: string };
@@ -92,7 +80,7 @@ export type Tables = {
   boxes: { name: string; position: number };
   forms: { name: string; box: string; definition: string; position: number };
   settings: { key: string; value: string };
-  files: { id: string; submission_id: string; field: string; name: string; type: string; size: number };
+  files: { id: string; owner: string; field: string; name: string; type: string; size: number };
   file_chunks: { file_id: string; seq: number; data: Uint8Array };
 };
 
@@ -126,9 +114,12 @@ const q = new Kysely<Tables>({
 
 export class Store {
   readonly db: BetterSqlite3.Database;
+  /** The files of the submissions, kept by next-app-kit/files on the same connection, so they join the store's transactions. */
+  readonly fileStore: FileStore;
 
   constructor(path: string) {
     this.db = new BetterSqlite3(path, { timeout: 5000 });
+    this.fileStore = new FileStore(this.db);
     try {
       this.db.pragma("journal_mode = wal");
       this.db.pragma("foreign_keys = on");
@@ -169,13 +160,7 @@ export class Store {
     this.db.transaction(() => {
       this.run(q.insertInto("submissions").values({ id, form: form.name, kind: form.kind, state, fields: JSON.stringify(fields), received_at: at, origin }));
       this.run(q.insertInto("events").values({ submission_id: id, at, actor: "form", from_state: null, to_state: state, reason: "" }));
-      for (const f of files) {
-        const fileId = newId();
-        const size = "data" in f ? f.data.byteLength : f.size;
-        this.run(q.insertInto("files").values({ id: fileId, submission_id: id, field: f.field, name: f.name, type: f.type, size }));
-        let seq = 0;
-        for (const data of chunksOf(f)) this.run(q.insertInto("file_chunks").values({ file_id: fileId, seq: seq++, data }));
-      }
+      this.fileStore.add(id, files);
     })();
     return { id, form: form.name, kind: form.kind, state, fields, received_at: at, closed_at: null, purged_at: null, origin };
   }
@@ -200,23 +185,18 @@ export class Store {
 
   /** The files of a submission, without their bytes, in the order they came. */
   files(submissionId: string): StoredFile[] {
-    return this.all(
-      q
-        .selectFrom("files")
-        .select(["id", "submission_id", "field", "name", "type", "size"])
-        .where("submission_id", "=", submissionId)
-        .orderBy(sql`rowid`),
-    );
+    return this.fileStore.of(submissionId).map(asStored);
   }
 
   /** One file, without its bytes. */
   file(id: string): StoredFile | undefined {
-    return this.first(q.selectFrom("files").selectAll().where("id", "=", id));
+    const f = this.fileStore.get(id);
+    return f && asStored(f);
   }
 
   /** The `seq`th chunk of a file's bytes (from 0), or undefined past the last. */
   chunk(id: string, seq: number): Uint8Array | undefined {
-    return this.first(q.selectFrom("file_chunks").select("data").where("file_id", "=", id).where("seq", "=", seq))?.data;
+    return this.fileStore.chunk(id, seq);
   }
 
   events(id: string): Event[] {
@@ -350,10 +330,7 @@ export class Store {
               .set({ fields: JSON.stringify(kept), purged_at: now.toISOString(), origin: null })
               .where("id", "=", row.id),
           );
-          let gone = q.selectFrom("files").select("id").where("submission_id", "=", row.id);
-          if (keptFiles.length) gone = gone.where("field", "not in", keptFiles);
-          this.run(q.deleteFrom("file_chunks").where("file_id", "in", gone));
-          this.run(q.deleteFrom("files").where("id", "in", gone));
+          this.fileStore.remove([row.id], { keep: keptFiles });
         })();
         purged++;
       }
@@ -388,10 +365,11 @@ export class Store {
   private deleteAll(due: SelectQueryBuilder<Tables, "submissions", { id: string }>): number {
     let n = 0;
     this.db.transaction(() => {
-      this.run(q.deleteFrom("events").where("submission_id", "in", due));
-      this.run(q.deleteFrom("file_chunks").where("file_id", "in", q.selectFrom("files").select("id").where("submission_id", "in", due)));
-      this.run(q.deleteFrom("files").where("submission_id", "in", due));
-      n = this.run(q.deleteFrom("submissions").where("id", "in", due));
+      const ids = this.all(due).map((r) => r.id);
+      if (ids.length === 0) return;
+      this.run(q.deleteFrom("events").where("submission_id", "in", ids));
+      this.fileStore.remove(ids);
+      n = this.run(q.deleteFrom("submissions").where("id", "in", ids));
     })();
     return n;
   }

@@ -1,6 +1,6 @@
 {
   "name": "noticebox",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "description": "An inbox for the forms on static pages: one endpoint per form, SQLite, and a small app that walks each notice through its states with an audit trail. MCP for assisted reviews.",
   "license": "AGPL-3.0-only",
   "private": true,
@@ -33,7 +33,7 @@
     "kysely": "0.29.8",
     "lucide-react": "1.71.0",
     "next": "16.4.6",
-    "next-app-kit": "https://github.com/Marceltov/next-app-kit/releases/download/v0.1.7/next-app-kit-0.1.7.tgz",
+    "next-app-kit": "https://github.com/Marceltov/next-app-kit/releases/download/v0.2.0/next-app-kit-0.2.0.tgz",
     "nodemailer": "10.5.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",

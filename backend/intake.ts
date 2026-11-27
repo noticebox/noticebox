@@ -1,12 +1,10 @@
 // The submission endpoint: POST /f/<form> (rewritten to /api/f/<form> by proxy.ts), with the preflight scripts need.
 // A browser form post is answered with a redirect, a JSON post with the id. A bot that fills the field nobody sees
 // gets the same answer and nothing is stored.
-import { tmpdir } from "node:os";
 import { clientIp, originOf } from "./auth";
 import { FIELD_NAME, RESERVED_FIELDS, type Form } from "./config";
-import { rm } from "node:fs/promises";
 import { mediaType, parseFields, readCapped, seeOther, text } from "./http";
-import { readMultipart, type Received } from "./multipart";
+import { readUpload, type FieldRule, type ReceivedFile as Received } from "next-app-kit/files";
 import { notify } from "./notify";
 import type { Runtime } from "./runtime";
 
@@ -71,6 +69,17 @@ export function validate(form: Form, data: Record<string, string>, hints: Hints 
   return { fields, errors };
 }
 
+/** Each file field's rule, as next-app-kit/files reads a post by: its label, kinds, number and size of files. */
+export function fileRules(form: Form): Record<string, FieldRule> {
+  return Object.fromEntries(
+    Object.entries(form.fields).flatMap(([name, f]) =>
+      f.type === "file" && f.files
+        ? [[name, { label: f.label, accept: f.files.accept, maxFiles: f.files.maxFiles, maxBytes: f.files.maxBytes, required: f.required }]]
+        : [],
+    ),
+  );
+}
+
 /** How much larger than a text-only post a post to this form may be: every file field full, plus room for the part headers. */
 export function fileAllowance(form: Form): number {
   return Object.values(form.fields).reduce((sum, f) => sum + (f.files ? f.files.maxFiles * (f.files.maxBytes + 4096) : 0), 0);
@@ -115,20 +124,22 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
   let data: Record<string, string>;
   let received: Received[] = [];
   let fileErrors: string[] = [];
-  let dir: string | null = null;
+  let cleanup: (() => Promise<void>) | null = null;
   let wantsJson: boolean;
   const browser = () => {
     const accept = h.get("accept") ?? "";
     return accept.includes("application/json") && !accept.includes("text/html");
   };
   if (type === "multipart/form-data") {
-    // Read as it arrives, files into a temporary folder (multipart.ts); only this form's file fields make it larger.
+    // Read as it arrives, files into a temporary folder in TMPDIR (next-app-kit/files), each file field by its own rule; only this
+    // form's file fields make it larger.
     const limit = rt.bodyLimit + fileAllowance(form);
     if (Number(h.get("content-length")) > limit) return text(413, "the body is too large");
-    const m = await readMultipart(req, form, limit, tmpdir());
+    const m = await readUpload(req, { rules: fileRules(form), limit, strict: form.strict });
     if (m === "too large") return text(413, "the body is too large");
     if (m === "not a form") return text(400, "the body is not a form");
-    ({ fields: data, files: received, errors: fileErrors, dir } = m);
+    ({ fields: data, files: received, cleanup } = m);
+    fileErrors = m.problems.map((p) => p.message);
     wantsJson = browser();
   } else {
     const bytes = await readCapped(req, rt.bodyLimit);
@@ -163,7 +174,7 @@ export async function intakeRoute(req: Request, formName: string, rt: Runtime): 
   try {
     return await take(req, rt, form, data, received, fileErrors, wantsJson, cors.headers, at, origin);
   } finally {
-    if (dir) await rm(dir, { recursive: true, force: true });
+    if (cleanup) await cleanup();
   }
 }
 

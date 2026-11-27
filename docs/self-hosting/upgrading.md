@@ -8,6 +8,10 @@ docker compose pull && docker compose up -d
 
 The database schema is brought up to date at start: each release carries the schema changes since the first as numbered migrations, and the database records which have run (its `user_version`), so every change is applied exactly once, in order, each in a transaction. A migration that fails is rolled back and the app does not start, with the reason in the log. A downgrade is not supported: a release refuses a database that a newer one has migrated. Take a [backup](retention.md#backups) before an upgrade that the notes call out as changing the database.
 
+## Files through next-app-kit (0.25)
+
+From 0.25, reading, keeping and serving the files that come with a form are next-app-kit's too (`next-app-kit/files`). Nothing changes for senders or in the inbox: the same rules, the same messages, the same downloads, and a link `get_file` handed out before still works until it runs out. The database changes once at the first start (the files table names its submission `owner`, as the kit does), so take a [backup](retention.md#backups) before upgrading.
+
 ## Onto next-app-kit (0.24)
 
 From 0.24, sign-in, API tokens, MCP and the REST API come from [next-app-kit](https://github.com/Marceltov/next-app-kit), the library noticebox's own copy of them was moved into. What people see stays the same; the settings change their names:

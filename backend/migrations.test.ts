@@ -5,6 +5,7 @@ import { join } from "node:path";
 import Database from "better-sqlite3";
 import { afterEach, expect, test } from "vitest";
 import { Store } from "./db";
+import { filesMigration } from "next-app-kit/files";
 import { migrate, type Migration } from "next-app-kit/migrations";
 import { MIGRATIONS } from "./db/migrations";
 import { REPORT, testConfig } from "./testutil";
@@ -120,4 +121,26 @@ test("a database from a newer release is refused, and the store does not open", 
   expect(() => migrate(db, MIGRATIONS)).toThrow(/newer/);
   db.close();
   expect(() => new Store(path)).toThrow(/newer than this release knows/);
+});
+
+test("the files tables are as next-app-kit/files keeps them, and a store from before the rename keeps its files", () => {
+  const columns = (db: Database.Database) =>
+    Object.fromEntries(
+      ["files", "file_chunks"].map((t) => [t, (db.pragma(`table_info(${t})`) as { name: string; type: string }[]).map((c) => `${c.name} ${c.type}`)]),
+    );
+  const kit = new Database(":memory:");
+  migrate(kit, [filesMigration]);
+  const path = tempFile();
+  // A store at the migration before the rename, with a submission and its file.
+  const old = new Database(path);
+  migrate(old, MIGRATIONS.slice(0, -1));
+  old.exec(`insert into submissions (id, form, kind, state, fields, received_at) values ('s1', 'orders', 'order', 'new', '{}', '2026-11-01T00:00:00.000Z');
+    insert into files (id, submission_id, field, name, type, size) values ('f1', 's1', 'model', 'a.stl', 'model/stl', 1);
+    insert into file_chunks (file_id, seq, data) values ('f1', 0, x'07');`);
+  old.close();
+  const store = new Store(path);
+  expect(columns(store.db)).toEqual(columns(kit));
+  expect(store.files("s1")).toEqual([{ id: "f1", submission_id: "s1", field: "model", name: "a.stl", type: "model/stl", size: 1 }]);
+  expect([...store.chunk("f1", 0)!]).toEqual([7]);
+  store.close();
 });
